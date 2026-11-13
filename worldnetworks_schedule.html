@@ -57,12 +57,13 @@
   .btn:active { top:4px; box-shadow:0 1px 0 var(--edge), 0 2px 4px rgba(0,0,0,.25); }
   .btn-submit { background:linear-gradient(#4da3ff,#007bff 55%,#0066d6); --edge:#00479a; color:#fff; flex:3; }
   .btn-reset { background:linear-gradient(#ffffff,#e3e7eb); --edge:#aab1b9; color:#333; text-shadow:0 1px 0 #fff; flex:1; }
-  .btn-edit { background:linear-gradient(#51cf66,#2f9e44); --edge:#1e6b2d; color:#fff; padding:5px 10px; font-size:.8rem; }
+  .btn-edit { background:linear-gradient(#51cf66,#2f9e44); --edge:#1e6b2d; color:#fff; padding:5px 10px; font-size:.8rem; margin-bottom:6px; }
   .btn-del { background:linear-gradient(#ff8787,#fa5252); --edge:#b02a2a; color:#fff; padding:5px 10px; font-size:.8rem; }
   .btn-clear { background:linear-gradient(#adb5bd,#868e96); --edge:#495057; color:#fff; padding:6px 12px; font-size:.8rem; }
   .btn-excel { background:linear-gradient(#38d9a9,#0ca678); --edge:#087f5b; color:#fff; padding:6px 12px; font-size:.8rem; }
   .btn-record { background:linear-gradient(#ffa94d,#f76707); --edge:#a84300; color:#fff; padding:4px 9px; font-size:.78rem; margin-top:6px; }
-  .btn-card { background:linear-gradient(#845ef7,#7950f2); --edge:#5f3dc4; color:#fff; padding:4px 8px; font-size:0.75rem; margin-left:6px; vertical-align:middle; }
+  .btn-card { background:linear-gradient(#845ef7,#7950f2); --edge:#5f3dc4; color:#fff; padding:4px 9px; font-size:.78rem; margin-top:4px; }
+  .btn-edit, .btn-del, .btn-clear, .btn-excel, .btn-record, .btn-card { box-shadow:0 3px 0 var(--edge), 0 5px 8px rgba(0,0,0,.22); }
   .btn-edit:active, .btn-del:active, .btn-clear:active, .btn-excel:active, .btn-record:active, .btn-card:active { top:2px; box-shadow:0 1px 0 var(--edge), 0 2px 3px rgba(0,0,0,.22); }
   
   textarea.field { width:100%; padding:10px; border:1px solid #ddd; border-radius:4px; box-sizing:border-box; font-size:.95rem; font-family:inherit; resize:vertical; }
@@ -76,13 +77,10 @@
   .list-head { display:flex; justify-content:space-between; align-items:center; margin-top:30px; margin-bottom:10px; }
   .list-head h3 { font-size:1.2rem; margin:0; }
   .table-responsive { overflow-x:auto; }
-  
-  /* 스케줄 목록 테이블 스타일 */
-  .schedule-table { width:100%; border-collapse:collapse; font-size:.82rem; min-width:1250px; }
-  .schedule-table th, .schedule-table td { border:1px solid #ddd; padding:9px 7px; text-align:left; vertical-align:middle; }
-  .schedule-table th { background:#f1f3f5; white-space:nowrap; }
-  .schedule-table td.act { white-space:nowrap; text-align:center; }
-
+  table { width:100%; border-collapse:collapse; font-size:.82rem; min-width:1250px; }
+  th, td { border:1px solid #ddd; padding:9px 7px; text-align:left; vertical-align:middle; }
+  th { background:#f1f3f5; white-space:nowrap; }
+  td.act { white-space:nowrap; text-align:center; }
   .empty { text-align:center; color:#999; padding:20px; }
   tr.editing td { background:#fff3bf; }
   select { width:100%; padding:10px; border:1px solid #ddd; border-radius:4px; box-sizing:border-box; font-size:.95rem; background:#fff; }
@@ -91,18 +89,65 @@
   .filter-sel { width:auto; padding:6px 8px; font-size:.85rem; }
   .list-tools { display:flex; align-items:center; gap:8px; }
 
-  /* 방문 및 실측 안내장 카드 스타일 (칸마다 명확한 테두리 및 줄 간격 적용) */
-  .guide-preview-card { background:#fff; padding:20px; width:480px; box-sizing:border-box; font-family:'Malgun Gothic',sans-serif; margin:0 auto; }
-  .guide-preview-card h3 { text-align:center; font-size:1.4rem; margin:0 0 16px 0; color:#000; font-weight:bold; letter-spacing:-0.5px; }
-  .guide-table { width:100%; border-collapse:collapse; border:2px solid #1e3a8a; table-layout: fixed; }
-  .guide-table th, .guide-table td { border:1px solid #1e3a8a; padding:10px 10px; font-size:0.92rem; vertical-align:middle; word-break: break-all; }
-  .guide-table th { background:#1e3a8a; color:#fff; width:28%; font-weight:bold; text-align:center; }
-  .guide-table td { background:#fff; color:#000; text-align:center; }
-  .guide-footer { text-align:center; margin-top:16px; color:#dc2626; font-weight:bold; font-size:0.9rem; }
+  /* 💡 완벽하게 조정된 안내장 디자인 (CSS) */
+  /* 카드 컨테이너 너비를 460px로 고정하고 중앙 정렬하여 캡처 시 잘림을 방지합니다. */
+  .guide-preview-card { 
+    background: #fff; 
+    padding: 24px; 
+    border: 2px solid #1e3a8a; 
+    width: 460px; 
+    box-sizing: border-box; 
+    font-family: 'Malgun Gothic', sans-serif; 
+    margin: 0 auto; 
+  }
+  .guide-preview-card h3 { 
+    text-align: center; 
+    font-size: 1.3rem; 
+    margin: 0 0 16px 0; 
+    color: #000; 
+    font-weight: bold; 
+  }
+  /* 내부 표 너비를 100%로 고정하고, 셀 내용이 길면 줄바꿈 처리되도록 합니다. */
+  .guide-table { 
+    width: 100%; 
+    border-collapse: collapse; 
+    border: 2px solid #1e3a8a; 
+    table-layout: fixed; 
+  }
+  .guide-table th, .guide-table td { 
+    border: 1px solid #1e3a8a; 
+    padding: 10px 8px; 
+    font-size: 0.88rem; 
+    text-align: center; 
+    word-break: break-word; /* 긴 텍스트 줄바꿈 */
+  }
+  .guide-table th { 
+    background: #1e3a8a; 
+    color: #fff; 
+    width: 26%; 
+    font-weight: bold; 
+  }
+  .guide-table td { 
+    background: #fff; 
+    color: #000; 
+    text-align: left; 
+  }
+  .guide-footer { 
+    text-align: center; 
+    margin-top: 14px; 
+    color: #dc2626; 
+    font-weight: bold; 
+    font-size: 0.85rem; 
+  }
+  
+  /* 동기화 상태 뱃지 표시 */
+  #syncStatus { position:fixed; top:10px; right:10px; background:rgba(0,0,0,.7); color:#fff; padding:6px 12px; border-radius:20px; font-size:0.8rem; z-index:100; font-weight:bold; display:none; }
+
   @media (max-width:560px) { .grid { grid-template-columns:1fr; } }
 </style>
 </head>
 <body>
+<div id="syncStatus">🔄 연동 중...</div>
 <div class="container">
   <h2>현장 방문 및 스케줄 관리</h2>
 
@@ -129,7 +174,7 @@
       <div class="cal-day-name" style="color:#3b82f6;">토</div>
     </div>
     <div class="calendar-grid" id="calBody"></div>
-    <p class="hint" style="text-align:center; margin-top:12px;">달력의 날짜를 누르면 해당 날짜로 방문 일시가 지정되며 입력 탭으로 이동합니다.</p>
+    <p class="hint" style="text-align:center; margin-top:12px;">💡 달력의 날짜를 누르면 해당 날짜로 방문 일시가 지정되며 입력 탭으로 이동합니다.</p>
   </div>
 
   <!-- 2. 스케줄 입력 및 목록 탭 -->
@@ -151,17 +196,17 @@
       <div id="formMode"></div>
       <div class="grid">
         <div class="form-group full"><label>진행 상태</label><select id="stage"></select></div>
-        <div class="form-group"><label>고객명</label><input type="text" id="customer" placeholder="예: 김정우" required></div>
-        <div class="form-group"><label>연락처</label><input type="text" id="phone" placeholder="예: 010-7360-1738"></div>
+        <div class="form-group"><label>고객명</label><input type="text" id="customer" placeholder="예: 최영진" required></div>
+        <div class="form-group"><label>연락처</label><input type="text" id="phone" placeholder="예: 010-0000-0000"></div>
         <div class="form-group"><label>방문 일시</label><input type="datetime-local" id="visitDate"></div>
-        <div class="form-group"><label>처리 비용</label><input type="text" id="cost" placeholder="예: 25,000"></div>
-        <div class="form-group full"><label>요청 사항</label><input type="text" id="request" placeholder="예: 핸들 구매 (1개)" required></div>
+        <div class="form-group"><label>처리 비용</label><input type="text" id="cost" placeholder="예: 무료 방문실측"></div>
+        <div class="form-group full"><label>요청 사항</label><input type="text" id="request" placeholder="예: 부분 교체" required></div>
         <div class="form-group"><label>담당 기사</label>
           <select id="engSelect"></select>
           <input type="text" id="engineer" placeholder="기사 이름 직접 입력" style="display:none;margin-top:6px;">
         </div>
         <div class="form-group"><label>기사 연락처</label><input type="text" id="engPhone" placeholder="예: 010-8866-6944"></div>
-        <div class="form-group full"><label>방문 주소</label><input type="text" id="note" placeholder="예: 인천 서해구청 청라 한울로 17 385-1604"></div>
+        <div class="form-group full"><label>방문 주소</label><input type="text" id="note" placeholder="예: 대략적인 주소 또는 상세 주소"></div>
         <div class="form-group full"><label>방문 후 기록 (담당 기사 기재)</label><textarea id="report" class="field" rows="3" placeholder="방문 후 실측 사이즈, 작업 내용, 특이사항 등을 기재"></textarea></div>
       </div>
       <div class="btn-row">
@@ -172,7 +217,7 @@
 
     <!-- 직원 관리 -->
     <details id="empBox" style="margin-top:24px;border:1px solid #dee2e6;border-radius:6px;padding:10px 14px;background:#fcfcfd;">
-      <summary style="cursor:pointer;font-weight:bold;">직원 관리 <span id="empCount" style="font-weight:normal;color:#666;font-size:.85rem;"></span></summary>
+      <summary style="cursor:pointer;font-weight:bold;">👥 직원 관리 <span id="empCount" style="font-weight:normal;color:#666;font-size:.85rem;"></span></summary>
       <form id="empForm" style="margin-top:12px;">
         <div class="grid">
           <div class="form-group"><label>직원 이름</label><input type="text" id="empName" placeholder="예: 이대진" required></div>
@@ -184,7 +229,7 @@
         </div>
       </form>
       <div class="table-responsive" style="margin-top:12px;">
-        <table class="schedule-table" style="min-width:360px;">
+        <table style="min-width:360px;">
           <thead><tr><th>이름</th><th>연락처</th><th>관리</th></tr></thead>
           <tbody id="empBody"></tbody>
         </table>
@@ -200,7 +245,7 @@
       </div>
     </div>
     <div class="table-responsive">
-      <table class="schedule-table">
+      <table>
         <thead>
           <tr>
             <th>진행 상태</th><th>고객명</th><th>연락처</th><th>방문 일시</th><th>요청 사항</th>
@@ -231,9 +276,10 @@
 
 <!-- 안내장 이미지 생성 모달 -->
 <div id="cardModal" class="modal">
-  <div class="modal-box" style="text-align:center; max-width:540px;">
-    <h4 style="margin-bottom:12px;">방문 및 실측 안내장 미리보기</h4>
-    <div style="background:#e5e7eb; padding:15px; border-radius:8px; margin-bottom:15px; overflow-x:auto;">
+  <div class="modal-box" style="text-align:center; max-width:520px;">
+    <h4 style="margin-bottom:12px;">🖼️ 방문 및 실측 안내장</h4>
+    <!-- 모달 내에서 표가 가로로 스크롤되지 않고 꽉 차게 보이도록 중앙 정렬 컨테이너 적용 -->
+    <div style="background:#e5e7eb; padding:15px; border-radius:8px; margin-bottom:15px; display:flex; justify-content:center;">
       <div id="captureArea" class="guide-preview-card">
         <h3>■ 방문 및 실측 안내</h3>
         <table class="guide-table">
@@ -250,7 +296,7 @@
       </div>
     </div>
     <div class="btn-row">
-      <button type="button" class="btn btn-submit" id="downloadCardBtn" style="background:#10b981;">이미지로 저장 (다운로드)</button>
+      <button type="button" class="btn btn-submit" id="downloadCardBtn" style="background:#10b981;">📥 이미지로 저장 (다운로드)</button>
       <button type="button" class="btn btn-reset" onclick="closeCardModal()">닫기</button>
     </div>
   </div>
@@ -279,12 +325,66 @@ function fillStageOptions(sel, val, allowEmpty) {
 }
 let filterStage = '';
 
+// =========================================================================
+// 💡 아래 따옴표 '' 안에 1단계에서 복사한 구글 앱스 스크립트 웹 앱 URL을 붙여넣으세요! 💡
+const SCRIPT_URL = '';
+// =========================================================================
+
 let schedules = [];
 try { schedules = JSON.parse(localStorage.getItem(STORE_KEY) || '[]'); } catch (e) { schedules = []; }
-function save() { 
-  try { localStorage.setItem(STORE_KEY, JSON.stringify(schedules)); } catch (e) {} 
-  renderCalendar(); 
+
+let isSyncing = false;
+function showSync(msg) {
+  const el = $('syncStatus');
+  el.textContent = msg;
+  el.style.display = 'block';
+  setTimeout(() => { el.style.display = 'none'; }, 2000);
 }
+
+// 💡 덮어쓴 핵심 저장 함수 (구글 시트로 데이터를 전송합니다)
+async function save() {
+  try { localStorage.setItem(STORE_KEY, JSON.stringify(schedules)); } catch (e) { alert('저장 공간이 부족해 저장하지 못했습니다.'); }
+  renderCalendar();
+  render();
+  
+  if (SCRIPT_URL && !isSyncing) {
+    showSync("🔄 구글 시트와 연동 중...");
+    isSyncing = true;
+    try {
+      await fetch(SCRIPT_URL, {
+        method: 'POST',
+        body: JSON.stringify(schedules)
+      });
+      showSync("✅ 연동 완료");
+    } catch (err) {
+      console.log('전송 오류', err);
+      showSync("⚠️ 연동 실패 (오프라인 모드로 임시저장됨)");
+    } finally {
+      isSyncing = false;
+    }
+  }
+}
+
+// 💡 화면을 켤 때 구글 시트에서 최신 데이터를 가져옵니다.
+window.onload = async () => {
+  if (SCRIPT_URL) {
+    showSync("🔄 다른 직원의 데이터 불러오는 중...");
+    try {
+      const res = await fetch(SCRIPT_URL);
+      const data = await res.json();
+      if (data && data.length > 0) {
+        schedules = data;
+        localStorage.setItem(STORE_KEY, JSON.stringify(schedules)); // 최신화
+        renderCalendar();
+        render();
+        showSync("✅ 최신 상태입니다");
+      }
+    } catch (err) {
+      console.log('불러오기 오류', err);
+      showSync("⚠️ 인터넷 연결 불안정");
+    }
+  }
+};
 
 let editingId = null;
 let currentYear = new Date().getFullYear();
@@ -495,6 +595,7 @@ function render() {
     const tr = document.createElement('tr');
     if (item.id === editingId) tr.className = 'editing';
     
+    // 💡 진행 상태 칸 (방문 및 실측일 때만 안내장 버튼 추가)
     const stTd = document.createElement('td');
     const ss = document.createElement('select');
     ss.className = 'stage-sel';
@@ -510,7 +611,7 @@ function render() {
       const cb = document.createElement('button');
       cb.type = 'button'; 
       cb.className = 'btn btn-card'; 
-      cb.textContent = '안내장';
+      cb.textContent = '🖼️ 안내장';
       cb.onclick = () => openCardModal(item.id);
       stTd.appendChild(cb);
     }
@@ -544,7 +645,7 @@ function render() {
       if (item.reportAt) { const a = document.createElement('div'); a.className = 'rec-at'; a.textContent = item.reportAt + ' 기록'; rc.appendChild(a); }
     }
     const rb = document.createElement('button');
-    rb.type = 'button'; rb.className = 'btn btn-record'; rb.textContent = item.report ? '기록 수정' : '기록하기';
+    rb.type = 'button'; rb.className = 'btn btn-record'; rb.textContent = item.report ? '기록 수정' : '✏️ 기록하기';
     rb.onclick = () => openReport(item.id);
     rc.appendChild(rb); tr.appendChild(rc);
 
@@ -554,7 +655,7 @@ function render() {
     eb.type = 'button'; eb.className = 'btn btn-edit'; eb.textContent = '수정';
     eb.onclick = () => {
       editingId = item.id; setForm(item);
-      $('formMode').textContent = `'${item.customer}' 수정 중`;
+      $('formMode').textContent = `✏️ '${item.customer}' 수정 중 — 고친 뒤 [수정 저장]을 눌러 주세요`;
       $('submitBtn').textContent = '수정 저장';
       $('resetForm').textContent = '수정 취소';
       render();
@@ -587,18 +688,19 @@ function openCardModal(id) {
   $('cardNote').textContent = item.note || '';
   $('cardRequest').textContent = item.request || '';
   $('cardCost').textContent = item.cost || '';
-  $('cardEngineer').textContent = item.engineer ? `${item.engineer} 엔지니어` : '';
-  $('cardEngPhone').textContent = item.engPhone || '';
+  $('cardEngineer').textContent = (item.engineer ? item.engineer + ' 엔지니어' : '');
+  $('cardEngPhone').textContent = item.engPhone ? `[ ${item.engPhone} ]` : '';
   $('cardModal').classList.add('show');
 }
 function closeCardModal() { $('cardModal').classList.remove('show'); }
 
 $('downloadCardBtn').onclick = () => {
   const target = $('captureArea');
-  html2canvas(target, { scale: 3 }).then(canvas => {
+  // 깔끔하게 렌더링하도록 캡처 옵션을 조정합니다.
+  html2canvas(target, { scale: 3, backgroundColor: '#ffffff', useCORS: true }).then(canvas => {
     const link = document.createElement('a');
     link.download = `방문실측안내장_${$('cardCustomer').textContent || '고객'}.png`;
-    link.href = canvas.toDataURL('image/png');
+    link.href = canvas.toDataURL('image/png', 1.0);
     link.click();
   });
 };
@@ -636,7 +738,7 @@ $('imageUpload').addEventListener('change', async e => {
     const result = await Tesseract.recognize(file, 'kor+eng', {
       logger: m => {
         if (m.status === 'recognizing text') $('status').textContent = `글자 읽는 중... ${Math.round(m.progress * 100)}%`;
-        else $('status').textContent = '인식 준비 중...';
+        else $('status').textContent = '인식 준비 중... (처음 한 번만 오래 걸립니다)';
       }
     });
     $('rawText').value = result.data.text;
@@ -755,7 +857,7 @@ function applyParsed(p) {
   if (editingId) { editingId = null; $('formMode').textContent = ''; $('submitBtn').textContent = '스케줄 추가'; $('resetForm').textContent = '입력 지우기'; render(); }
   const labels = { customer:'고객명', phone:'연락처', visit:'방문 일시', request:'요청 사항', cost:'처리 비용', engineer:'담당 기사', engPhone:'기사 연락처' };
   const missing = Object.keys(labels).filter(k => !p[k]).map(k => labels[k]);
-  $('status').textContent = missing.length ? `자동 입력 완료 · 이미지에서 찾지 못한 항목: ${missing.join(', ')}` : '자동 입력 완료!';
+  $('status').textContent = missing.length ? `자동 입력 완료 · 이미지에서 찾지 못한 항목: ${missing.join(', ')} → 직접 입력 후 [스케줄 추가]를 눌러 주세요.` : '자동 입력 완료! 내용 확인 후 [스케줄 추가]를 눌러 주세요.';
 }
 
 /* 방문 후 기록 모달 */
@@ -819,6 +921,7 @@ function exportExcel() {
     const esc = v => '"' + String(v).replace(/"/g, '""') + '"';
     const csv = '\uFEFF' + [head, ...rows].map(r => r.map(esc).join(',')).join('\r\n');
     downloadBlob(new Blob([csv], { type: 'text/csv;charset=utf-8' }), name + '.csv');
+    alert('인터넷 연결이 없어 엑셀(.xlsx) 대신 CSV 파일로 저장했습니다.');
   }
 }
 $('exportExcel').onclick = exportExcel;
