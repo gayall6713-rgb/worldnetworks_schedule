@@ -34,9 +34,10 @@
   .cal-cell.other-month { background:#f1f3f5; opacity:0.4; }
   .cal-cell.today { border-color:var(--primary); background:#eff6ff; }
   .cal-date-num { font-weight:bold; font-size:0.85rem; margin-bottom:4px; }
-  .cal-badge { background:var(--primary); color:#fff; font-size:0.7rem; padding:2px 5px; border-radius:4px; margin-bottom:2px; white-space:nowrap; overflow:hidden; text-overflow:ellipsis; display:block; }
+  .cal-badge { background:var(--primary); color:#fff; font-size:0.7rem; padding:2px 5px; border-radius:4px; margin-bottom:2px; white-space:nowrap; overflow:hidden; text-overflow:ellipsis; display:block; cursor:pointer; }
+  .cal-badge:hover { filter: brightness(0.9); }
 
-  /* 기존 UI 스타일 */
+  /* 기존 UI 스타일 유지 및 보완 */
   .upload-box { border:2px dashed #ccc; padding:16px; text-align:center; border-radius:6px; margin-bottom:20px; background:#fafafa; }
   .upload-box img { max-width:100%; max-height:220px; margin-top:10px; border-radius:4px; display:none; }
   .hint { font-size:.8rem; color:#666; margin:8px 0 0; }
@@ -62,11 +63,7 @@
   .btn-clear { background:linear-gradient(#adb5bd,#868e96); --edge:#495057; color:#fff; padding:6px 12px; font-size:.8rem; }
   .btn-excel { background:linear-gradient(#38d9a9,#0ca678); --edge:#087f5b; color:#fff; padding:6px 12px; font-size:.8rem; }
   .btn-record { background:linear-gradient(#ffa94d,#f76707); --edge:#a84300; color:#fff; padding:4px 9px; font-size:.78rem; margin-top:6px; }
-  .btn-card { background:linear-gradient(#845ef7,#7950f2); --edge:#5f3dc4; color:#fff; padding:4px 8px; font-size:0.75rem; margin-left:6px; vertical-align:middle; display:inline-block; }
-  .btn-manual { background:linear-gradient(#51cf66,#2f9e44); --edge:#1e6b2d; color:#fff; padding:8px 14px; font-size:.85rem; }
-  .btn-imgdel { background:linear-gradient(#ff8787,#fa5252); --edge:#b02a2a; color:#fff; padding:8px 14px; font-size:.85rem; }
-  .btn-paste { background:linear-gradient(#4da3ff,#007bff 55%,#0066d6); --edge:#00479a; color:#fff; padding:8px 14px; font-size:.85rem; }
-  .btn-draft { background:linear-gradient(#ffd43b,#fab005); --edge:#b27800; color:#333; text-shadow:0 1px 0 rgba(255,255,255,.5); flex:1.5; }
+  .btn-card { background:linear-gradient(#845ef7,#7950f2); --edge:#5f3dc4; color:#fff; padding:4px 9px; font-size:.78rem; margin-top:4px; }
   .btn-edit, .btn-del, .btn-clear, .btn-excel, .btn-record, .btn-card { box-shadow:0 3px 0 var(--edge), 0 5px 8px rgba(0,0,0,.22); }
   .btn-edit:active, .btn-del:active, .btn-clear:active, .btn-excel:active, .btn-record:active, .btn-card:active { top:2px; box-shadow:0 1px 0 var(--edge), 0 2px 3px rgba(0,0,0,.22); }
   
@@ -76,8 +73,17 @@
   .rec-at { color:#868e96; font-size:.72rem; }
   .modal { position:fixed; inset:0; background:rgba(0,0,0,.45); display:none; align-items:center; justify-content:center; padding:15px; z-index:50; }
   .modal.show { display:flex; }
-  .modal-box { background:#fff; border-radius:10px; padding:18px; width:100%; max-width:520px; box-shadow:0 10px 30px rgba(0,0,0,.3); max-height:92vh; overflow:auto; }
+  .modal-box { background:#fff; border-radius:10px; padding:18px; width:100%; max-width:600px; box-shadow:0 10px 30px rgba(0,0,0,.3); max-height:92vh; overflow:auto; }
   .modal-box h4 { margin:0 0 6px; font-size:1.1rem; }
+  
+  /* 고객 현황 이력 카드 스타일 */
+  .history-list { display: flex; flex-direction: column; gap: 10px; margin-top: 15px; }
+  .history-item { border: 1px solid #ddd; border-radius: 8px; padding: 12px; background: #fdfdfd; }
+  .history-item.latest { border: 2px solid var(--primary); background: #f0f4ff; }
+  .history-item .h-title { font-weight: bold; font-size: 0.95rem; margin-bottom: 6px; color: var(--primary); display:flex; justify-content:space-between;}
+  .history-item .h-detail { font-size: 0.85rem; color: #444; line-height: 1.5; }
+  .history-item .h-report { margin-top: 8px; padding-top: 8px; border-top: 1px dashed #ccc; color: #d97706; font-weight: bold; font-size: 0.85rem;}
+
   .list-head { display:flex; justify-content:space-between; align-items:center; margin-top:30px; margin-bottom:10px; }
   .list-head h3 { font-size:1.2rem; margin:0; }
   .table-responsive { overflow-x:auto; }
@@ -86,67 +92,23 @@
   th { background:#f1f3f5; white-space:nowrap; }
   td.act { white-space:nowrap; text-align:center; }
   .empty { text-align:center; color:#999; padding:20px; }
-  tr.editing td { background:#fff3bf; }
+  tr.editing td { background:#fff3bf !important; }
   select { width:100%; padding:10px; border:1px solid #ddd; border-radius:4px; box-sizing:border-box; font-size:.95rem; background:#fff; }
   #empBox table { font-size:.85rem; }
   .stage-sel { padding:6px 4px; font-size:.82rem; font-weight:bold; border:1px solid #adb5bd; border-radius:4px; min-width:104px; color:#222; }
   .filter-sel { width:auto; padding:6px 8px; font-size:.85rem; }
   .list-tools { display:flex; align-items:center; gap:8px; }
 
-  /* 💡 완벽하게 조정된 안내장 디자인 (CSS) */
-  /* 카드 컨테이너 너비를 460px로 고정하고 중앙 정렬하여 캡처 시 잘림을 방지합니다. */
-  .guide-preview-card { 
-    background: #fff; 
-    padding: 24px; 
-    border: 2px solid #1e3a8a; 
-    width: 460px; 
-    box-sizing: border-box; 
-    font-family: 'Malgun Gothic', sans-serif; 
-    margin: 0 auto; 
-  }
-  .guide-preview-card h3 { 
-    text-align: center; 
-    font-size: 1.3rem; 
-    margin: 0 0 16px 0; 
-    color: #000; 
-    font-weight: bold; 
-  }
-  /* 내부 표 너비를 100%로 고정하고, 셀 내용이 길면 줄바꿈 처리되도록 합니다. */
-  .guide-table { 
-    width: 100%; 
-    border-collapse: collapse; 
-    border: 2px solid #1e3a8a; 
-    table-layout: fixed; 
-  }
-  .guide-table th, .guide-table td { 
-    border: 1px solid #1e3a8a; 
-    padding: 10px 8px; 
-    font-size: 0.88rem; 
-    text-align: center; 
-    word-break: break-word; /* 긴 텍스트 줄바꿈 */
-  }
-  .guide-table th { 
-    background: #1e3a8a; 
-    color: #fff; 
-    width: 26%; 
-    font-weight: bold; 
-  }
-  .guide-table td { 
-    background: #fff; 
-    color: #000; 
-    text-align: left; 
-  }
-  .guide-footer { 
-    text-align: center; 
-    margin-top: 14px; 
-    color: #dc2626; 
-    font-weight: bold; 
-    font-size: 0.85rem; 
-  }
+  /* 안내장 디자인 */
+  .guide-preview-card { background:#fff; padding:24px; border:2px solid #1e3a8a; width:460px; box-sizing:border-box; font-family:'Malgun Gothic',sans-serif; margin:0 auto; }
+  .guide-preview-card h3 { text-align:center; font-size:1.3rem; margin:0 0 16px 0; color:#000; font-weight:bold; }
+  .guide-table { width:100%; border-collapse:collapse; border:2px solid #1e3a8a; table-layout:fixed; }
+  .guide-table th, .guide-table td { border:1px solid #1e3a8a; padding:10px 8px; font-size:0.88rem; text-align:center; word-break:break-word; }
+  .guide-table th { background:#1e3a8a; color:#fff; width:26%; font-weight:bold; }
+  .guide-table td { background:#fff; color:#000; text-align:left; }
+  .guide-footer { text-align:center; margin-top:14px; color:#dc2626; font-weight:bold; font-size:0.85rem; }
   
-  /* 동기화 상태 뱃지 표시 */
   #syncStatus { position:fixed; top:10px; right:10px; background:rgba(0,0,0,.7); color:#fff; padding:6px 12px; border-radius:20px; font-size:0.8rem; z-index:100; font-weight:bold; display:none; }
-
   @media (max-width:560px) { .grid { grid-template-columns:1fr; } }
 </style>
 </head>
@@ -178,14 +140,14 @@
       <div class="cal-day-name" style="color:#3b82f6;">토</div>
     </div>
     <div class="calendar-grid" id="calBody"></div>
-    <p class="hint" style="text-align:center; margin-top:12px;">💡 달력의 날짜를 누르면 해당 날짜로 방문 일시가 지정되며 입력 탭으로 이동합니다.</p>
+    <p class="hint" style="text-align:center; margin-top:12px;">💡 달력의 날짜 칸을 누르면 새 일정을 등록할 수 있고, <br><b>이름(스케줄 배지)을 누르면 해당 고객의 이력</b>을 볼 수 있습니다.</p>
   </div>
 
   <!-- 2. 스케줄 입력 및 목록 탭 -->
   <div id="tab-manage" class="tab-content">
     <div class="upload-box">
       <input type="file" id="imageUpload" accept="image/*,.xlsx,.xlsm,.xls,.csv">
-      <p class="hint">이미지 또는 엑셀 파일을 선택하면 내용을 읽어서 아래 양식에 자동 입력합니다.<br>복사한 이미지·엑셀 셀은 <b>Ctrl+V</b>로 바로 붙여 넣을 수 있습니다.<br>(이미지는 처음 실행 시 한글 인식 데이터를 내려받아 10~30초 걸릴 수 있습니다 · 인터넷 필요)</p>
+      <p class="hint">이미지나 엑셀 파일을 선택하면 글자를 읽어서 폼에 자동 입력합니다.<br>복사한 이미지·엑셀 셀은 <b>Ctrl+V</b>로 바로 붙여 넣을 수 있습니다.</p>
       <div style="display:flex;gap:8px;justify-content:center;margin-top:10px;">
         <button type="button" class="btn btn-paste" id="pasteBtn">📋 붙여넣기</button>
         <button type="button" class="btn btn-manual" id="manualBtn">✏️ 수동 입력</button>
@@ -205,17 +167,17 @@
       <div id="formMode"></div>
       <div class="grid">
         <div class="form-group full"><label>진행 상태</label><select id="stage"></select></div>
-        <div class="form-group"><label>고객명</label><input type="text" id="customer" placeholder="예: 김정우" required></div>
-        <div class="form-group"><label>연락처</label><input type="text" id="phone" placeholder="예: 010-7360-1738"></div>
+        <div class="form-group"><label>고객명</label><input type="text" id="customer" placeholder="예: 김다윗" required></div>
+        <div class="form-group"><label>연락처</label><input type="text" id="phone" placeholder="예: 010-0000-0000"></div>
         <div class="form-group"><label>방문 일시</label><input type="datetime-local" id="visitDate"></div>
-        <div class="form-group"><label>처리 비용</label><input type="text" id="cost" placeholder="예: 25,000"></div>
-        <div class="form-group full"><label>요청 사항</label><input type="text" id="request" placeholder="예: 핸들 구매 (1개)" required></div>
+        <div class="form-group"><label>처리 비용</label><input type="text" id="cost" placeholder="예: 무료 방문실측"></div>
+        <div class="form-group full"><label>요청 사항</label><input type="text" id="request" placeholder="예: 문틀 교체" required></div>
         <div class="form-group"><label>담당 기사</label>
           <select id="engSelect"></select>
           <input type="text" id="engineer" placeholder="기사 이름 직접 입력" style="display:none;margin-top:6px;">
         </div>
         <div class="form-group"><label>기사 연락처</label><input type="text" id="engPhone" placeholder="예: 010-8866-6944"></div>
-        <div class="form-group full"><label>방문 주소</label><input type="text" id="note" placeholder="예: 인천 서해구청 청라 한울로 17 385-1604"></div>
+        <div class="form-group full"><label>방문 주소</label><input type="text" id="note" placeholder="예: 대략적인 주소 또는 상세 주소"></div>
         <div class="form-group full"><label>방문 후 기록 (담당 기사 기재)</label><textarea id="report" class="field" rows="3" placeholder="방문 후 실측 사이즈, 작업 내용, 특이사항 등을 기재"></textarea></div>
       </div>
       <div class="btn-row">
@@ -228,7 +190,7 @@
 
     <!-- 직원 관리 -->
     <details id="empBox" style="margin-top:24px;border:1px solid #dee2e6;border-radius:6px;padding:10px 14px;background:#fcfcfd;">
-      <summary style="cursor:pointer;font-weight:bold;">직원 관리 <span id="empCount" style="font-weight:normal;color:#666;font-size:.85rem;"></span></summary>
+      <summary style="cursor:pointer;font-weight:bold;">👥 직원 관리 <span id="empCount" style="font-weight:normal;color:#666;font-size:.85rem;"></span></summary>
       <form id="empForm" style="margin-top:12px;">
         <div class="grid">
           <div class="form-group"><label>직원 이름</label><input type="text" id="empName" placeholder="예: 이대진" required></div>
@@ -256,7 +218,7 @@
       </div>
     </div>
     <div class="table-responsive">
-      <table class="schedule-table">
+      <table>
         <thead>
           <tr>
             <th>진행 상태</th><th>고객명</th><th>연락처</th><th>방문 일시</th><th>요청 사항</th>
@@ -265,6 +227,21 @@
         </thead>
         <tbody id="scheduleTableBody"></tbody>
       </table>
+    </div>
+  </div>
+</div>
+
+<!-- 💡 새로운 기능: 고객 전체 현황 팝업 (모달) -->
+<div id="customerHistoryModal" class="modal">
+  <div class="modal-box">
+    <div style="display:flex; justify-content:space-between; align-items:center; margin-bottom:15px;">
+      <h4 id="historyTitle" style="margin:0; color:var(--primary); font-size:1.2rem;">고객 현황</h4>
+      <button type="button" onclick="closeHistoryModal()" style="background:none; border:none; font-size:1.2rem; cursor:pointer;">✖</button>
+    </div>
+    <div id="historyListContainer" class="history-list"></div>
+    <div class="btn-row" style="margin-top:20px;">
+      <button type="button" class="btn btn-submit" id="addScheduleFromHistoryBtn" style="background:#10b981;">➕ 이 고객으로 새 일정 추가</button>
+      <button type="button" class="btn btn-reset" onclick="closeHistoryModal()">닫기</button>
     </div>
   </div>
 </div>
@@ -289,7 +266,6 @@
 <div id="cardModal" class="modal">
   <div class="modal-box" style="text-align:center; max-width:520px;">
     <h4 style="margin-bottom:12px;">🖼️ 방문 및 실측 안내장</h4>
-    <!-- 모달 내에서 표가 가로로 스크롤되지 않고 꽉 차게 보이도록 중앙 정렬 컨테이너 적용 -->
     <div style="background:#e5e7eb; padding:15px; border-radius:8px; margin-bottom:15px; display:flex; justify-content:center;">
       <div id="captureArea" class="guide-preview-card">
         <h3>■ 방문 및 실측 안내</h3>
@@ -338,7 +314,7 @@ function fillStageOptions(sel, val, allowEmpty) {
 let filterStage = '';
 
 // =========================================================================
-// 💡 아래 따옴표 '' 안에 1단계에서 복사한 구글 앱스 스크립트 웹 앱 URL을 붙여넣으세요! 💡
+// 💡 구글 웹 앱 URL 붙여넣는 곳!
 const SCRIPT_URL = 'https://script.google.com/macros/s/AKfycbxdWO7dBcxyeYPI4nWHeHLPSXT5rJWdWBGQbdfsapJQEhuMaV_ZMr6m7zHszjO2b0ys/exec';
 // =========================================================================
 
@@ -353,9 +329,9 @@ function showSync(msg) {
   setTimeout(() => { el.style.display = 'none'; }, 2000);
 }
 
-// 💡 덮어쓴 핵심 저장 함수 (구글 시트로 데이터를 전송합니다)
+// 데이터 저장 및 구글 시트 연동
 async function save() {
-  try { localStorage.setItem(STORE_KEY, JSON.stringify(schedules)); } catch (e) { alert('저장 공간이 부족해 저장하지 못했습니다.'); }
+  try { localStorage.setItem(STORE_KEY, JSON.stringify(schedules)); } catch (e) {}
   renderCalendar();
   render();
   
@@ -369,7 +345,6 @@ async function save() {
       });
       showSync("✅ 연동 완료");
     } catch (err) {
-      console.log('전송 오류', err);
       showSync("⚠️ 연동 실패 (오프라인 모드로 임시저장됨)");
     } finally {
       isSyncing = false;
@@ -377,22 +352,21 @@ async function save() {
   }
 }
 
-// 💡 화면을 켤 때 구글 시트에서 최신 데이터를 가져옵니다.
+// 화면을 켤 때 최신 데이터 불러오기
 window.onload = async () => {
   if (SCRIPT_URL) {
-    showSync("🔄 다른 직원의 데이터 불러오는 중...");
+    showSync("🔄 데이터 불러오는 중...");
     try {
       const res = await fetch(SCRIPT_URL);
       const data = await res.json();
       if (data && data.length > 0) {
         schedules = data;
-        localStorage.setItem(STORE_KEY, JSON.stringify(schedules)); // 최신화
+        localStorage.setItem(STORE_KEY, JSON.stringify(schedules)); 
         renderCalendar();
         render();
         showSync("✅ 최신 상태입니다");
       }
     } catch (err) {
-      console.log('불러오기 오류', err);
       showSync("⚠️ 인터넷 연결 불안정");
     }
   }
@@ -411,13 +385,10 @@ function switchTab(tabId) {
   if (tabId === 'calendar') renderCalendar();
 }
 
-/* 캘린더 기능 구현 */
+/* 💡 [핵심] 캘린더 기능 구현 및 고객 현황 모달 호출 연결 */
 function renderCalendar() {
-  const titleEl = $('calTitle');
+  $('calTitle').textContent = `${currentYear}년 ${currentMonth + 1}월`;
   const calBody = $('calBody');
-  if (!titleEl || !calBody) return;
-
-  titleEl.textContent = `${currentYear}년 ${currentMonth + 1}월`;
   calBody.innerHTML = '';
   
   const firstDay = new Date(currentYear, currentMonth, 1).getDay();
@@ -433,11 +404,17 @@ function renderCalendar() {
     const daySchedules = schedules.filter(s => s.visit && s.visit.startsWith(dateStr));
     const isToday = new Date().toISOString().slice(0, 10) === dateStr ? 'today' : '';
     
-    html += `<div class="cal-cell ${isToday}" onclick="selectDateForVisit('${dateStr}')">
+    // 날짜 영역 빈 곳을 클릭하면 새 일정 등록으로 이동
+    html += `<div class="cal-cell ${isToday}" onclick="selectDateForVisit(event, '${dateStr}')">
       <div class="cal-date-num">${d}</div>`;
+      
+    // 이름 배지를 클릭하면 고객 이력(현황) 모달 띄우기
     daySchedules.forEach(s => {
-      const bg = STAGE_COLORS[s.status] || '#007bff';
-      html += `<span class="cal-badge" style="background:${bg}; color:#222;" title="${s.customer}: ${s.request}">${s.customer} (${s.status})</span>`;
+      const bg = STAGE_COLORS[s.status] || '#f1f3f5';
+      const ac = STAGE_ACCENT[s.status] || '#adb5bd';
+      const cancel = /취소/.test(s.status || '');
+      const tm = s.visit.slice(11, 16);
+      html += `<span class="cal-badge" style="background:${bg}; color:#222; border-left:4px solid ${ac};${cancel ? ' text-decoration:line-through; opacity:.7;' : ''}" title="${s.customer} · ${s.status || '상태 미지정'}: ${s.request}" onclick="openCustomerHistoryModal(event, '${s.customer}', '${s.phone}')">${tm ? tm + ' ' : ''}${s.customer}</span>`;
     });
     html += `</div>`;
   }
@@ -451,11 +428,69 @@ function moveMonth(dir) {
   renderCalendar();
 }
 
-function selectDateForVisit(dateStr) {
+function selectDateForVisit(event, dateStr) {
+  // 배지를 클릭했을 때는 입력창으로 넘어가지 않도록 이벤트 전파 막기
+  if(event.target.classList.contains('cal-badge')) return; 
+  
   $('visitDate').value = dateStr + 'T09:00';
   document.querySelectorAll('.tab-btn')[1].click();
   $('visitDate').focus();
 }
+
+/* 💡 [새 기능] 고객 현황 전체 이력 보기 모달 함수 */
+function openCustomerHistoryModal(event, customerName, phone) {
+  event.stopPropagation(); // 캘린더 빈칸 클릭 이벤트 무시
+  
+  $('historyTitle').textContent = `${customerName} 고객 현황 이력`;
+  
+  // 이름과 전화번호가 일치하는 과거 모든 스케줄을 가져와 날짜순으로 정렬
+  const customerHistory = schedules.filter(s => s.customer === customerName && s.phone === phone)
+                                   .sort((a, b) => (a.visit || '9999').localeCompare(b.visit || '9999'));
+  
+  const listContainer = $('historyListContainer');
+  listContainer.innerHTML = '';
+  
+  if (customerHistory.length === 0) {
+    listContainer.innerHTML = '<div style="text-align:center; color:#999; padding:20px;">기록이 없습니다.</div>';
+  } else {
+    customerHistory.forEach((item, index) => {
+      const isLatest = index === customerHistory.length - 1; // 가장 최근(마지막) 스케줄 강조
+      const badgeStyle = `padding:2px 6px; border-radius:4px; font-size:0.75rem; background:${STAGE_COLORS[item.status] || '#eee'}; color:#222; border:1px solid #ddd;`;
+      
+      const card = document.createElement('div');
+      card.className = `history-item ${isLatest ? 'latest' : ''}`;
+      
+      card.innerHTML = `
+        <div class="h-title">
+          <span>${fmtDate(item.visit)}</span>
+          <span style="${badgeStyle}">${item.status}</span>
+        </div>
+        <div class="h-detail">
+          <div><b>요청사항:</b> ${item.request || '-'}</div>
+          <div><b>비용/주소:</b> ${item.cost || '-'} / ${item.note || '-'}</div>
+          <div><b>담당기사:</b> ${item.engineer || '미배정'} ${item.engPhone ? '(' + item.engPhone + ')' : ''}</div>
+        </div>
+        ${item.report ? `<div class="h-report">✔️ 방문 후 기록: ${item.report}</div>` : ''}
+      `;
+      listContainer.appendChild(card);
+    });
+  }
+  
+  // 모달 안의 [새 일정 추가] 버튼 세팅
+  $('addScheduleFromHistoryBtn').onclick = () => {
+    closeHistoryModal();
+    clearForm();
+    $('customer').value = customerName;
+    $('phone').value = phone || '';
+    document.querySelectorAll('.tab-btn')[1].click(); // 스케줄 입력 탭으로 이동
+  };
+
+  $('customerHistoryModal').classList.add('show');
+}
+function closeHistoryModal() {
+  $('customerHistoryModal').classList.remove('show');
+}
+
 
 /* 직원 관리 */
 const EMP_KEY = 'siteEmployees_v1';
@@ -552,6 +587,7 @@ function setForm(o) {
 }
 function clearForm() {
   setForm({});
+  clearDraft();
   editingId = null;
   $('formMode').textContent = '';
   $('submitBtn').textContent = '스케줄 추가';
@@ -603,11 +639,17 @@ function render() {
     renderCalendar();
     return;
   }
+  
   [...rows].sort((a, b) => (a.visit || '9999').localeCompare(b.visit || '9999')).forEach(item => {
     const tr = document.createElement('tr');
-    if (item.id === editingId) tr.className = 'editing';
     
-    // 💡 진행 상태 칸 (진행 상태 선택박스 바로 옆에 '방문 및 실측'일 때만 안내장 버튼 배치)
+    if (item.id === editingId) {
+      tr.className = 'editing';
+    } else {
+      tr.style.background = STAGE_COLORS[item.status] || '';
+    }
+    if (/취소/.test(item.status || '')) tr.classList.add('stage-cancel');
+    
     const stTd = document.createElement('td');
     const ss = document.createElement('select');
     ss.className = 'stage-sel';
@@ -615,7 +657,6 @@ function render() {
     ss.onchange = () => { 
       item.status = ss.value; 
       save(); 
-      render(); 
     };
     stTd.appendChild(ss); 
 
@@ -642,7 +683,7 @@ function render() {
     visitInput.className = 'stage-sel';
     visitInput.style.width = '160px';
     visitInput.value = item.visit || '';
-    visitInput.onchange = () => { item.visit = visitInput.value; save(); render(); };
+    visitInput.onchange = () => { item.visit = visitInput.value; save(); };
     visitTd.appendChild(visitInput);
     tr.appendChild(visitTd);
 
@@ -682,10 +723,11 @@ function render() {
       if (!confirm(`'${item.customer}' 스케줄을 삭제할까요?`)) return;
       schedules = schedules.filter(s => s.id !== item.id);
       if (editingId === item.id) clearForm();
-      save(); render();
+      save(); 
     };
 
     td.appendChild(eb);
+    td.appendChild(document.createElement('br'));
     td.appendChild(db);
     tr.appendChild(td); body.appendChild(tr);
   });
@@ -698,18 +740,19 @@ function openCardModal(id) {
   $('cardCustomer').textContent = item.customer || '';
   $('cardPhone').textContent = item.phone || '';
   $('cardVisit').textContent = fmtCardDate(item.visit);
-  $('cardNote').textContent = item.note || '';
+  $('cardNote').textContent = item.note || ''; 
   $('cardRequest').textContent = item.request || '';
   $('cardCost').textContent = item.cost || '';
   $('cardEngineer').textContent = (item.engineer ? item.engineer + ' 엔지니어' : '');
   $('cardEngPhone').textContent = item.engPhone ? `[ ${item.engPhone} ]` : '';
   $('cardModal').classList.add('show');
 }
-function closeCardModal() { $('cardModal').classList.remove('show'); }
+function closeCardModal() {
+  $('cardModal').classList.remove('show');
+}
 
 $('downloadCardBtn').onclick = () => {
   const target = $('captureArea');
-  // 깔끔하게 렌더링하도록 캡처 옵션을 조정합니다.
   html2canvas(target, { scale: 3, backgroundColor: '#ffffff', useCORS: true }).then(canvas => {
     const link = document.createElement('a');
     link.download = `방문실측안내장_${$('cardCustomer').textContent || '고객'}.png`;
@@ -717,6 +760,51 @@ $('downloadCardBtn').onclick = () => {
     link.click();
   });
 };
+
+/* ===== 임시저장 (입력 중 자동 저장) ===== */
+const DRAFT_KEY = 'siteDraft_v1';
+let draftTimer = null;
+function saveDraft() {
+  clearTimeout(draftTimer);
+  const f = getForm();
+  const empty = Object.keys(f).filter(k => k !== 'status').every(k => !f[k]);
+  if (empty) { try { localStorage.removeItem(DRAFT_KEY); } catch (e) {} $('draftStatus').textContent = ''; return false; }
+  const d = { f, editingId, at: nowStr() };
+  try { localStorage.setItem(DRAFT_KEY, JSON.stringify(d)); }
+  catch (e) { $('draftStatus').textContent = '⚠ 임시저장 공간이 부족합니다.'; return false; }
+  $('draftStatus').textContent = `💾 임시저장됨 ${d.at.slice(11)}`;
+  return true;
+}
+function scheduleDraft() { clearTimeout(draftTimer); draftTimer = setTimeout(saveDraft, 500); }
+function clearDraft() {
+  clearTimeout(draftTimer);
+  try { localStorage.removeItem(DRAFT_KEY); } catch (e) {}
+  $('draftStatus').textContent = '';
+}
+function restoreDraft() {
+  let d = null;
+  try { d = JSON.parse(localStorage.getItem(DRAFT_KEY) || 'null'); } catch (e) { d = null; }
+  if (!d || !d.f) return;
+  setForm(d.f);
+  const it = d.editingId && schedules.find(x => x.id === d.editingId);
+  if (it) {
+    editingId = it.id;
+    $('formMode').textContent = `'${it.customer}' 수정 중 (임시저장 불러옴)`;
+    $('submitBtn').textContent = '수정 저장';
+    $('resetForm').textContent = '수정 취소';
+  } else {
+    $('formMode').textContent = '💾 임시저장된 내용을 불러왔습니다';
+  }
+  $('draftStatus').textContent = `💾 임시저장: ${d.at || ''}`;
+}
+$('scheduleForm').addEventListener('input', scheduleDraft);
+$('scheduleForm').addEventListener('change', scheduleDraft);
+$('draftBtn').onclick = () => {
+  if (!saveDraft()) { if (!$('draftStatus').textContent) $('draftStatus').textContent = '저장할 내용이 없습니다.'; }
+};
+window.addEventListener('beforeunload', saveDraft);
+document.addEventListener('visibilitychange', () => { if (document.hidden) saveDraft(); });
+
 
 $('scheduleForm').addEventListener('submit', e => {
   e.preventDefault();
@@ -794,110 +882,8 @@ function parseDate(t) {
   return `${y}-${z(m)}-${z(d)}T${z(h)}:${z(mi)}`;
 }
 
-/* "고객명: ..., 연락처: ..." 형식(안내장·카톡·엑셀 캡처) 분석 */
-const LABEL_RULES = [
-  ['engPhone', /^(기사|담당자?|담당기사|담당엔지니어|엔지니어)(연락처|전화|전화번호|번호)$|^비고$/],
-  ['engineer', /^(담당자?|담당기사|담당엔지니어|시공기사|기사|엔지니어)$/],
-  ['phone', /^(고객)?(연락처|전화|전화번호|휴대폰|핸드폰|번호)$/],
-  ['customer', /^(고객명?|고객성함|성함|이름|의뢰인)$/],
-  ['visit', /^(방문)?(일시|일자|날짜|일정|시간)$/],
-  ['note', /^(방문)?(주소|장소|현장|위치)$/],
-  ['request', /^(요.{0,2}사항|요[청정]내용|요[청정]|내용|작업내용|작업|증상|문의)$/],
-  ['cost', /^(처리)?(비용|금액|견적)$/]
-];
-function labelKey(l) {
-  const t = l.replace(/\s+/g, '').replace(/^[^가-힣A-Za-z0-9]+/, '').replace(/^[A-Za-z0-9]{1,2}(?=[가-힣])/, '');
-  for (const [k, re] of LABEL_RULES) if (re.test(t)) return k;
-  return null;
-}
-const LABEL_WORDS = ['고객명','고객','성함','기사연락처','연락처','전화번호','방문일시','방문일자','방문주소','방문장소','요청사항','요정사항','요청내용','처리비용','처리금액','담당기사','담당엔지니어','담당자','비고'];
-const LABEL_SPLIT = new RegExp('(?:' + LABEL_WORDS.map(w => [...w].join('\\s*')).join('|') + '|요\\s*.{1,2}\\s*사\\s*항)\\s*[:：;]', 'g');
-function splitLine(line) {
-  const idx = []; let m;
-  LABEL_SPLIT.lastIndex = 0;
-  while ((m = LABEL_SPLIT.exec(line))) { if (m.index > 0) idx.push(m.index); }
-  if (!idx.length) return [line];
-  const parts = []; let prev = 0;
-  idx.forEach(i => { parts.push(line.slice(prev, i)); prev = i; });
-  parts.push(line.slice(prev));
-  return parts.map(x => x.replace(/[\s·•|,;]+$/, '').trim()).filter(x => /[가-힣A-Za-z0-9]/.test(x));
-}
-function parseLabeled(rawLines) {
-  const lines = rawLines.flatMap(splitLine);
-  const out = { customer:'', phone:'', visit:'', request:'', cost:'', engineer:'', engPhone:'', note:'' };
-  const re = new RegExp(PHONE);
-  const findStage = line => STAGES.find(st => compact(line).includes(compact(st))) || '';
-  let cur = null, hits = 0, started = false, inEng = false, status = '', dateLine = '';
-  const unknown = [];
-  const put = (k, v) => { out[k] = out[k] ? out[k] + ' ' + v : v; };
-  for (const line of lines) {
-    const m = line.match(/^([^:：;]{1,14})[:：;]\s*(.*)$/);
-    let k = m ? labelKey(m[1]) : null;
-    if (k) {
-      started = true; hits++;
-      if (k === 'engineer') inEng = true;
-      if (k === 'phone' && inEng) k = 'engPhone';
-      cur = k;
-      if (m[2].trim()) put(k, m[2].trim());
-      continue;
-    }
-    const cl = compact(line);
-    if (/방문당일|연락드리고|방문하겠습니다/.test(cl)) { cur = null; continue; }
-    if (/^\s*[■※◆▶●]/.test(line) || /(엔지니어|기사|담당|당당)정보$/.test(cl)) {
-      cur = null;
-      if (/(엔지니어|기사|담당|당당)/.test(cl)) inEng = true;
-      if (!started && !status) status = findStage(line);
-      continue;
-    }
-    if (!started) {
-      if (!dateLine && /20\d{2}\s*[-./년]\s*\d{1,2}/.test(line)) dateLine = line;
-      if (!status) status = findStage(line);
-      continue;
-    }
-    const bullet = /^[\s•·●○▪◦\-\*]+\S[^:：]{0,12}[:：]/.test(line);
-    if ((cur === 'note' || cur === 'request') && !bullet) put(cur, line.trim());
-    else if (m) unknown.push({ label: m[1].replace(/^[^가-힣A-Za-z0-9]+/, ''), value: m[2].trim() });
-  }
-  const pickUnknown = (key, re) => {
-    if (out[key]) return;
-    const u = unknown.find(x => x.value && re.test(compact(x.label)));
-    if (u) { out[key] = u.value; hits++; }
-  };
-  pickUnknown('request', /[사항청정첨용요]/);
-  pickUnknown('note', /[주소]/);
-  if (hits < 2) return null;
-  const sp = v => v.replace(/\s+/g, ' ').trim();
-  const noBr = v => sp(v.replace(/[\[\]]/g, ' '));
-  const pull = (field, into) => {
-    const mm = out[field].match(re);
-    if (mm) { if (!out[into]) out[into] = mm[0]; out[field] = out[field].replace(mm[0], ' '); }
-  };
-  pull('customer', 'phone');
-  pull('engineer', 'engPhone');
-  out.customer = noBr(out.customer).replace(/\s*님$/, '');
-  out.engineer = noBr(out.engineer).replace(/\s*(엔지니어|기사|님)$/, '');
-  const tidy = v => sp(v).replace(/\(\s+/g, '(').replace(/\s+\)/g, ')');
-  out.request = tidy(out.request);
-  out.note = tidy(out.note).replace(/\s*입니다\.?$/, '');
-  out.cost = out.cost.replace(/\s+/g, '');
-  const wi = out.cost.lastIndexOf('원');
-  if (wi >= 0) out.cost = out.cost.slice(0, wi + 1);
-  const pm = out.phone.match(re); out.phone = pm ? fmtPhone(pm[0]) : sp(out.phone);
-  const em = out.engPhone.match(re);
-  if (em) out.engPhone = fmtPhone(em[0]);
-  else if (out.engPhone) { out.note = [out.note, sp(out.engPhone)].filter(Boolean).join(' / '); out.engPhone = ''; }
-  const vt = out.visit.replace(/[\[\]]/g, ' ');
-  let v = parseDate(vt);
-  if (!v && dateLine) v = parseDate(dateLine + ' ' + vt) || parseDate(dateLine);
-  out.visit = v;
-  if (status) out.status = status;
-  return out;
-}
-
 function parseText(raw) {
   const lines = raw.split('\n').map(s => s.trim()).filter(Boolean);
-  const lab = parseLabeled(lines);
-  if (lab) return lab;
   const out = { customer:'', phone:'', visit:'', request:'', cost:'', engineer:'', engPhone:'', note:'' };
   const re = new RegExp(PHONE);
   const pl = lines.filter(l => re.test(l));
@@ -967,24 +953,161 @@ function parseText(raw) {
   return out;
 }
 
-/* 담당 기사를 직원 목록과 맞춰봄 (전화번호 → 이름 → 한 글자 오타 순) */
-function matchEmployee(p) {
-  if (!p.engineer && !p.engPhone) return;
-  const digits = x => (x || '').replace(/\D/g, '');
-  let emp = p.engPhone ? employees.find(e => e.phone && digits(e.phone) === digits(p.engPhone)) : null;
-  if (!emp && p.engineer) emp = employees.find(e => e.name === p.engineer);
-  if (!emp && p.engineer && p.engineer.length >= 3) {
-    const c = employees.filter(e => e.name.length === p.engineer.length && [...e.name].filter((ch, i) => ch === p.engineer[i]).length >= e.name.length - 1);
-    if (c.length === 1) emp = c[0];
+/* 엑셀 파일 복붙 지원 */
+/* ===== 엑셀 읽기 도우미 ===== */
+const HEADER_RULES = [
+  ['skip', /기록일시|기록시각/],
+  ['engPhone', /기사.*(연락|전화|번호)/],
+  ['engineer', /담당|기사|엔지니어/],
+  ['phone', /연락처|전화|휴대/],
+  ['visit', /일시|일자|날짜|방문일/],
+  ['note', /주소/],
+  ['report', /기록/],
+  ['request', /요청|내용|작업/],
+  ['cost', /비용|금액/],
+  ['status', /상태/],
+  ['customer', /고객|성함|이름/]
+];
+function headerKey(c) {
+  if (typeof c !== 'string') return null;
+  const t = c.replace(/\s+/g, '');
+  if (!t || t.length > 12) return null;
+  for (const [k, re] of HEADER_RULES) if (re.test(t)) return k === 'skip' ? null : k;
+  return null;
+}
+function isoLocal(d) {
+  const x = new Date(d.getTime() + 30000), z = n => String(n).padStart(2, '0');
+  return `${x.getFullYear()}-${z(x.getMonth() + 1)}-${z(x.getDate())}T${z(x.getHours())}:${z(x.getMinutes())}`;
+}
+function cellStr(v) {
+  if (v === null || v === undefined) return '';
+  if (v instanceof Date) return isNaN(v) ? '' : isoLocal(v).replace('T', ' ');
+  return String(v).trim();
+}
+function toVisit(v) {
+  if (v instanceof Date && !isNaN(v)) return isoLocal(v);
+  if (typeof v === 'number' && v > 30000 && v < 80000) {
+    const d = new Date(Math.round((v - 25569) * 1440) * 60000), z = n => String(n).padStart(2, '0');
+    return `${d.getUTCFullYear()}-${z(d.getUTCMonth() + 1)}-${z(d.getUTCDate())}T${z(d.getUTCHours())}:${z(d.getUTCMinutes())}`;
   }
-  if (emp) { p.engineer = emp.name; p.engPhone = emp.phone || p.engPhone || ''; return; }
-  if (p.engineer && confirm(`'${p.engineer}'${p.engPhone ? ` (${p.engPhone})` : ''}은(는) 직원 목록에 없습니다.\n직원으로 등록할까요?`)) {
-    employees.push({ id: 'e' + Date.now() + Math.random().toString(36).slice(2, 5), name: p.engineer, phone: p.engPhone || '' });
-    saveEmp(); renderEmp();
+  const t = cellStr(v);
+  if (!t) return '';
+  let m = t.match(/^(\d{4})-(\d{2})-(\d{2})[ T](\d{1,2}):(\d{2})/);
+  if (m) return `${m[1]}-${m[2]}-${m[3]}T${m[4].padStart(2, '0')}:${m[5]}`;
+  m = t.match(/^(\d{4})-(\d{2})-(\d{2})$/);
+  if (m) return `${t}T09:00`;
+  return parseDate(t);
+}
+function phoneStr(v) {
+  const t = cellStr(v), d = t.replace(/\D/g, '');
+  if (/^10\d{8,9}$/.test(d)) return fmtPhone('0' + d);
+  if (/^01[016789]\d{7,8}$/.test(d)) return fmtPhone(d);
+  return t;
+}
+function cellVal(k, v) {
+  if (k === 'visit') return toVisit(v);
+  if (k === 'phone' || k === 'engPhone') return phoneStr(v);
+  if (k === 'cost' && typeof v === 'number') return v.toLocaleString('ko-KR');
+  return cellStr(v);
+}
+function tsvRows(text) {
+  return text.replace(/\r/g, '').split('\n').filter(l => l.trim()).map(l => l.split('\t'));
+}
+
+function processRows(rows) {
+  rows = rows.filter(r => r && r.some(c => cellStr(c)));
+  if (!rows.length) { $('status').textContent = '읽을 내용이 없습니다.'; return; }
+  let hi = -1, map = null;
+  for (let i = 0; i < Math.min(5, rows.length); i++) {
+    const m = {};
+    rows[i].forEach((c, ci) => { const k = headerKey(c); if (k && !(k in m)) m[k] = ci; });
+    if ((m.customer !== undefined || m.request !== undefined) && Object.keys(m).length >= 2) { hi = i; map = m; break; }
+  }
+  if (hi < 0) {
+    const raw = rows.map(r => r.map(cellStr).filter(Boolean).join(' ')).join('\n');
+    $('rawText').value = raw;
+    applyParsed(parseText(raw));
+    return;
+  }
+  const items = rows.slice(hi + 1).map(r => {
+    const o = {};
+    for (const k in FIELD_IDS) o[k] = '';
+    for (const k in map) o[k] = cellVal(k, r[map[k]]);
+    if (!o.status) o.status = STAGES[0];
+    return o;
+  }).filter(o => o.customer || o.request);
+  if (!items.length) { $('status').textContent = '엑셀에서 고객 정보를 찾지 못했습니다.'; return; }
+  if (items.length === 1) { applyParsed(items[0]); return; }
+  const fresh = items.filter(o => !schedules.some(s => Object.keys(FIELD_IDS).every(k => (s[k] || '') === (o[k] || ''))));
+  if (!fresh.length) { $('status').textContent = `엑셀 ${items.length}건은 이미 모두 등록되어 있습니다.`; return; }
+  if (!confirm(`엑셀에서 ${items.length}건을 찾았습니다.\n(이미 등록된 ${items.length - fresh.length}건 제외)\n${fresh.length}건을 목록에 추가할까요?`)) { $('status').textContent = '엑셀 가져오기를 취소했습니다.'; return; }
+  fresh.forEach((o, i) => schedules.push({ ...o, id: Date.now() + Math.random().toString(36).slice(2, 6) + i }));
+  save(); render();
+  $('status').textContent = `엑셀에서 ${fresh.length}건을 목록에 추가했습니다.`;
+}
+
+async function handleExcel(file) {
+  $('preview').style.display = 'none';
+  if (typeof XLSX === 'undefined') { $('status').textContent = '엑셀 라이브러리를 불러오지 못했습니다. 인터넷 연결을 확인해 주세요.'; return; }
+  $('status').textContent = '엑셀 읽는 중...';
+  try {
+    const buf = await file.arrayBuffer();
+    let wb;
+    if (/\.csv$/i.test(file.name || '')) {
+      let t;
+      try { t = new TextDecoder('utf-8', { fatal: true }).decode(buf); } catch (e) { t = new TextDecoder('euc-kr').decode(buf); }
+      wb = XLSX.read(t, { type: 'string', cellDates: true });
+    } else {
+      wb = XLSX.read(buf, { type: 'array', cellDates: true });
+    }
+    const ws = wb.Sheets[wb.SheetNames[0]];
+    processRows(XLSX.utils.sheet_to_json(ws, { header: 1, raw: true, defval: '' }));
+  } catch (err) {
+    console.error(err);
+    $('status').textContent = '엑셀 파일을 읽는 중 오류가 발생했습니다.';
   }
 }
+document.addEventListener('paste', e => {
+  if (!$('tab-manage').classList.contains('active')) return;
+  const cd = e.clipboardData; if (!cd) return;
+  const t = e.target;
+  const inField = t && (/^(INPUT|TEXTAREA|SELECT)$/.test(t.tagName) || t.isContentEditable);
+  const text = cd.getData('text/plain') || '';
+  if (!inField && /\t/.test(text)) { e.preventDefault(); processRows(tsvRows(text)); return; }
+  const files = [...(cd.files || [])].filter(f => /^image\//.test(f.type) || isExcelFile(f));
+  if (!inField && text.trim().length >= 5) {
+    e.preventDefault();
+    const t2 = text.trim().replace(/^"([\s\S]*)"$/, '$1').replace(/""/g, '"');
+    $('preview').style.display = 'none';
+    $('rawText').value = t2;
+    applyParsed(parseText(t2));
+    return;
+  }
+  if (files.length && !(inField && text.trim())) { e.preventDefault(); handleFile(files[0]); }
+});
+$('pasteBtn').onclick = async () => {
+  try {
+    const items = await navigator.clipboard.read();
+    for (const it of items) {
+      if (it.types.includes('text/plain')) {
+        const txt = await (await it.getType('text/plain')).text();
+        if (/\t/.test(txt)) { processRows(tsvRows(txt)); return; }
+      }
+    }
+    for (const it of items) {
+      const ty = it.types.find(x => x.startsWith('image/'));
+      if (ty) { const blob = await it.getType(ty); handleFile(new File([blob], 'clipboard.' + ty.split('/')[1], { type: ty })); return; }
+    }
+    const txt = await navigator.clipboard.readText();
+    if (txt.trim()) { $('rawText').value = txt; applyParsed(parseText(txt)); }
+    else $('status').textContent = '클립보드에 이미지나 내용이 없습니다.';
+  } catch (err) {
+    $('status').textContent = '붙여넣기 권한이 없습니다. 이 화면을 한 번 클릭한 뒤 Ctrl+V를 눌러 주세요.';
+  }
+};
+
+
 function applyParsed(p) {
-  matchEmployee(p);
   setForm(p);
   if (editingId) { editingId = null; $('formMode').textContent = ''; $('submitBtn').textContent = '스케줄 추가'; $('resetForm').textContent = '입력 지우기'; render(); }
   const labels = { customer:'고객명', phone:'연락처', visit:'방문 일시', request:'요청 사항', cost:'처리 비용', engineer:'담당 기사', engPhone:'기사 연락처' };
@@ -1063,6 +1186,7 @@ $('stage').addEventListener('change', () => { $('stage').style.background = STAG
 renderEmp();
 $('empBox').open = employees.length === 0;
 
+restoreDraft();
 renderCalendar();
 render();
 </script>
