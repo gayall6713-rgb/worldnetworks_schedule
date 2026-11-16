@@ -76,7 +76,7 @@ select{width:100%;padding:10px;border:1px solid #ddd;border-radius:4px;box-sizin
 .stage-sel{padding:6px 4px;font-size:.82rem;font-weight:bold;border:1px solid #adb5bd;border-radius:4px;min-width:104px;color:#222}
 .filter-sel{width:auto;padding:6px 8px;font-size:.85rem}
 .list-tools{display:flex;align-items:center;gap:8px}
-/* 안내장 (수정: 표 min-width 해제, 카드 폭 가변) */
+/* 안내장 */
 .guide-preview-card{background:#fff;padding:24px;border:2px solid #1e3a8a;width:100%;max-width:460px;box-sizing:border-box;font-family:'Malgun Gothic',sans-serif;margin:0 auto}
 .guide-preview-card h3{text-align:center;font-size:1.3rem;margin:0 0 16px;color:#000;font-weight:bold}
 .guide-table{width:100%;min-width:0!important;border-collapse:collapse;border:2px solid #1e3a8a;table-layout:fixed}
@@ -608,8 +608,18 @@ function getForm() {
   });
   return o;
 }
+
+// 💡 날짜 데이터를 자동으로 폼에 맞춰주는 로직으로 완벽하게 수정
 function setForm(o) {
-  for (const k in FIELD_IDS) if (k !== 'status') $(FIELD_IDS[k]).value = o[k] || '';
+  for (const k in FIELD_IDS) {
+    if (k === 'status') continue;
+    let val = o[k] || '';
+    if (k === 'visit' && val) {
+      if (val.length === 10) val += 'T09:00'; 
+      val = val.replace(' ', 'T').substring(0, 16);
+    }
+    $(FIELD_IDS[k]).value = val;
+  }
   ['deposit', 'balance'].forEach(k => {
     $(k + 'Paid').checked = !!o[k + 'Paid'];
     $(k + 'Date').value = o[k + 'PaidAt'] || '';
@@ -619,6 +629,7 @@ function setForm(o) {
   togglePay();
   syncEngSelect();
 }
+
 function clearForm() {
   closeEditModal(); setForm({}); clearDraft(); editingId = null;
   $('formMode').textContent = '';
@@ -735,7 +746,12 @@ function render() {
     const visitTd = document.createElement('td');
     const visitInput = document.createElement('input');
     visitInput.type = 'datetime-local'; visitInput.className = 'stage-sel'; visitInput.style.width = '160px';
-    visitInput.value = item.visit || '';
+    
+    // 💡 날짜 오류(빈칸) 해결: 기존 데이터를 datetime-local 폼에 맞게 자동 변환
+    let vDate = item.visit || '';
+    if (vDate.length === 10) vDate += 'T09:00';
+    visitInput.value = vDate.replace(' ', 'T').substring(0, 16);
+    
     visitInput.onchange = () => { item.visit = visitInput.value; save(); };
     visitTd.appendChild(visitInput); tr.appendChild(visitTd);
 
@@ -920,11 +936,10 @@ $('clearAll').onclick = () => {
   if (schedules.length && confirm('등록된 스케줄을 모두 삭제할까요?')) { schedules = []; save(); clearForm(); }
 };
 
-/* ===== OCR 처리 (수정: handleFile / isExcelFile 추가) ===== */
+/* ===== OCR 처리 ===== */
 function isExcelFile(f) {
   return /\.(xlsx|xlsm|xls|csv)$/i.test(f.name || '') || /spreadsheet|ms-excel|csv/.test(f.type || '');
 }
-// 작은 캡처 이미지는 확대 + 흑백 처리해서 인식률을 높임
 function prepImage(file) {
   return new Promise(resolve => {
     const img = new Image();
@@ -1023,7 +1038,6 @@ function parseDate(t) {
   return `${y}-${z(m)}-${z(d)}T${z(h)}:${z(mi)}`;
 }
 
-/* 안내 문자 형식 ("고객명: ..., 방문 일시: ..." 처럼 항목명이 있는 글) */
 function parseLabeled(lines) {
   const L = lines.map(l => l.replace(/^[^가-힣A-Za-z0-9]+/, '').replace(/^[eE°©®]\s*(?=[가-힣])/, ''));
   const find = re => L.find(l => re.test(compact(l)));
@@ -1125,7 +1139,7 @@ function parseText(raw) {
   return out;
 }
 
-/* ===== 엑셀 읽기 도우미 ===== */
+/* ===== 엑셀 읽기 ===== */
 const HEADER_RULES = [
   ['skip', /기록일시|기록시각/], ['depositPaid', /계약금.*입금/], ['balancePaid', /잔금.*입금/], ['total', /^(최종)?계약금액$|^최종금액$|^총금액$/], ['deposit', /^계약금$/], ['balance', /^잔금$/], ['engPhone', /기사.*(연락|전화|번호)/], ['engineer', /담당|기사|엔지니어/],
   ['phone', /연락처|전화|휴대/], ['visit', /일시|일자|날짜|방문일/], ['note', /주소/], ['report', /기록/],
@@ -1230,7 +1244,7 @@ async function handleExcel(file) {
   }
 }
 
-/* 붙여넣기 (수정: 이미지 우선 처리) */
+/* 붙여넣기 */
 document.addEventListener('paste', e => {
   if (!$('tab-manage').classList.contains('active')) return;
   const cd = e.clipboardData; if (!cd) return;
