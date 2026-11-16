@@ -1079,7 +1079,7 @@ function exportExcel() {
     const wb = XLSX.utils.book_new();
     const ws = XLSX.utils.aoa_to_sheet([head, ...rows]);
     ws['!cols'] = [12,10,15,17,36,22,10,15,36,50,17].map(w => ({ wch: w }));
-    XLSX.utils.book_append_sheet(wb, ws, '스케줄');const SCRIPT_URL = 'h';
+    XLSX.utils.book_append_sheet(wb, ws, '스케줄');const SCRIPT_URL = 'https://script.google.com/macros/s/AKfycbxdWO7dBcxyeYPI4nWHeHLPSXT5rJWdWBGQbdfsapJQEhuMaV_ZMr6m7zHszjO2b0ys/exec';
     if (employees.length) {
       const we = XLSX.utils.aoa_to_sheet([['이름','연락처'], ...employees.map(e => [e.name, e.phone || ''])]);
       we['!cols'] = [{ wch: 12 }, { wch: 16 }];
