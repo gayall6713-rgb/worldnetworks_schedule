@@ -84,6 +84,20 @@ select{width:100%;padding:10px;border:1px solid #ddd;border-radius:4px;box-sizin
 .guide-table th{background:#1e3a8a;color:#fff;width:26%;font-weight:bold;white-space:normal}
 .guide-table td{background:#fff;color:#000;text-align:left}
 .guide-footer{text-align:center;margin-top:14px;color:#dc2626;font-weight:bold;font-size:.85rem}
+.pay-box{border:1px solid #bfdbfe;background:#eff6ff;border-radius:8px;padding:12px;margin-bottom:12px}
+.pay-title{font-weight:bold;margin-bottom:8px;color:#1e3a8a}
+.chk{display:flex;align-items:center;gap:6px;font-weight:normal;font-size:.85rem;margin-top:6px;cursor:pointer}
+.chk input{width:auto}
+.pay-detail{display:flex;gap:6px;margin-top:6px}
+.pay-detail input,.pay-detail select{flex:1;min-width:0;padding:8px;border:1px solid #ddd;border-radius:4px;font-size:.85rem;box-sizing:border-box;background:#fff;width:auto}
+.filter-bar{display:flex;flex-wrap:wrap;gap:8px;align-items:center;margin-bottom:10px}
+.filter-bar #filterQ{flex:1;min-width:180px;width:auto}
+.filter-bar input[type=date]{padding:6px;border:1px solid #ddd;border-radius:4px;font-size:.85rem}
+.filter-date{font-size:.85rem;display:flex;align-items:center;gap:4px;flex-wrap:wrap}
+.list-scroll{max-height:68vh;overflow:auto;border:1px solid #e5e7eb;border-radius:6px;cursor:grab}
+.list-scroll.dragging{cursor:grabbing;user-select:none}
+.list-scroll thead th{position:sticky;top:0;z-index:2;box-shadow:inset 0 -1px 0 #ddd}
+.name-cell{cursor:pointer;color:var(--primary);font-weight:bold;text-decoration:underline;white-space:nowrap}
 #syncStatus{position:fixed;top:10px;right:10px;background:rgba(0,0,0,.7);color:#fff;padding:6px 12px;border-radius:20px;font-size:.8rem;z-index:100;font-weight:bold;display:none}
 @media (max-width:560px){.grid{grid-template-columns:1fr}.guide-preview-card{padding:14px}}
 </style>
@@ -137,6 +151,16 @@ select{width:100%;padding:10px;border:1px solid #ddd;border-radius:4px;box-sizin
         <div class="form-group"><label>방문 일시</label><input type="datetime-local" id="visitDate"></div>
         <div class="form-group"><label>처리 비용</label><input type="text" id="cost" placeholder="예: 무료 방문실측"></div>
         <div class="form-group full"><label>요청 사항</label><input type="text" id="request" placeholder="예: 문틀 교체" required></div>
+        <div id="payBox" class="full pay-box" style="display:none;">
+          <div class="pay-title">💰 계약금 / 잔금 관리</div>
+          <div class="grid">
+            <div class="form-group full"><label>최종 계약금액 (원)</label><input type="text" id="contractTotal" inputmode="numeric" placeholder="예: 1,200,000"></div>
+            <div class="form-group"><label>계약금 (원)</label><input type="text" id="depositAmt" inputmode="numeric" placeholder="예: 300,000"><label class="chk"><input type="checkbox" id="depositPaid"> 계약금 입금 완료</label>
+<div class="pay-detail"><input type="date" id="depositDate" title="입금 날짜"><select id="depositMethod" title="결제수단"><option value="">결제수단</option><option value="현금">현금</option><option value="카드">카드</option><option value="계좌입금">계좌입금</option></select></div></div>
+            <div class="form-group"><label>잔금 (원) · 자동 계산</label><input type="text" id="balanceAmt" inputmode="numeric" placeholder="최종금액 - 계약금"><label class="chk"><input type="checkbox" id="balancePaid"> 잔금 입금 완료</label>
+<div class="pay-detail"><input type="date" id="balanceDate" title="입금 날짜"><select id="balanceMethod" title="결제수단"><option value="">결제수단</option><option value="현금">현금</option><option value="카드">카드</option><option value="계좌입금">계좌입금</option></select></div></div>
+          </div>
+        </div>
         <div class="form-group"><label>담당 기사</label>
           <select id="engSelect"></select>
           <input type="text" id="engineer" placeholder="기사 이름 직접 입력" style="display:none;margin-top:6px;">
@@ -181,11 +205,21 @@ select{width:100%;padding:10px;border:1px solid #ddd;border-radius:4px;box-sizin
         <button type="button" class="btn btn-clear" id="clearAll">전체 삭제</button>
       </div>
     </div>
-    <div class="table-responsive">
+    <div class="filter-bar">
+      <input type="text" id="filterQ" placeholder="🔍 이름·연락처·요청·주소 검색">
+      <select id="filterEng" class="filter-sel" title="담당 기사"></select>
+      <select id="filterPay" class="filter-sel" title="입금 상태">
+        <option value="">입금 전체</option><option value="unpaid">미수금 있음</option><option value="done">완납</option>
+        <option value="depositNo">계약금 미입금</option><option value="balanceNo">잔금 미입금</option>
+      </select>
+      <span class="filter-date">방문일 <input type="date" id="filterFrom"> ~ <input type="date" id="filterTo"></span>
+      <button type="button" class="btn btn-clear" id="filterReset">필터 초기화</button>
+    </div>
+    <div class="table-responsive list-scroll" id="listScroll">
       <table>
         <thead><tr>
           <th>진행 상태</th><th>고객명</th><th>연락처</th><th>방문 일시</th><th>요청 사항</th>
-          <th>처리 비용</th><th>담당 기사</th><th>기사 연락처</th><th>방문 주소</th><th>방문 후 기록</th><th>관리</th>
+          <th>처리 비용</th><th>입금 현황</th><th>담당 기사</th><th>기사 연락처</th><th>방문 주소</th><th>방문 후 기록</th><th>관리</th>
         </tr></thead>
         <tbody id="scheduleTableBody"></tbody>
       </table>
@@ -204,6 +238,16 @@ select{width:100%;padding:10px;border:1px solid #ddd;border-radius:4px;box-sizin
       <button type="button" class="btn btn-submit" id="addScheduleFromHistoryBtn" style="background:#10b981;">➕ 이 고객으로 새 일정 추가</button>
       <button type="button" class="btn btn-reset" onclick="closeHistoryModal()">닫기</button>
     </div>
+  </div>
+</div>
+
+<div id="editModal" class="modal">
+  <div class="modal-box" style="max-width:680px;">
+    <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:10px;">
+      <h4 id="editModalTitle" style="margin:0;font-size:1.2rem;color:var(--primary);">스케줄 수정</h4>
+      <button type="button" id="editModalClose" style="background:none;border:none;font-size:1.2rem;cursor:pointer;">✖</button>
+    </div>
+    <div id="editModalBody"></div>
   </div>
 </div>
 
@@ -245,7 +289,7 @@ select{width:100%;padding:10px;border:1px solid #ddd;border-radius:4px;box-sizin
 <script>
 const $ = id => document.getElementById(id);
 const STORE_KEY = 'siteSchedules_v3';
-const FIELD_IDS = { status:'stage', customer:'customer', phone:'phone', visit:'visitDate', request:'request', cost:'cost', engineer:'engineer', engPhone:'engPhone', note:'note', report:'report' };
+const FIELD_IDS = { status:'stage', customer:'customer', phone:'phone', visit:'visitDate', request:'request', cost:'cost', engineer:'engineer', engPhone:'engPhone', note:'note', report:'report', total:'contractTotal', deposit:'depositAmt', balance:'balanceAmt' };
 const STAGES = ['문의접수','견적','방문 및 실측','계약','시공 중','처리완료','보류/취소'];
 const STAGE_COLORS = { '문의접수':'#e9ecef','견적':'#fff3bf','방문 및 실측':'#d0ebff','계약':'#d3f9d8','시공 중':'#ffe8cc','처리완료':'#b2f2bb','보류/취소':'#ffc9c9' };
 const STAGE_ACCENT = { '문의접수':'#868e96','견적':'#fab005','방문 및 실측':'#339af0','계약':'#40c057','시공 중':'#fd7e14','처리완료':'#2f9e44','보류/취소':'#fa5252' };
@@ -479,14 +523,104 @@ $('empForm').addEventListener('submit', ev => {
 });
 $('empCancel').onclick = () => { resetEmpForm(); renderEmp(); };
 
-function getForm() { const o = {}; for (const k in FIELD_IDS) o[k] = $(FIELD_IDS[k]).value.trim(); return o; }
+/* ===== 계약금 / 잔금 관리 ===== */
+const PAY_STAGES = ['계약', '시공 중', '처리완료'];
+const toNum = v => parseInt(String(v || '').replace(/[^\d]/g, ''), 10) || 0;
+const won = v => { const n = toNum(v); return n ? n.toLocaleString('ko-KR') + '원' : ''; };
+const todayStr = () => nowStr().slice(0, 10);
+function togglePay() { $('payBox').style.display = PAY_STAGES.includes($('stage').value) ? 'block' : 'none'; }
+function autoBalance() {
+  const t = toNum($('contractTotal').value), d = toNum($('depositAmt').value);
+  if (t > 0) $('balanceAmt').value = Math.max(t - d, 0).toLocaleString('ko-KR');
+  scheduleDraft();
+}
+$('contractTotal').addEventListener('input', autoBalance);
+$('depositAmt').addEventListener('input', autoBalance);
+['contractTotal', 'depositAmt', 'balanceAmt'].forEach(id => $(id).addEventListener('blur', () => {
+  const d = $(id).value.replace(/\D/g, '');
+  if (d) $(id).value = Number(d).toLocaleString('ko-KR');
+}));
+['deposit', 'balance'].forEach(k => {
+  $(k + 'Paid').addEventListener('change', () => {
+    if ($(k + 'Paid').checked) { if (!$(k + 'Date').value) $(k + 'Date').value = todayStr(); }
+    else $(k + 'Date').value = '';
+  });
+  $(k + 'Date').addEventListener('change', () => { if ($(k + 'Date').value) $(k + 'Paid').checked = true; });
+});
+const PAY_METHODS = ['현금', '카드', '계좌입금'];
+$('stage').addEventListener('change', togglePay);
+
+function payCell(item) {
+  const td = document.createElement('td');
+  td.style.minWidth = '170px';
+  if (!PAY_STAGES.includes(item.status) && !item.total && !item.deposit && !item.balance) { td.textContent = '-'; return td; }
+  const line = (t, css) => { const d = document.createElement('div'); d.textContent = t; d.style.cssText = 'font-size:.78rem;' + (css || ''); td.appendChild(d); };
+  if (item.total) line('최종 ' + won(item.total), 'font-weight:bold;');
+  [['deposit', '계약금'], ['balance', '잔금']].forEach(([k, lab]) => {
+    const row = document.createElement('div');
+    row.style.cssText = 'margin:3px 0;font-size:.78rem;';
+    const lb = document.createElement('label');
+    lb.style.cssText = 'display:flex;align-items:center;gap:4px;font-weight:normal;font-size:.78rem;cursor:pointer;';
+    const cb = document.createElement('input');
+    cb.type = 'checkbox'; cb.style.width = 'auto'; cb.checked = !!item[k + 'Paid'];
+    cb.onchange = () => {
+      item[k + 'Paid'] = cb.checked;
+      item[k + 'PaidAt'] = cb.checked ? (item[k + 'PaidAt'] || todayStr()) : '';
+      save();
+    };
+    const sp = document.createElement('span');
+    sp.textContent = `${lab} ${won(item[k]) || '미입력'} ${item[k + 'Paid'] ? '✅ 입금' : '⬜ 미입금'}`;
+    lb.appendChild(cb); lb.appendChild(sp); row.appendChild(lb);
+    if (item[k + 'Paid']) {
+      const sub = document.createElement('div');
+      sub.style.cssText = 'display:flex;gap:4px;margin:2px 0 0 20px;';
+      const dt = document.createElement('input');
+      dt.type = 'date'; dt.value = item[k + 'PaidAt'] || '';
+      dt.style.cssText = 'width:122px;padding:2px;font-size:.72rem;';
+      dt.onchange = () => { item[k + 'PaidAt'] = dt.value; save(); };
+      const ms = document.createElement('select');
+      ms.style.cssText = 'width:auto;padding:2px;font-size:.72rem;min-width:0;';
+      [['', '결제수단'], ...PAY_METHODS.map(m => [m, m])].forEach(([v, t]) => { const o = document.createElement('option'); o.value = v; o.textContent = t; ms.appendChild(o); });
+      ms.value = item[k + 'Method'] || '';
+      ms.onchange = () => { item[k + 'Method'] = ms.value; save(); };
+      sub.appendChild(dt); sub.appendChild(ms); row.appendChild(sub);
+    }
+    td.appendChild(row);
+  });
+  const t = toNum(item.total);
+  if (t) {
+    const paid = (item.depositPaid ? toNum(item.deposit) : 0) + (item.balancePaid ? toNum(item.balance) : 0);
+    const remain = t - paid;
+    if (remain <= 0) line('완납 ✅', 'color:#2f9e44;font-weight:bold;');
+    else line('미수금 ' + remain.toLocaleString('ko-KR') + '원', 'color:#e03131;font-weight:bold;');
+  }
+  return td;
+}
+
+function getForm() {
+  const o = {};
+  for (const k in FIELD_IDS) o[k] = $(FIELD_IDS[k]).value.trim();
+  ['deposit', 'balance'].forEach(k => {
+    const cb = $(k + 'Paid');
+    o[k + 'Paid'] = cb.checked;
+    o[k + 'PaidAt'] = cb.checked ? ($(k + 'Date').value || todayStr()) : '';
+    o[k + 'Method'] = $(k + 'Method').value;
+  });
+  return o;
+}
 function setForm(o) {
   for (const k in FIELD_IDS) if (k !== 'status') $(FIELD_IDS[k]).value = o[k] || '';
+  ['deposit', 'balance'].forEach(k => {
+    $(k + 'Paid').checked = !!o[k + 'Paid'];
+    $(k + 'Date').value = o[k + 'PaidAt'] || '';
+    $(k + 'Method').value = o[k + 'Method'] || '';
+  });
   fillStageOptions($('stage'), o.status || STAGES[0], false);
+  togglePay();
   syncEngSelect();
 }
 function clearForm() {
-  setForm({}); clearDraft(); editingId = null;
+  closeEditModal(); setForm({}); clearDraft(); editingId = null;
   $('formMode').textContent = '';
   $('submitBtn').textContent = '스케줄 추가';
   $('resetForm').textContent = '입력 지우기';
@@ -502,8 +636,45 @@ function renderFilter() {
   if (none) add('__none__', `상태 미지정 (${none})`);
   sel.value = filterStage;
   if (sel.value !== filterStage) { filterStage = ''; sel.value = ''; }
+  const es = $('filterEng'); es.innerHTML = '';
+  const addE = (v, t) => { const o = document.createElement('option'); o.value = v; o.textContent = t; es.appendChild(o); };
+  addE('', '담당 기사 전체');
+  [...new Set(schedules.map(x => x.engineer).filter(Boolean))].sort().forEach(n => addE(n, n));
+  if (schedules.some(x => !x.engineer)) addE('__none__', '미배정');
+  es.value = fEng;
+  if (es.value !== fEng) { fEng = ''; es.value = ''; }
+}
+let fQ = '', fEng = '', fPay = '', fFrom = '', fTo = '';
+function isFiltered() { return !!(filterStage || fQ || fEng || fPay || fFrom || fTo); }
+function payState(s) {
+  const t = toNum(s.total), paid = (s.depositPaid ? toNum(s.deposit) : 0) + (s.balancePaid ? toNum(s.balance) : 0);
+  return { unpaid: t > 0 && t - paid > 0, done: t > 0 && t - paid <= 0, depositNo: toNum(s.deposit) > 0 && !s.depositPaid, balanceNo: toNum(s.balance) > 0 && !s.balancePaid };
+}
+function matchRow(s) {
+  if (filterStage && (filterStage === '__none__' ? s.status : s.status !== filterStage)) return false;
+  if (fEng && (fEng === '__none__' ? s.engineer : s.engineer !== fEng)) return false;
+  if (fPay && !payState(s)[fPay]) return false;
+  const d = (s.visit || '').slice(0, 10);
+  if ((fFrom || fTo) && !d) return false;
+  if (fFrom && d < fFrom) return false;
+  if (fTo && d > fTo) return false;
+  if (fQ) {
+    const hay = [s.customer, s.phone, (s.phone || '').replace(/\D/g, ''), s.request, s.note, s.engineer, s.cost, s.report].join(' ').toLowerCase();
+    if (!fQ.toLowerCase().split(/\s+/).filter(Boolean).every(w => hay.includes(w))) return false;
+  }
+  return true;
 }
 $('filterStage').addEventListener('change', () => { filterStage = $('filterStage').value; render(); });
+$('filterQ').addEventListener('input', () => { fQ = $('filterQ').value.trim(); render(); });
+$('filterEng').addEventListener('change', () => { fEng = $('filterEng').value; render(); });
+$('filterPay').addEventListener('change', () => { fPay = $('filterPay').value; render(); });
+$('filterFrom').addEventListener('change', () => { fFrom = $('filterFrom').value; render(); });
+$('filterTo').addEventListener('change', () => { fTo = $('filterTo').value; render(); });
+$('filterReset').onclick = () => {
+  filterStage = fQ = fEng = fPay = fFrom = fTo = '';
+  ['filterQ', 'filterPay', 'filterFrom', 'filterTo'].forEach(id => { $(id).value = ''; });
+  render();
+};
 
 function fmtDate(v) { return v ? v.replace('T', ' ') : ''; }
 function fmtCardDate(v) {
@@ -524,12 +695,12 @@ function render() {
   const body = $('scheduleTableBody');
   body.innerHTML = '';
   renderFilter();
-  const rows = schedules.filter(s => !filterStage || (filterStage === '__none__' ? !s.status : s.status === filterStage));
-  $('count').textContent = schedules.length ? (filterStage ? `(${rows.length}/${schedules.length}건)` : `(${schedules.length}건)`) : '';
+  const rows = schedules.filter(matchRow);
+  $('count').textContent = schedules.length ? (isFiltered() ? `(${rows.length}/${schedules.length}건)` : `(${schedules.length}건)`) : '';
   if (!rows.length) {
     const tr = document.createElement('tr'), td = document.createElement('td');
-    td.colSpan = 11; td.className = 'empty';
-    td.textContent = schedules.length ? '선택한 상태의 스케줄이 없습니다.' : '등록된 스케줄이 없습니다.';
+    td.colSpan = 12; td.className = 'empty';
+    td.textContent = schedules.length ? '조건에 맞는 스케줄이 없습니다.' : '등록된 스케줄이 없습니다.';
     tr.appendChild(td); body.appendChild(tr);
     renderCalendar();
     return;
@@ -555,7 +726,11 @@ function render() {
     }
     tr.appendChild(stTd);
 
-    ['customer', 'phone'].forEach(k => { const td = document.createElement('td'); td.textContent = item[k] || ''; tr.appendChild(td); });
+    ['customer', 'phone'].forEach(k => {
+      const td = document.createElement('td'); td.textContent = item[k] || '';
+      if (k === 'customer') { td.className = 'name-cell'; td.title = '눌러서 수정'; td.onclick = () => openEditModal(item.id); }
+      tr.appendChild(td);
+    });
 
     const visitTd = document.createElement('td');
     const visitInput = document.createElement('input');
@@ -564,7 +739,9 @@ function render() {
     visitInput.onchange = () => { item.visit = visitInput.value; save(); };
     visitTd.appendChild(visitInput); tr.appendChild(visitTd);
 
-    ['request', 'cost', 'engineer', 'engPhone', 'note'].forEach(k => { const td = document.createElement('td'); td.textContent = item[k] || ''; tr.appendChild(td); });
+    ['request', 'cost'].forEach(k => { const td = document.createElement('td'); td.textContent = item[k] || ''; tr.appendChild(td); });
+    tr.appendChild(payCell(item));
+    ['engineer', 'engPhone', 'note'].forEach(k => { const td = document.createElement('td'); td.textContent = item[k] || ''; tr.appendChild(td); });
 
     const rc = document.createElement('td'); rc.className = 'rec';
     if (item.report) {
@@ -579,14 +756,7 @@ function render() {
     const td = document.createElement('td'); td.className = 'act';
     const eb = document.createElement('button');
     eb.type = 'button'; eb.className = 'btn btn-edit'; eb.textContent = '수정';
-    eb.onclick = () => {
-      editingId = item.id; setForm(item);
-      $('formMode').textContent = `✏️ '${item.customer}' 수정 중 — 고친 뒤 [수정 저장]을 눌러 주세요`;
-      $('submitBtn').textContent = '수정 저장';
-      $('resetForm').textContent = '수정 취소';
-      render();
-      $('scheduleForm').scrollIntoView({ behavior: 'smooth', block: 'start' });
-    };
+    eb.onclick = () => openEditModal(item.id);
     const db = document.createElement('button');
     db.type = 'button'; db.className = 'btn btn-del'; db.textContent = '삭제'; db.style.marginLeft = '4px';
     db.onclick = () => {
@@ -601,8 +771,53 @@ function render() {
   renderCalendar();
 }
 
+
+/* ===== 수정 팝업 (입력 폼을 팝업 안으로 옮겨서 사용) ===== */
+let formHome = null;
+function openEditModal(id) {
+  const item = schedules.find(x => x.id === id);
+  if (!item) return;
+  editingId = item.id; setForm(item);
+  $('formMode').textContent = `✏️ '${item.customer}' 수정 중`;
+  $('submitBtn').textContent = '수정 저장';
+  $('resetForm').textContent = '수정 취소';
+  $('editModalTitle').textContent = `${item.customer} · 스케줄 수정`;
+  const f = $('scheduleForm');
+  if (!formHome) formHome = { parent: f.parentNode, next: f.nextSibling };
+  $('editModalBody').appendChild(f);
+  $('editModal').classList.add('show');
+  render();
+}
+function closeEditModal() {
+  const m = $('editModal');
+  if (!m || !m.classList.contains('show')) return;
+  m.classList.remove('show');
+  if (formHome) { formHome.parent.insertBefore($('scheduleForm'), formHome.next); formHome = null; }
+}
+$('editModalClose').onclick = () => clearForm();
+$('editModal').addEventListener('mousedown', e => { if (e.target === $('editModal')) clearForm(); });
+document.addEventListener('keydown', e => { if (e.key === 'Escape' && $('editModal').classList.contains('show')) clearForm(); });
+
+/* ===== 목록 마우스 드래그 스크롤 (위·아래·좌·우) ===== */
+(function () {
+  const box = $('listScroll'); let down = false, moved = false, sx, sy, sl, st;
+  box.addEventListener('mousedown', e => {
+    if (e.button !== 0 || e.target.closest('input,select,textarea,button,a,label')) return;
+    down = true; moved = false; sx = e.clientX; sy = e.clientY; sl = box.scrollLeft; st = box.scrollTop;
+  });
+  window.addEventListener('mousemove', e => {
+    if (!down) return;
+    const dx = e.clientX - sx, dy = e.clientY - sy;
+    if (!moved && Math.abs(dx) + Math.abs(dy) > 5) { moved = true; box.classList.add('dragging'); }
+    if (moved) { box.scrollLeft = sl - dx; box.scrollTop = st - dy; }
+  });
+  window.addEventListener('mouseup', () => { down = false; box.classList.remove('dragging'); });
+  box.addEventListener('click', e => { if (moved) { e.stopPropagation(); e.preventDefault(); moved = false; } }, true);
+})();
+
 /* ===== 진행 상태별 안내장 ===== */
 const G = {
+  total: i => won(i.total) || i.cost || '', dep: i => won(i.deposit), bal: i => won(i.balance),
   name: i => i.customer || '', phone: i => i.phone || '', visit: i => fmtCardDate(i.visit),
   addr: i => i.note || '', req: i => i.request || '', cost: i => i.cost || '',
   eng: i => i.engineer ? i.engineer + ' 엔지니어' : '', engTel: i => i.engPhone ? `[ ${i.engPhone} ]` : ''
@@ -611,7 +826,7 @@ const STAGE_GUIDE = {
   '문의접수': { title:'■ 문의 접수 안내', rows:[['고객명',G.name],['연락처',G.phone],['요청사항',G.req],['지역/주소',G.addr]], footer:'※ 접수 확인 후 담당자가 연락드리겠습니다.' },
   '견적': { title:'■ 견적 안내', rows:[['고객명',G.name],['연락처',G.phone],['방문주소',G.addr],['요청사항',G.req],['견적금액',G.cost],['담당기사',G.eng],['비고',G.engTel]], footer:'※ 견적은 현장 상황에 따라 달라질 수 있습니다.' },
   '방문 및 실측': { title:'■ 방문 및 실측 안내', rows:[['고객명',G.name],['연락처',G.phone],['방문일시',G.visit],['방문주소',G.addr],['요청사항',G.req],['처리비용',G.cost],['담당기사',G.eng],['비고',G.engTel]], footer:'※ 방문 당일 문자나 연락드리고 방문 하겠습니다.' },
-  '계약': { title:'■ 계약 안내', rows:[['고객명',G.name],['연락처',G.phone],['시공주소',G.addr],['계약내용',G.req],['계약금액',G.cost],['담당기사',G.eng],['비고',G.engTel]], footer:'※ 시공 일정은 별도로 안내드리겠습니다.' },
+  '계약': { title:'■ 계약 안내', rows:[['고객명',G.name],['연락처',G.phone],['시공주소',G.addr],['계약내용',G.req],['최종 계약금액',G.total],['계약금',G.dep],['잔금',G.bal],['담당기사',G.eng],['비고',G.engTel]], footer:'※ 시공 일정은 별도로 안내드리겠습니다.' },
   '시공 중': { title:'■ 시공 안내', rows:[['고객명',G.name],['연락처',G.phone],['시공일시',G.visit],['시공주소',G.addr],['시공내용',G.req],['담당기사',G.eng],['비고',G.engTel]], footer:'※ 시공 중 불편을 드려 죄송합니다. 안전하게 마무리하겠습니다.' },
   '처리완료': { title:'■ 처리 완료 안내', rows:[['고객명',G.name],['연락처',G.phone],['처리일시',G.visit],['처리주소',G.addr],['처리내용',G.req],['처리비용',G.cost],['담당기사',G.eng],['비고',G.engTel]], footer:'※ 이용해 주셔서 감사합니다. 하자 문의는 언제든 연락 주세요.' }
 };
@@ -777,7 +992,7 @@ $('imgDelBtn').onclick = () => {
 };
 
 const compact = s => s.replace(/\s+/g, '');
-const PHONE = '01[016789][-\\s.]?\\d{3,4}[-\\s.]?\\d{4}';
+const PHONE = '01[016789]\\s*[-.]?\\s*\\d{3,4}\\s*[-.]?\\s*\\d{4}';
 function fmtPhone(p) {
   const d = p.replace(/\D/g, '');
   if (d.length === 11) return `${d.slice(0,3)}-${d.slice(3,7)}-${d.slice(7)}`;
@@ -791,6 +1006,7 @@ function isQuestion(l) {
 const REGION = /^(서울|인천|경기|부산|대구|광주|대전|울산|세종|강원|충북|충남|충청|전북|전남|전라|경북|경남|경상|제주)/;
 
 function parseDate(t) {
+  t = String(t).replace(/[\[\]\(\)\|{}]/g, ' ');
   let y = new Date().getFullYear(), m, d, h, mi = 0, r;
   if ((r = t.match(/(20\d{2})\s*[-./년]\s*(\d{1,2})\s*[-./월]\s*(\d{1,2})/))) { y = +r[1]; m = +r[2]; d = +r[3]; }
   else if ((r = t.match(/(\d{1,2})\s*월\s*(\d{1,2})\s*일/))) { m = +r[1]; d = +r[2]; }
@@ -807,8 +1023,40 @@ function parseDate(t) {
   return `${y}-${z(m)}-${z(d)}T${z(h)}:${z(mi)}`;
 }
 
+/* 안내 문자 형식 ("고객명: ..., 방문 일시: ..." 처럼 항목명이 있는 글) */
+function parseLabeled(lines) {
+  const L = lines.map(l => l.replace(/^[^가-힣A-Za-z0-9]+/, '').replace(/^[eE°©®]\s*(?=[가-힣])/, ''));
+  const find = re => L.find(l => re.test(compact(l)));
+  const val = l => l ? l.replace(/^[^:：]*[:：]\s*/, '').trim() : '';
+  const lc = find(/^고객명/), lv = find(/^방문일시/), la = find(/^방문주소/), lr = find(/^요청사항/),
+        lm = find(/^(처리)?비용|^처리비용/), le = find(/^담당기사/), lt = find(/^연락처/);
+  if ([lc, lv, la, lr, lm, le].filter(Boolean).length < 3) return null;
+  const out = { customer:'', phone:'', visit:'', request:'', cost:'', engineer:'', engPhone:'', note:'' };
+  const re = new RegExp(PHONE);
+  if (lc) {
+    const v = val(lc), ph = v.match(re);
+    if (ph) out.phone = fmtPhone(ph[0]);
+    const nm = v.replace(new RegExp(PHONE, 'g'), '').replace(/[\[\]\(\)\|]/g, ' ').replace(/님/g, '').trim().split('/').pop();
+    const m = nm.match(/[가-힣]{2,4}/);
+    if (m) out.customer = m[0];
+  }
+  if (lv) out.visit = parseDate(val(lv));
+  if (la) out.note = val(la).replace(/\s*입니다\.?$/, '').trim();
+  if (lr) out.request = val(lr);
+  if (lm) out.cost = val(lm).replace(/\s+/g, '');
+  if (le) {
+    const nm = val(le).replace(/[\[\]\(\)\|]/g, ' ').replace(/엔지니어|기사/g, '').trim();
+    const m = nm.match(/[가-힣]{2,4}/);
+    if (m) out.engineer = m[0];
+  }
+  if (lt) { const ph = lt.match(re); if (ph) out.engPhone = fmtPhone(ph[0]); }
+  return out;
+}
+
 function parseText(raw) {
   const lines = raw.split('\n').map(s => s.trim()).filter(Boolean);
+  const lab = parseLabeled(lines);
+  if (lab) return lab;
   const out = { customer:'', phone:'', visit:'', request:'', cost:'', engineer:'', engPhone:'', note:'' };
   const re = new RegExp(PHONE);
   const pl = lines.filter(l => re.test(l));
@@ -879,7 +1127,7 @@ function parseText(raw) {
 
 /* ===== 엑셀 읽기 도우미 ===== */
 const HEADER_RULES = [
-  ['skip', /기록일시|기록시각/], ['engPhone', /기사.*(연락|전화|번호)/], ['engineer', /담당|기사|엔지니어/],
+  ['skip', /기록일시|기록시각/], ['depositPaid', /계약금.*입금/], ['balancePaid', /잔금.*입금/], ['total', /^(최종)?계약금액$|^최종금액$|^총금액$/], ['deposit', /^계약금$/], ['balance', /^잔금$/], ['engPhone', /기사.*(연락|전화|번호)/], ['engineer', /담당|기사|엔지니어/],
   ['phone', /연락처|전화|휴대/], ['visit', /일시|일자|날짜|방문일/], ['note', /주소/], ['report', /기록/],
   ['request', /요청|내용|작업/], ['cost', /비용|금액/], ['status', /상태/], ['customer', /고객|성함|이름/]
 ];
@@ -921,8 +1169,9 @@ function phoneStr(v) {
 }
 function cellVal(k, v) {
   if (k === 'visit') return toVisit(v);
+  if (k === 'depositPaid' || k === 'balancePaid') return /^(입금|완료|y|o|true|1|✔|✅)/i.test(cellStr(v));
   if (k === 'phone' || k === 'engPhone') return phoneStr(v);
-  if (k === 'cost' && typeof v === 'number') return v.toLocaleString('ko-KR');
+  if ((k === 'cost' || k === 'total' || k === 'deposit' || k === 'balance') && typeof v === 'number') return v.toLocaleString('ko-KR');
   return cellStr(v);
 }
 function tsvRows(text) { return text.replace(/\r/g, '').split('\n').filter(l => l.trim()).map(l => l.split('\t')); }
@@ -1071,15 +1320,16 @@ function downloadBlob(blob, name) {
 }
 function exportExcel() {
   if (!schedules.length) { alert('저장할 스케줄이 없습니다.'); return; }
-  const head = ['진행 상태','고객명','연락처','방문 일시','요청 사항','처리 비용','담당 기사','기사 연락처','방문 주소','방문 후 기록','기록 일시'];
+  const head = ['진행 상태','고객명','연락처','방문 일시','요청 사항','처리 비용','최종 계약금액','계약금','계약금 입금','잔금','잔금 입금','담당 기사','기사 연락처','방문 주소','방문 후 기록','기록 일시'];
+  const payTxt = (s, k) => s[k + 'Paid'] ? '입금완료' + ([s[k + 'PaidAt'], s[k + 'Method']].filter(Boolean).length ? ' (' + [s[k + 'PaidAt'], s[k + 'Method']].filter(Boolean).join(' · ') + ')' : '') : (s[k] ? '미입금' : '');
   const rows = [...schedules].sort((a, b) => (a.visit || '9999').localeCompare(b.visit || '9999'))
-    .map(s => [s.status, s.customer, s.phone, fmtDate(s.visit), s.request, s.cost, s.engineer, s.engPhone, s.note, s.report, s.reportAt].map(v => v || ''));
+    .map(s => [s.status, s.customer, s.phone, fmtDate(s.visit), s.request, s.cost, s.total, s.deposit, payTxt(s,'deposit'), s.balance, payTxt(s,'balance'), s.engineer, s.engPhone, s.note, s.report, s.reportAt].map(v => v || ''));
   const name = '현장스케줄_' + nowStr().slice(0, 10);
   if (typeof XLSX !== 'undefined') {
     const wb = XLSX.utils.book_new();
     const ws = XLSX.utils.aoa_to_sheet([head, ...rows]);
-    ws['!cols'] = [12,10,15,17,36,22,10,15,36,50,17].map(w => ({ wch: w }));
-    XLSX.utils.book_append_sheet(wb, ws, '스케줄');const SCRIPT_URL = 'https://script.google.com/macros/s/AKfycbxdWO7dBcxyeYPI4nWHeHLPSXT5rJWdWBGQbdfsapJQEhuMaV_ZMr6m7zHszjO2b0ys/exec';
+    ws['!cols'] = [12,10,15,17,36,22,14,12,18,12,18,10,15,36,50,17].map(w => ({ wch: w }));
+    XLSX.utils.book_append_sheet(wb, ws, '스케줄');
     if (employees.length) {
       const we = XLSX.utils.aoa_to_sheet([['이름','연락처'], ...employees.map(e => [e.name, e.phone || ''])]);
       we['!cols'] = [{ wch: 12 }, { wch: 16 }];
