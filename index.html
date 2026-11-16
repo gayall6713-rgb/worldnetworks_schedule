@@ -20,7 +20,7 @@ h2{text-align:center;font-size:1.4rem;margin-bottom:20px}
 .cal-cell{min-height:85px;background:#fdfdfd;border:1px solid var(--border);border-radius:8px;padding:6px;font-size:.8rem;text-align:left;vertical-align:top;cursor:pointer;overflow:hidden}
 .cal-cell.other-month{background:#f1f3f5;opacity:.4}
 .cal-cell.today{border-color:var(--primary);background:#eff6ff}
-.cal-date-num{font-weight:bold;font-size:.85rem;margin-bottom:4px}
+.cal-date-num{font-weight:bold;font-size:.85rem;margin-bottom:4px;color:var(--primary);cursor:pointer;text-decoration:underline}
 .cal-badge{background:var(--primary);color:#fff;font-size:.7rem;padding:2px 5px;border-radius:4px;margin-bottom:2px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;display:block;cursor:pointer}
 .cal-badge:hover{filter:brightness(.9)}
 .upload-box{border:2px dashed #ccc;padding:16px;text-align:center;border-radius:6px;margin-bottom:20px;background:#fafafa}
@@ -121,7 +121,7 @@ select{width:100%;padding:10px;border:1px solid #ddd;border-radius:4px;box-sizin
       <div class="cal-day-name" style="color:#ef4444;">일</div><div class="cal-day-name">월</div><div class="cal-day-name">화</div><div class="cal-day-name">수</div><div class="cal-day-name">목</div><div class="cal-day-name">금</div><div class="cal-day-name" style="color:#3b82f6;">토</div>
     </div>
     <div class="calendar-grid" id="calBody"></div>
-    <p class="hint" style="text-align:center;margin-top:12px;">💡 달력의 날짜 칸을 누르면 새 일정을 등록할 수 있고, <br><b>이름(스케줄 배지)을 누르면 해당 고객의 이력</b>을 볼 수 있습니다.</p>
+    <p class="hint" style="text-align:center;margin-top:12px;">💡 달력의 <b>날짜 숫자(예: 16)</b>를 누르면 해당 날짜 스케줄만 팝업으로 볼 수 있고, 빈 칸을 누르면 새 일정을 등록할 수 있습니다.<br><b>이름(스케줄 배지)을 누르면 해당 고객의 이력</b>을 볼 수 있습니다.</p>
   </div>
 
   <div id="tab-manage" class="tab-content">
@@ -151,6 +151,7 @@ select{width:100%;padding:10px;border:1px solid #ddd;border-radius:4px;box-sizin
         <div class="form-group"><label>방문 일시</label><input type="datetime-local" id="visitDate"></div>
         <div class="form-group"><label>처리 비용</label><input type="text" id="cost" placeholder="예: 무료 방문실측"></div>
         <div class="form-group full"><label>요청 사항</label><input type="text" id="request" placeholder="예: 문틀 교체" required></div>
+        
         <div id="payBox" class="full pay-box" style="display:none;">
           <div class="pay-title">💰 계약금 / 잔금 관리</div>
           <div class="grid">
@@ -161,13 +162,27 @@ select{width:100%;padding:10px;border:1px solid #ddd;border-radius:4px;box-sizin
 <div class="pay-detail"><input type="date" id="balanceDate" title="입금 날짜"><select id="balanceMethod" title="결제수단"><option value="">결제수단</option><option value="현금">현금</option><option value="카드">카드</option><option value="계좌입금">계좌입금</option></select></div></div>
           </div>
         </div>
+
         <div class="form-group"><label>담당 기사</label>
           <select id="engSelect"></select>
           <input type="text" id="engineer" placeholder="기사 이름 직접 입력" style="display:none;margin-top:6px;">
         </div>
         <div class="form-group"><label>기사 연락처</label><input type="text" id="engPhone" placeholder="예: 010-8866-6944"></div>
         <div class="form-group full"><label>방문 주소</label><input type="text" id="note" placeholder="예: 대략적인 주소 또는 상세 주소"></div>
-        <div class="form-group full"><label>방문 후 기록 (담당 기사 기재)</label><textarea id="report" class="field" rows="3" placeholder="방문 후 실측 사이즈, 작업 내용, 특이사항 등을 기재"></textarea></div>
+        
+        <!-- 💡 방문 후 기록 및 현장 사진 첨부 영역 (구글 드라이브 자동 연동) -->
+        <div class="form-group full" style="background:#f1f3f5; padding:12px; border-radius:8px; border:1px solid #ced4da;">
+          <label style="color:#007bff; margin-bottom:6px;">📝 방문 후 기록 및 현장 사진 (입력/수정 시 즉시 저장 및 드라이브 백업)</label>
+          <textarea id="report" class="field" rows="3" placeholder="실측 사이즈, 작업 내용, 특이사항 등을 기재"></textarea>
+          <div style="margin-top:8px;">
+            <label style="font-size:0.85rem; font-weight:normal; margin-bottom:4px;">현장 사진 첨부</label>
+            <input type="file" id="formReportImage" accept="image/*" style="font-size:0.85rem; margin-bottom:6px;">
+            <div>
+              <img id="formReportImgPreview" src="" alt="미리보기" style="max-width:100%; max-height:160px; border-radius:4px; display:none; border:1px solid #ddd;">
+            </div>
+          </div>
+        </div>
+
       </div>
       <div class="btn-row">
         <button type="submit" class="btn btn-submit" id="submitBtn">스케줄 추가</button>
@@ -227,6 +242,19 @@ select{width:100%;padding:10px;border:1px solid #ddd;border-radius:4px;box-sizin
   </div>
 </div>
 
+<div id="daySchedulesModal" class="modal">
+  <div class="modal-box" style="max-width:550px;">
+    <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:15px;">
+      <h4 id="dayModalTitle" style="margin:0;color:var(--primary);font-size:1.2rem;">해당 날짜 스케줄</h4>
+      <button type="button" onclick="closeDayModal()" style="background:none;border:none;font-size:1.2rem;cursor:pointer;">✖</button>
+    </div>
+    <div id="dayModalListContainer" class="history-list"></div>
+    <div class="btn-row" style="margin-top:20px;">
+      <button type="button" class="btn btn-submit" id="addScheduleFromDayBtn" style="background:#10b981;">➕ 이 날짜로 새 일정 추가</button>
+      <button type="button" class="btn btn-reset" onclick="closeDayModal()">닫기</button>
+    </div>
+  </div>
+</div>
 <div id="customerHistoryModal" class="modal">
   <div class="modal-box">
     <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:15px;">
@@ -248,21 +276,6 @@ select{width:100%;padding:10px;border:1px solid #ddd;border-radius:4px;box-sizin
       <button type="button" id="editModalClose" style="background:none;border:none;font-size:1.2rem;cursor:pointer;">✖</button>
     </div>
     <div id="editModalBody"></div>
-  </div>
-</div>
-
-<div id="reportModal" class="modal">
-  <div class="modal-box">
-    <h4 id="reportTitle"></h4>
-    <div id="reportInfo" class="hint" style="margin:0 0 10px;text-align:left;"></div>
-    <label>방문 후 기록</label>
-    <textarea id="reportText" class="field" rows="6" placeholder="실측 사이즈, 작업 내용, 필요한 자재, 특이사항 등을 기재하세요"></textarea>
-    <div id="reportMeta" class="hint" style="text-align:left;"></div>
-    <div class="form-group" style="margin-top:10px;"><label>진행 상태 (함께 변경)</label><select id="reportStage"></select></div>
-    <div class="btn-row">
-      <button type="button" class="btn btn-submit" id="reportSave">저장</button>
-      <button type="button" class="btn btn-reset" id="reportCancel">닫기</button>
-    </div>
   </div>
 </div>
 
@@ -305,15 +318,15 @@ function fillStageOptions(sel, val, allowEmpty) {
 }
 let filterStage = '';
 
-// =========================================================================
-// 💡 구글 웹 앱 URL 붙여넣는 곳!
 const SCRIPT_URL = 'https://script.google.com/macros/s/AKfycbxdWO7dBcxyeYPI4nWHeHLPSXT5rJWdWBGQbdfsapJQEhuMaV_ZMr6m7zHszjO2b0ys/exec';
-// =========================================================================
 
 let schedules = [];
 try { schedules = JSON.parse(localStorage.getItem(STORE_KEY) || '[]'); } catch (e) { schedules = []; }
 
 let isSyncing = false;
+let currentFormReportImage = '';
+let currentFormReportImageLink = '';
+
 function showSync(msg) {
   const el = $('syncStatus');
   el.textContent = msg; el.style.display = 'block';
@@ -325,7 +338,7 @@ async function save() {
   renderCalendar();
   render();
   if (SCRIPT_URL && !isSyncing) {
-    showSync("🔄 구글 시트와 연동 중...");
+    showSync("🔄 구글 시트 및 드라이브 사진 연동 중...");
     isSyncing = true;
     try {
       await fetch(SCRIPT_URL, { method:'POST', body: JSON.stringify(schedules) });
@@ -377,7 +390,7 @@ function renderCalendar() {
     const dateStr = `${currentYear}-${String(currentMonth + 1).padStart(2,'0')}-${String(d).padStart(2,'0')}`;
     const daySchedules = schedules.filter(s => s.visit && s.visit.startsWith(dateStr));
     const isToday = new Date().toISOString().slice(0, 10) === dateStr ? 'today' : '';
-    html += `<div class="cal-cell ${isToday}" onclick="selectDateForVisit(event, '${dateStr}')"><div class="cal-date-num">${d}</div>`;
+    html += `<div class="cal-cell ${isToday}" onclick="selectDateForVisit(event, '${dateStr}')"><div class="cal-date-num" onclick="event.stopPropagation(); openDaySchedulesModal('${dateStr}')" title="이 날짜 스케줄 모아보기">${d}</div>`;
     daySchedules.forEach(s => {
       const bg = STAGE_COLORS[s.status] || '#f1f3f5';
       const ac = STAGE_ACCENT[s.status] || '#adb5bd';
@@ -398,11 +411,54 @@ function moveMonth(dir) {
 }
 
 function selectDateForVisit(event, dateStr) {
-  if (event.target.classList.contains('cal-badge')) return;
+  if (event.target.classList.contains('cal-badge') || event.target.classList.contains('cal-date-num')) return;
   $('visitDate').value = dateStr + 'T09:00';
   document.querySelectorAll('.tab-btn')[1].click();
   $('visitDate').focus();
 }
+
+function openDaySchedulesModal(dateStr) {
+  const daySchedules = schedules.filter(s => s.visit && s.visit.slice(0, 10) === dateStr)
+    .sort((a, b) => (a.visit || '9999').localeCompare(b.visit || '9999'));
+  $('dayModalTitle').textContent = `📅 ${dateStr} 스케줄 목록 (${daySchedules.length}건)`;
+  const container = $('dayModalListContainer');
+  container.innerHTML = '';
+  if (!daySchedules.length) {
+    container.innerHTML = '<div style="text-align:center;color:#999;padding:20px;">이 날짜에 등록된 스케줄이 없습니다.</div>';
+  } else {
+    daySchedules.forEach(item => {
+      const card = document.createElement('div');
+      card.className = 'history-item';
+      const title = document.createElement('div'); title.className = 'h-title';
+      const name = document.createElement('span'); name.textContent = `👤 ${item.customer || '이름 없음'} (${item.phone || '연락처 없음'})`;
+      const status = document.createElement('select');
+      status.setAttribute('aria-label', `${item.customer || '일정'} 진행 상태 변경`);
+      status.style.cssText = 'width:auto;min-width:112px;padding:5px 8px;border:1px solid #ced4da;border-radius:5px;font-size:.8rem;font-weight:bold;cursor:pointer;appearance:auto;';
+      fillStageOptions(status, item.status || STAGES[0], false);
+      status.addEventListener('change', async () => {
+        item.status = status.value;
+        status.style.background = STAGE_COLORS[item.status] || '#fff';
+        await save();
+      });
+      title.append(name, status);
+      const detail = document.createElement('div'); detail.className = 'h-detail';
+      const time = item.visit && item.visit.length >= 16 ? item.visit.slice(11, 16) : '시간 미지정';
+      detail.textContent = `방문 시간: ${time} · 요청사항: ${item.request || '-'} · 비용/주소: ${item.cost || '-'} / ${item.note || '-'} · 담당기사: ${item.engineer || '미배정'}`;
+      card.append(title, detail);
+      if (item.report) { const report = document.createElement('div'); report.className = 'h-report'; report.textContent = `✔️ 방문 후 기록: ${item.report}`; card.appendChild(report); }
+      if (item.reportImageLink) {
+        const linkDiv = document.createElement('div');
+        linkDiv.style.marginTop = '6px';
+        linkDiv.innerHTML = `<a href="${item.reportImageLink}" target="_blank" style="color:#2563eb;font-weight:bold;font-size:0.8rem;">🔗 드라이브 저장된 현장 사진 보기</a>`;
+        card.appendChild(linkDiv);
+      }
+      container.appendChild(card);
+    });
+  }
+  $('addScheduleFromDayBtn').onclick = () => { closeDayModal(); clearForm(); $('visitDate').value = dateStr + 'T09:00'; document.querySelectorAll('.tab-btn')[1].click(); $('visitDate').focus(); };
+  $('daySchedulesModal').classList.add('show');
+}
+function closeDayModal() { $('daySchedulesModal').classList.remove('show'); }
 
 function openCustomerHistoryModal(event, customerName, phone) {
   event.stopPropagation();
@@ -426,7 +482,8 @@ function openCustomerHistoryModal(event, customerName, phone) {
           <div><b>비용/주소:</b> ${item.cost || '-'} / ${item.note || '-'}</div>
           <div><b>담당기사:</b> ${item.engineer || '미배정'} ${item.engPhone ? '(' + item.engPhone + ')' : ''}</div>
         </div>
-        ${item.report ? `<div class="h-report">✔️ 방문 후 기록: ${item.report}</div>` : ''}`;
+        ${item.report ? `<div class="h-report">✔️ 방문 후 기록: ${item.report}</div>` : ''}
+        ${item.reportImageLink ? `<div style="margin-top:6px;"><a href="${item.reportImageLink}" target="_blank" style="color:#2563eb;font-weight:bold;font-size:0.8rem;">🔗 드라이브 저장된 현장 사진 보기</a></div>` : ''}`;
       listContainer.appendChild(card);
     });
   }
@@ -599,17 +656,24 @@ function payCell(item) {
 
 function getForm() {
   const o = {};
-  for (const k in FIELD_IDS) o[k] = $(FIELD_IDS[k]).value.trim();
+  for (const k in FIELD_IDS) {
+    if (k === 'report') {
+      o[k] = $('report').value.trim();
+    } else {
+      o[k] = $(FIELD_IDS[k]) ? $(FIELD_IDS[k]).value.trim() : '';
+    }
+  }
+  o['reportImage'] = currentFormReportImage;
+  o['reportImageLink'] = currentFormReportImageLink;
   ['deposit', 'balance'].forEach(k => {
     const cb = $(k + 'Paid');
-    o[k + 'Paid'] = cb.checked;
-    o[k + 'PaidAt'] = cb.checked ? ($(k + 'Date').value || todayStr()) : '';
-    o[k + 'Method'] = $(k + 'Method').value;
+    o[k + 'Paid'] = cb ? cb.checked : false;
+    o[k + 'PaidAt'] = (cb && cb.checked) ? ($(k + 'Date').value || todayStr()) : '';
+    o[k + 'Method'] = $(k + 'Method') ? $(k + 'Method').value : '';
   });
   return o;
 }
 
-// 💡 날짜 데이터를 자동으로 폼에 맞춰주는 로직으로 완벽하게 수정
 function setForm(o) {
   for (const k in FIELD_IDS) {
     if (k === 'status') continue;
@@ -618,20 +682,54 @@ function setForm(o) {
       if (val.length === 10) val += 'T09:00'; 
       val = val.replace(' ', 'T').substring(0, 16);
     }
-    $(FIELD_IDS[k]).value = val;
+    if ($(FIELD_IDS[k])) {
+      $(FIELD_IDS[k]).value = val;
+    }
   }
+  currentFormReportImage = o.reportImage || '';
+  currentFormReportImageLink = o.reportImageLink || '';
+  const imgPrev = $('formReportImgPreview');
+  if (currentFormReportImage) {
+    imgPrev.src = currentFormReportImage;
+    imgPrev.style.display = 'block';
+  } else {
+    imgPrev.src = '';
+    imgPrev.style.display = 'none';
+  }
+  $('formReportImage').value = '';
+
   ['deposit', 'balance'].forEach(k => {
-    $(k + 'Paid').checked = !!o[k + 'Paid'];
-    $(k + 'Date').value = o[k + 'PaidAt'] || '';
-    $(k + 'Method').value = o[k + 'Method'] || '';
+    if ($(k + 'Paid')) $(k + 'Paid').checked = !!o[k + 'Paid'];
+    if ($(k + 'Date')) $(k + 'Date').value = o[k + 'PaidAt'] || '';
+    if ($(k + 'Method')) $(k + 'Method').value = o[k + 'Method'] || '';
   });
   fillStageOptions($('stage'), o.status || STAGES[0], false);
   togglePay();
   syncEngSelect();
 }
 
+$('formReportImage').addEventListener('change', e => {
+  const file = e.target.files && e.target.files[0];
+  if (!file) return;
+  const reader = new FileReader();
+  reader.onload = function(uploadEvent) {
+    currentFormReportImage = uploadEvent.target.result;
+    currentFormReportImageLink = ''; // 새 이미지 업로드 시 기존 링크 초기화 후 재업로드 유도
+    const imgPrev = $('formReportImgPreview');
+    imgPrev.src = currentFormReportImage;
+    imgPrev.style.display = 'block';
+  };
+  reader.readAsDataURL(file);
+});
+
 function clearForm() {
-  closeEditModal(); setForm({}); clearDraft(); editingId = null;
+  closeEditModal(); 
+  currentFormReportImage = '';
+  currentFormReportImageLink = '';
+  $('formReportImgPreview').style.display = 'none';
+  $('formReportImgPreview').src = '';
+  $('formReportImage').value = '';
+  setForm({}); clearDraft(); editingId = null;
   $('formMode').textContent = '';
   $('submitBtn').textContent = '스케줄 추가';
   $('resetForm').textContent = '입력 지우기';
@@ -747,7 +845,6 @@ function render() {
     const visitInput = document.createElement('input');
     visitInput.type = 'datetime-local'; visitInput.className = 'stage-sel'; visitInput.style.width = '160px';
     
-    // 💡 날짜 오류(빈칸) 해결: 기존 데이터를 datetime-local 폼에 맞게 자동 변환
     let vDate = item.visit || '';
     if (vDate.length === 10) vDate += 'T09:00';
     visitInput.value = vDate.replace(' ', 'T').substring(0, 16);
@@ -764,9 +861,15 @@ function render() {
       const t = document.createElement('div'); t.className = 'rec-text'; t.textContent = item.report; rc.appendChild(t);
       if (item.reportAt) { const a = document.createElement('div'); a.className = 'rec-at'; a.textContent = item.reportAt + ' 기록'; rc.appendChild(a); }
     }
+    if (item.reportImageLink) {
+      const linkDiv = document.createElement('div');
+      linkDiv.style.marginTop = '4px';
+      linkDiv.innerHTML = `<a href="${item.reportImageLink}" target="_blank" style="color:#2563eb;font-weight:bold;font-size:0.75rem;">🔗 드라이브 사진</a>`;
+      rc.appendChild(linkDiv);
+    }
     const rb = document.createElement('button');
-    rb.type = 'button'; rb.className = 'btn btn-record'; rb.textContent = item.report ? '기록 수정' : '✏️ 기록하기';
-    rb.onclick = () => openReport(item.id);
+    rb.type = 'button'; rb.className = 'btn btn-record'; rb.textContent = item.report || item.reportImage ? '기록 수정' : '✏️ 기록하기';
+    rb.onclick = () => openEditModal(item.id);
     rc.appendChild(rb); tr.appendChild(rc);
 
     const td = document.createElement('td'); td.className = 'act';
@@ -787,8 +890,6 @@ function render() {
   renderCalendar();
 }
 
-
-/* ===== 수정 팝업 (입력 폼을 팝업 안으로 옮겨서 사용) ===== */
 let formHome = null;
 function openEditModal(id) {
   const item = schedules.find(x => x.id === id);
@@ -814,7 +915,7 @@ $('editModalClose').onclick = () => clearForm();
 $('editModal').addEventListener('mousedown', e => { if (e.target === $('editModal')) clearForm(); });
 document.addEventListener('keydown', e => { if (e.key === 'Escape' && $('editModal').classList.contains('show')) clearForm(); });
 
-/* ===== 목록 마우스 드래그 스크롤 (위·아래·좌·우) ===== */
+/* ===== 목록 마우스 드래그 스크롤 ===== */
 (function () {
   const box = $('listScroll'); let down = false, moved = false, sx, sy, sl, st;
   box.addEventListener('mousedown', e => {
@@ -831,7 +932,7 @@ document.addEventListener('keydown', e => { if (e.key === 'Escape' && $('editMod
   box.addEventListener('click', e => { if (moved) { e.stopPropagation(); e.preventDefault(); moved = false; } }, true);
 })();
 
-/* ===== 진행 상태별 안내장 ===== */
+/* ===== 안내장 ===== */
 const G = {
   total: i => won(i.total) || i.cost || '', dep: i => won(i.deposit), bal: i => won(i.balance),
   name: i => i.customer || '', phone: i => i.phone || '', visit: i => fmtCardDate(i.visit),
@@ -922,11 +1023,15 @@ document.addEventListener('visibilitychange', () => { if (document.hidden) saveD
 $('scheduleForm').addEventListener('submit', e => {
   e.preventDefault();
   const data = getForm();
+  if (data.report && !data.reportAt && (!editingId || schedules.find(s => s.id === editingId).report !== data.report)) {
+    data.reportAt = nowStr();
+  }
   if (editingId) {
-    schedules = schedules.map(s => s.id === editingId ? { ...data, id: editingId } : s);
+    schedules = schedules.map(s => s.id === editingId ? { ...data, id: editingId, reportAt: data.report ? (s.report !== data.report ? nowStr() : s.reportAt) : '', reportImageLink: data.reportImageLink || s.reportImageLink } : s);
   } else {
     const dup = schedules.some(s => Object.keys(FIELD_IDS).every(k => s[k] === data[k]));
     if (dup && !confirm('똑같은 내용이 이미 등록되어 있습니다. 그래도 추가할까요?')) return;
+    if (data.report) data.reportAt = nowStr();
     schedules.push({ ...data, id: Date.now() + Math.random().toString(36).slice(2, 6) });
   }
   save(); clearForm();
@@ -1222,6 +1327,11 @@ function processRows(rows) {
   $('status').textContent = `엑셀에서 ${fresh.length}건을 목록에 추가했습니다.`;
 }
 
+async function nowStr() {
+  const d = new Date(), z = n => String(n).padStart(2, '0');
+  return `${d.getFullYear()}-${z(d.getMonth() + 1)}-${z(d.getDate())} ${z(d.getHours())}:${z(d.getMinutes())}`;
+}
+
 async function handleExcel(file) {
   $('preview').style.display = 'none';
   if (typeof XLSX === 'undefined') { $('status').textContent = '엑셀 라이브러리를 불러오지 못했습니다. 인터넷 연결을 확인해 주세요.'; return; }
@@ -1293,38 +1403,6 @@ function applyParsed(p) {
   $('status').textContent = missing.length ? `자동 입력 완료 · 이미지에서 찾지 못한 항목: ${missing.join(', ')} → 직접 입력 후 [스케줄 추가]를 눌러 주세요.` : '자동 입력 완료! 내용 확인 후 [스케줄 추가]를 눌러 주세요.';
 }
 
-/* 방문 후 기록 모달 */
-let reportId = null;
-function nowStr() {
-  const d = new Date(), z = n => String(n).padStart(2, '0');
-  return `${d.getFullYear()}-${z(d.getMonth() + 1)}-${z(d.getDate())} ${z(d.getHours())}:${z(d.getMinutes())}`;
-}
-function openReport(id) {
-  const it = schedules.find(s => s.id === id);
-  if (!it) return;
-  reportId = id;
-  $('reportTitle').textContent = `${it.customer} · 방문 후 기록`;
-  $('reportInfo').textContent = [it.request, it.engineer ? `담당: ${it.engineer}` : '', it.visit ? `방문: ${fmtDate(it.visit)}` : ''].filter(Boolean).join(' / ');
-  $('reportText').value = it.report || '';
-  $('reportMeta').textContent = it.reportAt ? `마지막 기록: ${it.reportAt}` : '';
-  fillStageOptions($('reportStage'), it.status || STAGES[0], false);
-  $('reportModal').classList.add('show');
-  $('reportText').focus();
-}
-function closeReport() { reportId = null; $('reportModal').classList.remove('show'); }
-$('reportSave').onclick = () => {
-  const it = schedules.find(s => s.id === reportId);
-  if (!it) return closeReport();
-  const text = $('reportText').value.trim();
-  if (text !== (it.report || '')) { it.report = text; it.reportAt = text ? nowStr() : ''; }
-  it.status = $('reportStage').value;
-  save(); closeReport(); render();
-};
-$('reportCancel').onclick = closeReport;
-$('reportModal').addEventListener('click', e => { if (e.target === $('reportModal')) closeReport(); });
-document.addEventListener('keydown', e => { if (e.key === 'Escape') closeReport(); });
-$('reportStage').addEventListener('change', () => { $('reportStage').style.background = STAGE_COLORS[$('reportStage').value] || '#fff'; });
-
 /* 엑셀 저장 */
 function downloadBlob(blob, name) {
   const a = document.createElement('a');
@@ -1334,15 +1412,15 @@ function downloadBlob(blob, name) {
 }
 function exportExcel() {
   if (!schedules.length) { alert('저장할 스케줄이 없습니다.'); return; }
-  const head = ['진행 상태','고객명','연락처','방문 일시','요청 사항','처리 비용','최종 계약금액','계약금','계약금 입금','잔금','잔금 입금','담당 기사','기사 연락처','방문 주소','방문 후 기록','기록 일시'];
+  const head = ['진행 상태','고객명','연락처','방문 일시','요청 사항','처리 비용','최종 계약금액','계약금','계약금 입금','잔금','잔금 입금','담당 기사','기사 연락처','방문 주소','방문 후 기록','기록 일시','현장 사진 링크'];
   const payTxt = (s, k) => s[k + 'Paid'] ? '입금완료' + ([s[k + 'PaidAt'], s[k + 'Method']].filter(Boolean).length ? ' (' + [s[k + 'PaidAt'], s[k + 'Method']].filter(Boolean).join(' · ') + ')' : '') : (s[k] ? '미입금' : '');
   const rows = [...schedules].sort((a, b) => (a.visit || '9999').localeCompare(b.visit || '9999'))
-    .map(s => [s.status, s.customer, s.phone, fmtDate(s.visit), s.request, s.cost, s.total, s.deposit, payTxt(s,'deposit'), s.balance, payTxt(s,'balance'), s.engineer, s.engPhone, s.note, s.report, s.reportAt].map(v => v || ''));
-  const name = '현장스케줄_' + nowStr().slice(0, 10);
+    .map(s => [s.status, s.customer, s.phone, fmtDate(s.visit), s.request, s.cost, s.total, s.deposit, payTxt(s,'deposit'), s.balance, payTxt(s,'balance'), s.engineer, s.engPhone, s.note, s.report, s.reportAt, s.reportImageLink || ''].map(v => v || ''));
+  const name = '현장스케줄_' + new Date().toISOString().slice(0, 10);
   if (typeof XLSX !== 'undefined') {
     const wb = XLSX.utils.book_new();
     const ws = XLSX.utils.aoa_to_sheet([head, ...rows]);
-    ws['!cols'] = [12,10,15,17,36,22,14,12,18,12,18,10,15,36,50,17].map(w => ({ wch: w }));
+    ws['!cols'] = [12,10,15,17,36,22,14,12,18,12,18,10,15,36,50,17,30].map(w => ({ wch: w }));
     XLSX.utils.book_append_sheet(wb, ws, '스케줄');
     if (employees.length) {
       const we = XLSX.utils.aoa_to_sheet([['이름','연락처'], ...employees.map(e => [e.name, e.phone || ''])]);
@@ -1358,8 +1436,14 @@ function exportExcel() {
     alert('인터넷 연결이 없어 엑셀(.xlsx) 대신 CSV 파일로 저장했습니다.');
   }
 }
+exportExcel = exportExcel; // 선언 유지
 $('exportExcel').onclick = exportExcel;
 
+document.querySelectorAll('.modal:not(#editModal)').forEach(modal => {
+  modal.addEventListener('click', event => {
+    if (event.target === modal) modal.classList.remove('show');
+  });
+});
 fillStageOptions($('stage'), STAGES[0], false);
 $('stage').addEventListener('change', () => { $('stage').style.background = STAGE_COLORS[$('stage').value] || '#fff'; });
 renderEmp();
