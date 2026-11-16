@@ -5,125 +5,98 @@
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
 <title>현장 방문 및 스케줄 관리</title>
 <style>
-  :root {
-    --primary: #2563eb;
-    --primary-hover: #1d4ed8;
-    --bg-color: #f8f9fa;
-    --card-bg: #ffffff;
-    --text-main: #333;
-    --text-sub: #666;
-    --border: #ddd;
-  }
-  body { font-family:'Malgun Gothic',sans-serif; background:var(--bg-color); margin:0; padding:15px; color:var(--text-main); }
-  .container { max-width:1000px; margin:0 auto; background:var(--card-bg); padding:20px; border-radius:12px; box-shadow:0 4px 12px rgba(0,0,0,.08); }
-  h2 { text-align:center; font-size:1.4rem; margin-bottom:20px; }
-
-  /* 탭 메뉴 */
-  .tab-menu { display:flex; background:#e9ecef; border-radius:10px; padding:4px; margin-bottom:20px; }
-  .tab-btn { flex:1; padding:10px; text-align:center; font-size:0.95rem; font-weight:bold; border:none; background:transparent; border-radius:8px; cursor:pointer; color:var(--text-sub); transition:all 0.2s; }
-  .tab-btn.active { background:#fff; color:var(--primary); box-shadow:0 2px 4px rgba(0,0,0,.05); }
-  .tab-content { display:none; }
-  .tab-content.active { display:block; }
-
-  /* 캘린더 스타일 */
-  .calendar-header { display:flex; justify-content:space-between; align-items:center; margin-bottom:15px; font-weight:bold; font-size:1.1rem; }
-  .calendar-header button { background:#fff; border:1px solid var(--border); border-radius:6px; padding:6px 14px; cursor:pointer; font-weight:bold; }
-  .calendar-grid { display:grid; grid-template-columns:repeat(7, 1fr); gap:6px; text-align:center; }
-  .cal-day-name { font-size:0.8rem; font-weight:bold; color:var(--text-sub); padding-bottom:8px; }
-  .cal-cell { min-height:85px; background:#fdfdfd; border:1px solid var(--border); border-radius:8px; padding:6px; font-size:0.8rem; text-align:left; vertical-align:top; cursor:pointer; overflow:hidden; }
-  .cal-cell.other-month { background:#f1f3f5; opacity:0.4; }
-  .cal-cell.today { border-color:var(--primary); background:#eff6ff; }
-  .cal-date-num { font-weight:bold; font-size:0.85rem; margin-bottom:4px; }
-  .cal-badge { background:var(--primary); color:#fff; font-size:0.7rem; padding:2px 5px; border-radius:4px; margin-bottom:2px; white-space:nowrap; overflow:hidden; text-overflow:ellipsis; display:block; cursor:pointer; }
-  .cal-badge:hover { filter: brightness(0.9); }
-
-  /* 기존 UI 스타일 유지 및 보완 */
-  .upload-box { border:2px dashed #ccc; padding:16px; text-align:center; border-radius:6px; margin-bottom:20px; background:#fafafa; }
-  .upload-box img { max-width:100%; max-height:220px; margin-top:10px; border-radius:4px; display:none; }
-  .hint { font-size:.8rem; color:#666; margin:8px 0 0; }
-  #status { font-size:.85rem; margin-top:8px; font-weight:bold; color:#007bff; min-height:1.2em; }
-  details { margin-top:10px; text-align:left; font-size:.8rem; }
-  details textarea { width:100%; height:120px; box-sizing:border-box; margin-top:6px; font-size:.8rem; }
-  .grid { display:grid; grid-template-columns:1fr 1fr; gap:12px; }
-  .form-group { margin-bottom:12px; }
-  .full { grid-column:1 / -1; }
-  label { display:block; font-weight:bold; margin-bottom:5px; font-size:.9rem; }
-  input[type="text"], input[type="datetime-local"] { width:100%; padding:10px; border:1px solid #ddd; border-radius:4px; box-sizing:border-box; font-size:.95rem; }
-  #formMode { font-size:.85rem; color:#e8590c; font-weight:bold; min-height:1.2em; margin-bottom:6px; }
-  .btn-row { display:flex; gap:8px; margin-top:8px; }
-  .btn { --edge:#8a8f98; border:none; padding:12px; border-radius:8px; font-size:1rem; cursor:pointer; font-weight:bold; position:relative; top:0;
-         box-shadow:0 5px 0 var(--edge), 0 8px 12px rgba(0,0,0,.25); text-shadow:0 1px 0 rgba(0,0,0,.25);
-         transition:top .08s, box-shadow .08s, filter .15s; }
-  .btn:hover { filter:brightness(1.07); }
-  .btn:active { top:4px; box-shadow:0 1px 0 var(--edge), 0 2px 4px rgba(0,0,0,.25); }
-  .btn-submit { background:linear-gradient(#4da3ff,#007bff 55%,#0066d6); --edge:#00479a; color:#fff; flex:3; }
-  .btn-reset { background:linear-gradient(#ffffff,#e3e7eb); --edge:#aab1b9; color:#333; text-shadow:0 1px 0 #fff; flex:1; }
-  .btn-edit { background:linear-gradient(#51cf66,#2f9e44); --edge:#1e6b2d; color:#fff; padding:5px 10px; font-size:.8rem; margin-bottom:6px; }
-  .btn-del { background:linear-gradient(#ff8787,#fa5252); --edge:#b02a2a; color:#fff; padding:5px 10px; font-size:.8rem; }
-  .btn-clear { background:linear-gradient(#adb5bd,#868e96); --edge:#495057; color:#fff; padding:6px 12px; font-size:.8rem; }
-  .btn-excel { background:linear-gradient(#38d9a9,#0ca678); --edge:#087f5b; color:#fff; padding:6px 12px; font-size:.8rem; }
-  .btn-record { background:linear-gradient(#ffa94d,#f76707); --edge:#a84300; color:#fff; padding:4px 9px; font-size:.78rem; margin-top:6px; }
-  .btn-card { background:linear-gradient(#845ef7,#7950f2); --edge:#5f3dc4; color:#fff; padding:4px 9px; font-size:.78rem; margin-top:4px; }
-  .btn-edit, .btn-del, .btn-clear, .btn-excel, .btn-record, .btn-card { box-shadow:0 3px 0 var(--edge), 0 5px 8px rgba(0,0,0,.22); }
-  .btn-edit:active, .btn-del:active, .btn-clear:active, .btn-excel:active, .btn-record:active, .btn-card:active { top:2px; box-shadow:0 1px 0 var(--edge), 0 2px 3px rgba(0,0,0,.22); }
-  
-  textarea.field { width:100%; padding:10px; border:1px solid #ddd; border-radius:4px; box-sizing:border-box; font-size:.95rem; font-family:inherit; resize:vertical; }
-  td.rec { min-width:180px; }
-  .rec-text { white-space:pre-wrap; max-height:90px; overflow:auto; font-size:.8rem; }
-  .rec-at { color:#868e96; font-size:.72rem; }
-  .modal { position:fixed; inset:0; background:rgba(0,0,0,.45); display:none; align-items:center; justify-content:center; padding:15px; z-index:50; }
-  .modal.show { display:flex; }
-  .modal-box { background:#fff; border-radius:10px; padding:18px; width:100%; max-width:600px; box-shadow:0 10px 30px rgba(0,0,0,.3); max-height:92vh; overflow:auto; }
-  .modal-box h4 { margin:0 0 6px; font-size:1.1rem; }
-  
-  /* 고객 현황 이력 카드 스타일 */
-  .history-list { display: flex; flex-direction: column; gap: 10px; margin-top: 15px; }
-  .history-item { border: 1px solid #ddd; border-radius: 8px; padding: 12px; background: #fdfdfd; }
-  .history-item.latest { border: 2px solid var(--primary); background: #f0f4ff; }
-  .history-item .h-title { font-weight: bold; font-size: 0.95rem; margin-bottom: 6px; color: var(--primary); display:flex; justify-content:space-between;}
-  .history-item .h-detail { font-size: 0.85rem; color: #444; line-height: 1.5; }
-  .history-item .h-report { margin-top: 8px; padding-top: 8px; border-top: 1px dashed #ccc; color: #d97706; font-weight: bold; font-size: 0.85rem;}
-
-  .list-head { display:flex; justify-content:space-between; align-items:center; margin-top:30px; margin-bottom:10px; }
-  .list-head h3 { font-size:1.2rem; margin:0; }
-  .table-responsive { overflow-x:auto; }
-  table { width:100%; border-collapse:collapse; font-size:.82rem; min-width:1250px; }
-  th, td { border:1px solid #ddd; padding:9px 7px; text-align:left; vertical-align:middle; }
-  th { background:#f1f3f5; white-space:nowrap; }
-  td.act { white-space:nowrap; text-align:center; }
-  .empty { text-align:center; color:#999; padding:20px; }
-  tr.editing td { background:#fff3bf !important; }
-  select { width:100%; padding:10px; border:1px solid #ddd; border-radius:4px; box-sizing:border-box; font-size:.95rem; background:#fff; }
-  #empBox table { font-size:.85rem; }
-  .stage-sel { padding:6px 4px; font-size:.82rem; font-weight:bold; border:1px solid #adb5bd; border-radius:4px; min-width:104px; color:#222; }
-  .filter-sel { width:auto; padding:6px 8px; font-size:.85rem; }
-  .list-tools { display:flex; align-items:center; gap:8px; }
-
-  /* 안내장 디자인 */
-  .guide-preview-card { background:#fff; padding:24px; border:2px solid #1e3a8a; width:460px; box-sizing:border-box; font-family:'Malgun Gothic',sans-serif; margin:0 auto; }
-  .guide-preview-card h3 { text-align:center; font-size:1.3rem; margin:0 0 16px 0; color:#000; font-weight:bold; }
-  .guide-table { width:100%; border-collapse:collapse; border:2px solid #1e3a8a; table-layout:fixed; }
-  .guide-table th, .guide-table td { border:1px solid #1e3a8a; padding:10px 8px; font-size:0.88rem; text-align:center; word-break:break-word; }
-  .guide-table th { background:#1e3a8a; color:#fff; width:26%; font-weight:bold; }
-  .guide-table td { background:#fff; color:#000; text-align:left; }
-  .guide-footer { text-align:center; margin-top:14px; color:#dc2626; font-weight:bold; font-size:0.85rem; }
-  
-  #syncStatus { position:fixed; top:10px; right:10px; background:rgba(0,0,0,.7); color:#fff; padding:6px 12px; border-radius:20px; font-size:0.8rem; z-index:100; font-weight:bold; display:none; }
-  @media (max-width:560px) { .grid { grid-template-columns:1fr; } }
+:root{--primary:#2563eb;--bg-color:#f8f9fa;--card-bg:#fff;--text-main:#333;--text-sub:#666;--border:#ddd}
+body{font-family:'Malgun Gothic',sans-serif;background:var(--bg-color);margin:0;padding:15px;color:var(--text-main)}
+.container{max-width:1000px;margin:0 auto;background:var(--card-bg);padding:20px;border-radius:12px;box-shadow:0 4px 12px rgba(0,0,0,.08)}
+h2{text-align:center;font-size:1.4rem;margin-bottom:20px}
+.tab-menu{display:flex;background:#e9ecef;border-radius:10px;padding:4px;margin-bottom:20px}
+.tab-btn{flex:1;padding:10px;text-align:center;font-size:.95rem;font-weight:bold;border:none;background:transparent;border-radius:8px;cursor:pointer;color:var(--text-sub);transition:all .2s}
+.tab-btn.active{background:#fff;color:var(--primary);box-shadow:0 2px 4px rgba(0,0,0,.05)}
+.tab-content{display:none}.tab-content.active{display:block}
+.calendar-header{display:flex;justify-content:space-between;align-items:center;margin-bottom:15px;font-weight:bold;font-size:1.1rem}
+.calendar-header button{background:#fff;border:1px solid var(--border);border-radius:6px;padding:6px 14px;cursor:pointer;font-weight:bold}
+.calendar-grid{display:grid;grid-template-columns:repeat(7,1fr);gap:6px;text-align:center}
+.cal-day-name{font-size:.8rem;font-weight:bold;color:var(--text-sub);padding-bottom:8px}
+.cal-cell{min-height:85px;background:#fdfdfd;border:1px solid var(--border);border-radius:8px;padding:6px;font-size:.8rem;text-align:left;vertical-align:top;cursor:pointer;overflow:hidden}
+.cal-cell.other-month{background:#f1f3f5;opacity:.4}
+.cal-cell.today{border-color:var(--primary);background:#eff6ff}
+.cal-date-num{font-weight:bold;font-size:.85rem;margin-bottom:4px}
+.cal-badge{background:var(--primary);color:#fff;font-size:.7rem;padding:2px 5px;border-radius:4px;margin-bottom:2px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;display:block;cursor:pointer}
+.cal-badge:hover{filter:brightness(.9)}
+.upload-box{border:2px dashed #ccc;padding:16px;text-align:center;border-radius:6px;margin-bottom:20px;background:#fafafa}
+.upload-box img{max-width:100%;max-height:220px;margin-top:10px;border-radius:4px;display:none}
+.hint{font-size:.8rem;color:#666;margin:8px 0 0}
+#status{font-size:.85rem;margin-top:8px;font-weight:bold;color:#007bff;min-height:1.2em}
+details{margin-top:10px;text-align:left;font-size:.8rem}
+details textarea{width:100%;height:120px;box-sizing:border-box;margin-top:6px;font-size:.8rem}
+.grid{display:grid;grid-template-columns:1fr 1fr;gap:12px}
+.form-group{margin-bottom:12px}.full{grid-column:1/-1}
+label{display:block;font-weight:bold;margin-bottom:5px;font-size:.9rem}
+input[type="text"],input[type="datetime-local"]{width:100%;padding:10px;border:1px solid #ddd;border-radius:4px;box-sizing:border-box;font-size:.95rem}
+#formMode{font-size:.85rem;color:#e8590c;font-weight:bold;min-height:1.2em;margin-bottom:6px}
+.btn-row{display:flex;gap:8px;margin-top:8px}
+.btn{--edge:#8a8f98;border:none;padding:12px;border-radius:8px;font-size:1rem;cursor:pointer;font-weight:bold;position:relative;top:0;box-shadow:0 5px 0 var(--edge),0 8px 12px rgba(0,0,0,.25);text-shadow:0 1px 0 rgba(0,0,0,.25);transition:top .08s,box-shadow .08s,filter .15s}
+.btn:hover{filter:brightness(1.07)}
+.btn:active{top:4px;box-shadow:0 1px 0 var(--edge),0 2px 4px rgba(0,0,0,.25)}
+.btn-submit{background:linear-gradient(#4da3ff,#007bff 55%,#0066d6);--edge:#00479a;color:#fff;flex:3}
+.btn-reset{background:linear-gradient(#fff,#e3e7eb);--edge:#aab1b9;color:#333;text-shadow:0 1px 0 #fff;flex:1}
+.btn-edit{background:linear-gradient(#51cf66,#2f9e44);--edge:#1e6b2d;color:#fff;padding:5px 10px;font-size:.8rem;margin-bottom:6px}
+.btn-del{background:linear-gradient(#ff8787,#fa5252);--edge:#b02a2a;color:#fff;padding:5px 10px;font-size:.8rem}
+.btn-clear{background:linear-gradient(#adb5bd,#868e96);--edge:#495057;color:#fff;padding:6px 12px;font-size:.8rem}
+.btn-excel{background:linear-gradient(#38d9a9,#0ca678);--edge:#087f5b;color:#fff;padding:6px 12px;font-size:.8rem}
+.btn-record{background:linear-gradient(#ffa94d,#f76707);--edge:#a84300;color:#fff;padding:4px 9px;font-size:.78rem;margin-top:6px}
+.btn-card{background:linear-gradient(#845ef7,#7950f2);--edge:#5f3dc4;color:#fff;padding:4px 9px;font-size:.78rem;margin-top:4px}
+.btn-edit,.btn-del,.btn-clear,.btn-excel,.btn-record,.btn-card{box-shadow:0 3px 0 var(--edge),0 5px 8px rgba(0,0,0,.22)}
+.btn-edit:active,.btn-del:active,.btn-clear:active,.btn-excel:active,.btn-record:active,.btn-card:active{top:2px;box-shadow:0 1px 0 var(--edge),0 2px 3px rgba(0,0,0,.22)}
+textarea.field{width:100%;padding:10px;border:1px solid #ddd;border-radius:4px;box-sizing:border-box;font-size:.95rem;font-family:inherit;resize:vertical}
+td.rec{min-width:180px}
+.rec-text{white-space:pre-wrap;max-height:90px;overflow:auto;font-size:.8rem}
+.rec-at{color:#868e96;font-size:.72rem}
+.modal{position:fixed;inset:0;background:rgba(0,0,0,.45);display:none;align-items:center;justify-content:center;padding:15px;z-index:50}
+.modal.show{display:flex}
+.modal-box{background:#fff;border-radius:10px;padding:18px;width:100%;max-width:600px;box-shadow:0 10px 30px rgba(0,0,0,.3);max-height:92vh;overflow:auto;box-sizing:border-box}
+.modal-box h4{margin:0 0 6px;font-size:1.1rem}
+.history-list{display:flex;flex-direction:column;gap:10px;margin-top:15px}
+.history-item{border:1px solid #ddd;border-radius:8px;padding:12px;background:#fdfdfd}
+.history-item.latest{border:2px solid var(--primary);background:#f0f4ff}
+.history-item .h-title{font-weight:bold;font-size:.95rem;margin-bottom:6px;color:var(--primary);display:flex;justify-content:space-between}
+.history-item .h-detail{font-size:.85rem;color:#444;line-height:1.5}
+.history-item .h-report{margin-top:8px;padding-top:8px;border-top:1px dashed #ccc;color:#d97706;font-weight:bold;font-size:.85rem}
+.list-head{display:flex;justify-content:space-between;align-items:center;margin-top:30px;margin-bottom:10px}
+.list-head h3{font-size:1.2rem;margin:0}
+.table-responsive{overflow-x:auto}
+table{width:100%;border-collapse:collapse;font-size:.82rem;min-width:1250px}
+th,td{border:1px solid #ddd;padding:9px 7px;text-align:left;vertical-align:middle}
+th{background:#f1f3f5;white-space:nowrap}
+td.act{white-space:nowrap;text-align:center}
+.empty{text-align:center;color:#999;padding:20px}
+tr.editing td{background:#fff3bf!important}
+select{width:100%;padding:10px;border:1px solid #ddd;border-radius:4px;box-sizing:border-box;font-size:.95rem;background:#fff}
+#empBox table{font-size:.85rem}
+.stage-sel{padding:6px 4px;font-size:.82rem;font-weight:bold;border:1px solid #adb5bd;border-radius:4px;min-width:104px;color:#222}
+.filter-sel{width:auto;padding:6px 8px;font-size:.85rem}
+.list-tools{display:flex;align-items:center;gap:8px}
+/* 안내장 (수정: 표 min-width 해제, 카드 폭 가변) */
+.guide-preview-card{background:#fff;padding:24px;border:2px solid #1e3a8a;width:100%;max-width:460px;box-sizing:border-box;font-family:'Malgun Gothic',sans-serif;margin:0 auto}
+.guide-preview-card h3{text-align:center;font-size:1.3rem;margin:0 0 16px;color:#000;font-weight:bold}
+.guide-table{width:100%;min-width:0!important;border-collapse:collapse;border:2px solid #1e3a8a;table-layout:fixed}
+.guide-table th,.guide-table td{border:1px solid #1e3a8a;padding:10px 8px;font-size:.88rem;text-align:center;word-break:break-word}
+.guide-table th{background:#1e3a8a;color:#fff;width:26%;font-weight:bold;white-space:normal}
+.guide-table td{background:#fff;color:#000;text-align:left}
+.guide-footer{text-align:center;margin-top:14px;color:#dc2626;font-weight:bold;font-size:.85rem}
+#syncStatus{position:fixed;top:10px;right:10px;background:rgba(0,0,0,.7);color:#fff;padding:6px 12px;border-radius:20px;font-size:.8rem;z-index:100;font-weight:bold;display:none}
+@media (max-width:560px){.grid{grid-template-columns:1fr}.guide-preview-card{padding:14px}}
 </style>
 </head>
 <body>
 <div id="syncStatus">🔄 연동 중...</div>
 <div class="container">
   <h2>현장 방문 및 스케줄 관리</h2>
-
-  <!-- 상단 앱 스타일 탭 네비게이션 -->
   <div class="tab-menu">
     <button type="button" class="tab-btn active" onclick="switchTab('calendar')">📅 캘린더 보기</button>
     <button type="button" class="tab-btn" onclick="switchTab('manage')">📋 스케줄 입력 및 목록</button>
   </div>
 
-  <!-- 1. 캘린더 뷰 탭 -->
   <div id="tab-calendar" class="tab-content active">
     <div class="calendar-header">
       <button type="button" onclick="moveMonth(-1)">◀ 이전 달</button>
@@ -131,19 +104,12 @@
       <button type="button" onclick="moveMonth(1)">다음 달 ▶</button>
     </div>
     <div class="calendar-grid">
-      <div class="cal-day-name" style="color:#ef4444;">일</div>
-      <div class="cal-day-name">월</div>
-      <div class="cal-day-name">화</div>
-      <div class="cal-day-name">수</div>
-      <div class="cal-day-name">목</div>
-      <div class="cal-day-name">금</div>
-      <div class="cal-day-name" style="color:#3b82f6;">토</div>
+      <div class="cal-day-name" style="color:#ef4444;">일</div><div class="cal-day-name">월</div><div class="cal-day-name">화</div><div class="cal-day-name">수</div><div class="cal-day-name">목</div><div class="cal-day-name">금</div><div class="cal-day-name" style="color:#3b82f6;">토</div>
     </div>
     <div class="calendar-grid" id="calBody"></div>
-    <p class="hint" style="text-align:center; margin-top:12px;">💡 달력의 날짜 칸을 누르면 새 일정을 등록할 수 있고, <br><b>이름(스케줄 배지)을 누르면 해당 고객의 이력</b>을 볼 수 있습니다.</p>
+    <p class="hint" style="text-align:center;margin-top:12px;">💡 달력의 날짜 칸을 누르면 새 일정을 등록할 수 있고, <br><b>이름(스케줄 배지)을 누르면 해당 고객의 이력</b>을 볼 수 있습니다.</p>
   </div>
 
-  <!-- 2. 스케줄 입력 및 목록 탭 -->
   <div id="tab-manage" class="tab-content">
     <div class="upload-box">
       <input type="file" id="imageUpload" accept="image/*,.xlsx,.xlsm,.xls,.csv">
@@ -162,7 +128,6 @@
       </details>
     </div>
 
-    <!-- 입력 폼 -->
     <form id="scheduleForm">
       <div id="formMode"></div>
       <div class="grid">
@@ -188,7 +153,6 @@
       <div id="draftStatus" class="hint" style="text-align:right;min-height:1.2em;"></div>
     </form>
 
-    <!-- 직원 관리 -->
     <details id="empBox" style="margin-top:24px;border:1px solid #dee2e6;border-radius:6px;padding:10px 14px;background:#fcfcfd;">
       <summary style="cursor:pointer;font-weight:bold;">👥 직원 관리 <span id="empCount" style="font-weight:normal;color:#666;font-size:.85rem;"></span></summary>
       <form id="empForm" style="margin-top:12px;">
@@ -219,24 +183,21 @@
     </div>
     <div class="table-responsive">
       <table>
-        <thead>
-          <tr>
-            <th>진행 상태</th><th>고객명</th><th>연락처</th><th>방문 일시</th><th>요청 사항</th>
-            <th>처리 비용</th><th>담당 기사</th><th>기사 연락처</th><th>방문 주소</th><th>방문 후 기록</th><th>관리</th>
-          </tr>
-        </thead>
+        <thead><tr>
+          <th>진행 상태</th><th>고객명</th><th>연락처</th><th>방문 일시</th><th>요청 사항</th>
+          <th>처리 비용</th><th>담당 기사</th><th>기사 연락처</th><th>방문 주소</th><th>방문 후 기록</th><th>관리</th>
+        </tr></thead>
         <tbody id="scheduleTableBody"></tbody>
       </table>
     </div>
   </div>
 </div>
 
-<!-- 💡 새로운 기능: 고객 전체 현황 팝업 (모달) -->
 <div id="customerHistoryModal" class="modal">
   <div class="modal-box">
-    <div style="display:flex; justify-content:space-between; align-items:center; margin-bottom:15px;">
-      <h4 id="historyTitle" style="margin:0; color:var(--primary); font-size:1.2rem;">고객 현황</h4>
-      <button type="button" onclick="closeHistoryModal()" style="background:none; border:none; font-size:1.2rem; cursor:pointer;">✖</button>
+    <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:15px;">
+      <h4 id="historyTitle" style="margin:0;color:var(--primary);font-size:1.2rem;">고객 현황</h4>
+      <button type="button" onclick="closeHistoryModal()" style="background:none;border:none;font-size:1.2rem;cursor:pointer;">✖</button>
     </div>
     <div id="historyListContainer" class="history-list"></div>
     <div class="btn-row" style="margin-top:20px;">
@@ -246,7 +207,6 @@
   </div>
 </div>
 
-<!-- 방문 후 기록 모달 -->
 <div id="reportModal" class="modal">
   <div class="modal-box">
     <h4 id="reportTitle"></h4>
@@ -262,24 +222,14 @@
   </div>
 </div>
 
-<!-- 안내장 이미지 생성 모달 -->
 <div id="cardModal" class="modal">
-  <div class="modal-box" style="text-align:center; max-width:520px;">
-    <h4 style="margin-bottom:12px;">🖼️ 방문 및 실측 안내장</h4>
-    <div style="background:#e5e7eb; padding:15px; border-radius:8px; margin-bottom:15px; display:flex; justify-content:center;">
+  <div class="modal-box" style="text-align:center;max-width:520px;">
+    <h4 id="cardModalTitle" style="margin-bottom:12px;">🖼️ 안내장</h4>
+    <div style="background:#e5e7eb;padding:15px;border-radius:8px;margin-bottom:15px;">
       <div id="captureArea" class="guide-preview-card">
-        <h3>■ 방문 및 실측 안내</h3>
-        <table class="guide-table">
-          <tr><th>고객명</th><td id="cardCustomer"></td></tr>
-          <tr><th>연락처</th><td id="cardPhone"></td></tr>
-          <tr><th>방문일시</th><td id="cardVisit"></td></tr>
-          <tr><th>방문주소</th><td id="cardNote"></td></tr>
-          <tr><th>요청사항</th><td id="cardRequest"></td></tr>
-          <tr><th>처리비용</th><td id="cardCost"></td></tr>
-          <tr><th>담당기사</th><td id="cardEngineer"></td></tr>
-          <tr><th>비고</th><td id="cardEngPhone"></td></tr>
-        </table>
-        <div class="guide-footer">※ 방문 당일 문자나 연락드리고 방문 하겠습니다.</div>
+        <h3 id="cardTitle">■ 방문 및 실측 안내</h3>
+        <table class="guide-table"><tbody id="cardRows"></tbody></table>
+        <div class="guide-footer" id="cardFooter"></div>
       </div>
     </div>
     <div class="btn-row">
@@ -289,7 +239,6 @@
   </div>
 </div>
 
-<!-- 외부 라이브러리 -->
 <script src="https://cdn.jsdelivr.net/npm/tesseract.js@5.1.1/dist/tesseract.min.js"></script>
 <script src="https://cdn.jsdelivr.net/npm/xlsx@0.18.5/dist/xlsx.full.min.js"></script>
 <script src="https://cdn.jsdelivr.net/npm/html2canvas@1.4.1/dist/html2canvas.min.js"></script>
@@ -297,10 +246,9 @@
 const $ = id => document.getElementById(id);
 const STORE_KEY = 'siteSchedules_v3';
 const FIELD_IDS = { status:'stage', customer:'customer', phone:'phone', visit:'visitDate', request:'request', cost:'cost', engineer:'engineer', engPhone:'engPhone', note:'note', report:'report' };
-
-const STAGES = ['문의접수', '견적', '방문 및 실측', '계약', '시공 중', '처리완료', '보류/취소'];
-const STAGE_COLORS = { '문의접수':'#e9ecef', '견적':'#fff3bf', '방문 및 실측':'#d0ebff', '계약':'#d3f9d8', '시공 중':'#ffe8cc', '처리완료':'#b2f2bb', '보류/취소':'#ffc9c9' };
-const STAGE_ACCENT = { '문의접수':'#868e96', '견적':'#fab005', '방문 및 실측':'#339af0', '계약':'#40c057', '시공 중':'#fd7e14', '처리완료':'#2f9e44', '보류/취소':'#fa5252' };
+const STAGES = ['문의접수','견적','방문 및 실측','계약','시공 중','처리완료','보류/취소'];
+const STAGE_COLORS = { '문의접수':'#e9ecef','견적':'#fff3bf','방문 및 실측':'#d0ebff','계약':'#d3f9d8','시공 중':'#ffe8cc','처리완료':'#b2f2bb','보류/취소':'#ffc9c9' };
+const STAGE_ACCENT = { '문의접수':'#868e96','견적':'#fab005','방문 및 실측':'#339af0','계약':'#40c057','시공 중':'#fd7e14','처리완료':'#2f9e44','보류/취소':'#fa5252' };
 
 function fillStageOptions(sel, val, allowEmpty) {
   sel.innerHTML = '';
@@ -324,35 +272,26 @@ try { schedules = JSON.parse(localStorage.getItem(STORE_KEY) || '[]'); } catch (
 let isSyncing = false;
 function showSync(msg) {
   const el = $('syncStatus');
-  el.textContent = msg;
-  el.style.display = 'block';
+  el.textContent = msg; el.style.display = 'block';
   setTimeout(() => { el.style.display = 'none'; }, 2000);
 }
 
-// 데이터 저장 및 구글 시트 연동
 async function save() {
   try { localStorage.setItem(STORE_KEY, JSON.stringify(schedules)); } catch (e) {}
   renderCalendar();
   render();
-  
   if (SCRIPT_URL && !isSyncing) {
     showSync("🔄 구글 시트와 연동 중...");
     isSyncing = true;
     try {
-      await fetch(SCRIPT_URL, {
-        method: 'POST',
-        body: JSON.stringify(schedules)
-      });
+      await fetch(SCRIPT_URL, { method:'POST', body: JSON.stringify(schedules) });
       showSync("✅ 연동 완료");
     } catch (err) {
       showSync("⚠️ 연동 실패 (오프라인 모드로 임시저장됨)");
-    } finally {
-      isSyncing = false;
-    }
+    } finally { isSyncing = false; }
   }
 }
 
-// 화면을 켤 때 최신 데이터 불러오기
 window.onload = async () => {
   if (SCRIPT_URL) {
     showSync("🔄 데이터 불러오는 중...");
@@ -361,14 +300,11 @@ window.onload = async () => {
       const data = await res.json();
       if (data && data.length > 0) {
         schedules = data;
-        localStorage.setItem(STORE_KEY, JSON.stringify(schedules)); 
-        renderCalendar();
-        render();
+        localStorage.setItem(STORE_KEY, JSON.stringify(schedules));
+        renderCalendar(); render();
         showSync("✅ 최신 상태입니다");
       }
-    } catch (err) {
-      showSync("⚠️ 인터넷 연결 불안정");
-    }
+    } catch (err) { showSync("⚠️ 인터넷 연결 불안정"); }
   }
 };
 
@@ -376,7 +312,6 @@ let editingId = null;
 let currentYear = new Date().getFullYear();
 let currentMonth = new Date().getMonth();
 
-/* 탭 전환 함수 */
 function switchTab(tabId) {
   document.querySelectorAll('.tab-content').forEach(el => el.classList.remove('active'));
   document.querySelectorAll('.tab-btn').forEach(el => el.classList.remove('active'));
@@ -385,30 +320,20 @@ function switchTab(tabId) {
   if (tabId === 'calendar') renderCalendar();
 }
 
-/* 💡 [핵심] 캘린더 기능 구현 및 고객 현황 모달 호출 연결 */
 function renderCalendar() {
   $('calTitle').textContent = `${currentYear}년 ${currentMonth + 1}월`;
   const calBody = $('calBody');
   calBody.innerHTML = '';
-  
   const firstDay = new Date(currentYear, currentMonth, 1).getDay();
   const lastDate = new Date(currentYear, currentMonth + 1, 0).getDate();
   const prevLastDate = new Date(currentYear, currentMonth, 0).getDate();
-  
   let html = '';
-  for (let i = firstDay - 1; i >= 0; i--) {
-    html += `<div class="cal-cell other-month"><div class="cal-date-num">${prevLastDate - i}</div></div>`;
-  }
+  for (let i = firstDay - 1; i >= 0; i--) html += `<div class="cal-cell other-month"><div class="cal-date-num">${prevLastDate - i}</div></div>`;
   for (let d = 1; d <= lastDate; d++) {
-    const dateStr = `${currentYear}-${String(currentMonth + 1).padStart(2, '0')}-${String(d).padStart(2, '0')}`;
+    const dateStr = `${currentYear}-${String(currentMonth + 1).padStart(2,'0')}-${String(d).padStart(2,'0')}`;
     const daySchedules = schedules.filter(s => s.visit && s.visit.startsWith(dateStr));
     const isToday = new Date().toISOString().slice(0, 10) === dateStr ? 'today' : '';
-    
-    // 날짜 영역 빈 곳을 클릭하면 새 일정 등록으로 이동
-    html += `<div class="cal-cell ${isToday}" onclick="selectDateForVisit(event, '${dateStr}')">
-      <div class="cal-date-num">${d}</div>`;
-      
-    // 이름 배지를 클릭하면 고객 이력(현황) 모달 띄우기
+    html += `<div class="cal-cell ${isToday}" onclick="selectDateForVisit(event, '${dateStr}')"><div class="cal-date-num">${d}</div>`;
     daySchedules.forEach(s => {
       const bg = STAGE_COLORS[s.status] || '#f1f3f5';
       const ac = STAGE_ACCENT[s.status] || '#adb5bd';
@@ -429,68 +354,47 @@ function moveMonth(dir) {
 }
 
 function selectDateForVisit(event, dateStr) {
-  // 배지를 클릭했을 때는 입력창으로 넘어가지 않도록 이벤트 전파 막기
-  if(event.target.classList.contains('cal-badge')) return; 
-  
+  if (event.target.classList.contains('cal-badge')) return;
   $('visitDate').value = dateStr + 'T09:00';
   document.querySelectorAll('.tab-btn')[1].click();
   $('visitDate').focus();
 }
 
-/* 💡 [새 기능] 고객 현황 전체 이력 보기 모달 함수 */
 function openCustomerHistoryModal(event, customerName, phone) {
-  event.stopPropagation(); // 캘린더 빈칸 클릭 이벤트 무시
-  
+  event.stopPropagation();
   $('historyTitle').textContent = `${customerName} 고객 현황 이력`;
-  
-  // 이름과 전화번호가 일치하는 과거 모든 스케줄을 가져와 날짜순으로 정렬
   const customerHistory = schedules.filter(s => s.customer === customerName && s.phone === phone)
-                                   .sort((a, b) => (a.visit || '9999').localeCompare(b.visit || '9999'));
-  
+    .sort((a, b) => (a.visit || '9999').localeCompare(b.visit || '9999'));
   const listContainer = $('historyListContainer');
   listContainer.innerHTML = '';
-  
   if (customerHistory.length === 0) {
     listContainer.innerHTML = '<div style="text-align:center; color:#999; padding:20px;">기록이 없습니다.</div>';
   } else {
     customerHistory.forEach((item, index) => {
-      const isLatest = index === customerHistory.length - 1; // 가장 최근(마지막) 스케줄 강조
+      const isLatest = index === customerHistory.length - 1;
       const badgeStyle = `padding:2px 6px; border-radius:4px; font-size:0.75rem; background:${STAGE_COLORS[item.status] || '#eee'}; color:#222; border:1px solid #ddd;`;
-      
       const card = document.createElement('div');
       card.className = `history-item ${isLatest ? 'latest' : ''}`;
-      
       card.innerHTML = `
-        <div class="h-title">
-          <span>${fmtDate(item.visit)}</span>
-          <span style="${badgeStyle}">${item.status}</span>
-        </div>
+        <div class="h-title"><span>${fmtDate(item.visit)}</span><span style="${badgeStyle}">${item.status}</span></div>
         <div class="h-detail">
           <div><b>요청사항:</b> ${item.request || '-'}</div>
           <div><b>비용/주소:</b> ${item.cost || '-'} / ${item.note || '-'}</div>
           <div><b>담당기사:</b> ${item.engineer || '미배정'} ${item.engPhone ? '(' + item.engPhone + ')' : ''}</div>
         </div>
-        ${item.report ? `<div class="h-report">✔️ 방문 후 기록: ${item.report}</div>` : ''}
-      `;
+        ${item.report ? `<div class="h-report">✔️ 방문 후 기록: ${item.report}</div>` : ''}`;
       listContainer.appendChild(card);
     });
   }
-  
-  // 모달 안의 [새 일정 추가] 버튼 세팅
   $('addScheduleFromHistoryBtn').onclick = () => {
-    closeHistoryModal();
-    clearForm();
+    closeHistoryModal(); clearForm();
     $('customer').value = customerName;
     $('phone').value = phone || '';
-    document.querySelectorAll('.tab-btn')[1].click(); // 스케줄 입력 탭으로 이동
+    document.querySelectorAll('.tab-btn')[1].click();
   };
-
   $('customerHistoryModal').classList.add('show');
 }
-function closeHistoryModal() {
-  $('customerHistoryModal').classList.remove('show');
-}
-
+function closeHistoryModal() { $('customerHistoryModal').classList.remove('show'); }
 
 /* 직원 관리 */
 const EMP_KEY = 'siteEmployees_v1';
@@ -575,20 +479,14 @@ $('empForm').addEventListener('submit', ev => {
 });
 $('empCancel').onclick = () => { resetEmpForm(); renderEmp(); };
 
-function getForm() {
-  const o = {};
-  for (const k in FIELD_IDS) o[k] = $(FIELD_IDS[k]).value.trim();
-  return o;
-}
+function getForm() { const o = {}; for (const k in FIELD_IDS) o[k] = $(FIELD_IDS[k]).value.trim(); return o; }
 function setForm(o) {
   for (const k in FIELD_IDS) if (k !== 'status') $(FIELD_IDS[k]).value = o[k] || '';
   fillStageOptions($('stage'), o.status || STAGES[0], false);
   syncEngSelect();
 }
 function clearForm() {
-  setForm({});
-  clearDraft();
-  editingId = null;
+  setForm({}); clearDraft(); editingId = null;
   $('formMode').textContent = '';
   $('submitBtn').textContent = '스케줄 추가';
   $('resetForm').textContent = '입력 지우기';
@@ -612,11 +510,8 @@ function fmtCardDate(v) {
   if (!v) return '';
   const dt = new Date(v);
   if (isNaN(dt)) return v.replace('T', ' ');
-  const y = dt.getFullYear();
-  const m = dt.getMonth() + 1;
-  const d = dt.getDate();
-  let h = dt.getHours();
-  const mi = dt.getMinutes();
+  const y = dt.getFullYear(), m = dt.getMonth() + 1, d = dt.getDate();
+  let h = dt.getHours(); const mi = dt.getMinutes();
   const ampm = h >= 12 ? '오후' : '오전';
   if (h > 12) h -= 12;
   if (h === 0) h = 12;
@@ -639,59 +534,37 @@ function render() {
     renderCalendar();
     return;
   }
-  
   [...rows].sort((a, b) => (a.visit || '9999').localeCompare(b.visit || '9999')).forEach(item => {
     const tr = document.createElement('tr');
-    
-    if (item.id === editingId) {
-      tr.className = 'editing';
-    } else {
-      tr.style.background = STAGE_COLORS[item.status] || '';
-    }
+    if (item.id === editingId) tr.className = 'editing';
+    else tr.style.background = STAGE_COLORS[item.status] || '';
     if (/취소/.test(item.status || '')) tr.classList.add('stage-cancel');
-    
+
     const stTd = document.createElement('td');
     const ss = document.createElement('select');
     ss.className = 'stage-sel';
     fillStageOptions(ss, item.status, true);
-    ss.onchange = () => { 
-      item.status = ss.value; 
-      save(); 
-    };
-    stTd.appendChild(ss); 
-
-    if (item.status === '방문 및 실측') {
+    ss.onchange = () => { item.status = ss.value; save(); };
+    stTd.appendChild(ss);
+    if (STAGE_GUIDE[item.status]) {
       const cb = document.createElement('button');
-      cb.type = 'button'; 
-      cb.className = 'btn btn-card'; 
-      cb.textContent = '🖼️ 안내장';
+      cb.type = 'button'; cb.className = 'btn btn-card'; cb.textContent = '🖼️ 안내장';
       cb.onclick = () => openCardModal(item.id);
       stTd.appendChild(document.createElement('br'));
       stTd.appendChild(cb);
     }
     tr.appendChild(stTd);
 
-    ['customer', 'phone'].forEach(k => {
-      const td = document.createElement('td');
-      td.textContent = item[k] || '';
-      tr.appendChild(td);
-    });
+    ['customer', 'phone'].forEach(k => { const td = document.createElement('td'); td.textContent = item[k] || ''; tr.appendChild(td); });
 
     const visitTd = document.createElement('td');
     const visitInput = document.createElement('input');
-    visitInput.type = 'datetime-local';
-    visitInput.className = 'stage-sel';
-    visitInput.style.width = '160px';
+    visitInput.type = 'datetime-local'; visitInput.className = 'stage-sel'; visitInput.style.width = '160px';
     visitInput.value = item.visit || '';
     visitInput.onchange = () => { item.visit = visitInput.value; save(); };
-    visitTd.appendChild(visitInput);
-    tr.appendChild(visitTd);
+    visitTd.appendChild(visitInput); tr.appendChild(visitTd);
 
-    ['request', 'cost', 'engineer', 'engPhone', 'note'].forEach(k => {
-      const td = document.createElement('td');
-      td.textContent = item[k] || '';
-      tr.appendChild(td);
-    });
+    ['request', 'cost', 'engineer', 'engPhone', 'note'].forEach(k => { const td = document.createElement('td'); td.textContent = item[k] || ''; tr.appendChild(td); });
 
     const rc = document.createElement('td'); rc.className = 'rec';
     if (item.report) {
@@ -704,7 +577,6 @@ function render() {
     rc.appendChild(rb); tr.appendChild(rc);
 
     const td = document.createElement('td'); td.className = 'act';
-
     const eb = document.createElement('button');
     eb.type = 'button'; eb.className = 'btn btn-edit'; eb.textContent = '수정';
     eb.onclick = () => {
@@ -715,53 +587,64 @@ function render() {
       render();
       $('scheduleForm').scrollIntoView({ behavior: 'smooth', block: 'start' });
     };
-    
     const db = document.createElement('button');
-    db.type = 'button'; db.className = 'btn btn-del'; db.textContent = '삭제';
-    db.style.marginLeft = '4px';
+    db.type = 'button'; db.className = 'btn btn-del'; db.textContent = '삭제'; db.style.marginLeft = '4px';
     db.onclick = () => {
       if (!confirm(`'${item.customer}' 스케줄을 삭제할까요?`)) return;
       schedules = schedules.filter(s => s.id !== item.id);
       if (editingId === item.id) clearForm();
-      save(); 
+      save();
     };
-
-    td.appendChild(eb);
-    td.appendChild(document.createElement('br'));
-    td.appendChild(db);
+    td.appendChild(eb); td.appendChild(document.createElement('br')); td.appendChild(db);
     tr.appendChild(td); body.appendChild(tr);
   });
   renderCalendar();
 }
 
+/* ===== 진행 상태별 안내장 ===== */
+const G = {
+  name: i => i.customer || '', phone: i => i.phone || '', visit: i => fmtCardDate(i.visit),
+  addr: i => i.note || '', req: i => i.request || '', cost: i => i.cost || '',
+  eng: i => i.engineer ? i.engineer + ' 엔지니어' : '', engTel: i => i.engPhone ? `[ ${i.engPhone} ]` : ''
+};
+const STAGE_GUIDE = {
+  '문의접수': { title:'■ 문의 접수 안내', rows:[['고객명',G.name],['연락처',G.phone],['요청사항',G.req],['지역/주소',G.addr]], footer:'※ 접수 확인 후 담당자가 연락드리겠습니다.' },
+  '견적': { title:'■ 견적 안내', rows:[['고객명',G.name],['연락처',G.phone],['방문주소',G.addr],['요청사항',G.req],['견적금액',G.cost],['담당기사',G.eng],['비고',G.engTel]], footer:'※ 견적은 현장 상황에 따라 달라질 수 있습니다.' },
+  '방문 및 실측': { title:'■ 방문 및 실측 안내', rows:[['고객명',G.name],['연락처',G.phone],['방문일시',G.visit],['방문주소',G.addr],['요청사항',G.req],['처리비용',G.cost],['담당기사',G.eng],['비고',G.engTel]], footer:'※ 방문 당일 문자나 연락드리고 방문 하겠습니다.' },
+  '계약': { title:'■ 계약 안내', rows:[['고객명',G.name],['연락처',G.phone],['시공주소',G.addr],['계약내용',G.req],['계약금액',G.cost],['담당기사',G.eng],['비고',G.engTel]], footer:'※ 시공 일정은 별도로 안내드리겠습니다.' },
+  '시공 중': { title:'■ 시공 안내', rows:[['고객명',G.name],['연락처',G.phone],['시공일시',G.visit],['시공주소',G.addr],['시공내용',G.req],['담당기사',G.eng],['비고',G.engTel]], footer:'※ 시공 중 불편을 드려 죄송합니다. 안전하게 마무리하겠습니다.' },
+  '처리완료': { title:'■ 처리 완료 안내', rows:[['고객명',G.name],['연락처',G.phone],['처리일시',G.visit],['처리주소',G.addr],['처리내용',G.req],['처리비용',G.cost],['담당기사',G.eng],['비고',G.engTel]], footer:'※ 이용해 주셔서 감사합니다. 하자 문의는 언제든 연락 주세요.' }
+};
+let cardFile = '';
 function openCardModal(id) {
   const item = schedules.find(s => s.id === id);
   if (!item) return;
-  $('cardCustomer').textContent = item.customer || '';
-  $('cardPhone').textContent = item.phone || '';
-  $('cardVisit').textContent = fmtCardDate(item.visit);
-  $('cardNote').textContent = item.note || ''; 
-  $('cardRequest').textContent = item.request || '';
-  $('cardCost').textContent = item.cost || '';
-  $('cardEngineer').textContent = (item.engineer ? item.engineer + ' 엔지니어' : '');
-  $('cardEngPhone').textContent = item.engPhone ? `[ ${item.engPhone} ]` : '';
+  const g = STAGE_GUIDE[item.status];
+  if (!g) return;
+  $('cardTitle').textContent = g.title;
+  $('cardModalTitle').textContent = '🖼️ ' + g.title.replace('■ ', '') + '장';
+  const tb = $('cardRows'); tb.innerHTML = '';
+  g.rows.forEach(([label, fn]) => {
+    const tr = document.createElement('tr'), th = document.createElement('th'), td = document.createElement('td');
+    th.textContent = label; td.textContent = fn(item);
+    tr.appendChild(th); tr.appendChild(td); tb.appendChild(tr);
+  });
+  $('cardFooter').textContent = g.footer;
+  cardFile = `${item.status}_${item.customer || '고객'}`;
   $('cardModal').classList.add('show');
 }
-function closeCardModal() {
-  $('cardModal').classList.remove('show');
-}
+function closeCardModal() { $('cardModal').classList.remove('show'); }
 
 $('downloadCardBtn').onclick = () => {
-  const target = $('captureArea');
-  html2canvas(target, { scale: 3, backgroundColor: '#ffffff', useCORS: true }).then(canvas => {
+  html2canvas($('captureArea'), { scale: 3, backgroundColor: '#ffffff', useCORS: true }).then(canvas => {
     const link = document.createElement('a');
-    link.download = `방문실측안내장_${$('cardCustomer').textContent || '고객'}.png`;
+    link.download = `안내장_${cardFile || '고객'}.png`;
     link.href = canvas.toDataURL('image/png', 1.0);
     link.click();
   });
 };
 
-/* ===== 임시저장 (입력 중 자동 저장) ===== */
+/* ===== 임시저장 ===== */
 const DRAFT_KEY = 'siteDraft_v1';
 let draftTimer = null;
 function saveDraft() {
@@ -805,7 +688,6 @@ $('draftBtn').onclick = () => {
 window.addEventListener('beforeunload', saveDraft);
 document.addEventListener('visibilitychange', () => { if (document.hidden) saveDraft(); });
 
-
 $('scheduleForm').addEventListener('submit', e => {
   e.preventDefault();
   const data = getForm();
@@ -816,27 +698,49 @@ $('scheduleForm').addEventListener('submit', e => {
     if (dup && !confirm('똑같은 내용이 이미 등록되어 있습니다. 그래도 추가할까요?')) return;
     schedules.push({ ...data, id: Date.now() + Math.random().toString(36).slice(2, 6) });
   }
-  save();
-  clearForm();
+  save(); clearForm();
 });
 $('resetForm').onclick = clearForm;
 $('clearAll').onclick = () => {
   if (schedules.length && confirm('등록된 스케줄을 모두 삭제할까요?')) { schedules = []; save(); clearForm(); }
 };
 
-/* OCR 처리 */
-$('imageUpload').addEventListener('change', async e => {
-  const file = e.target.files && e.target.files[0];
-  if (!file) return;
+/* ===== OCR 처리 (수정: handleFile / isExcelFile 추가) ===== */
+function isExcelFile(f) {
+  return /\.(xlsx|xlsm|xls|csv)$/i.test(f.name || '') || /spreadsheet|ms-excel|csv/.test(f.type || '');
+}
+// 작은 캡처 이미지는 확대 + 흑백 처리해서 인식률을 높임
+function prepImage(file) {
+  return new Promise(resolve => {
+    const img = new Image();
+    img.onload = () => {
+      const scale = Math.min(4, Math.max(1, 1600 / img.width));
+      const c = document.createElement('canvas');
+      c.width = Math.round(img.width * scale);
+      c.height = Math.round(img.height * scale);
+      const ctx = c.getContext('2d');
+      ctx.fillStyle = '#fff';
+      ctx.fillRect(0, 0, c.width, c.height);
+      ctx.filter = 'grayscale(1) contrast(1.2)';
+      ctx.drawImage(img, 0, 0, c.width, c.height);
+      resolve(c);
+    };
+    img.onerror = () => resolve(file);
+    img.src = URL.createObjectURL(file);
+  });
+}
+async function runOCR(file) {
   const prev = $('preview');
-  prev.src = URL.createObjectURL(file); prev.style.display = 'inline-block';
+  prev.src = URL.createObjectURL(file);
+  prev.style.display = 'inline-block';
   if (typeof Tesseract === 'undefined') {
     $('status').textContent = '글자 인식 라이브러리를 불러오지 못했습니다. 인터넷 연결을 확인해 주세요.';
     return;
   }
   try {
     $('status').textContent = '글자 읽는 중... 0%';
-    const result = await Tesseract.recognize(file, 'kor+eng', {
+    const src = await prepImage(file);
+    const result = await Tesseract.recognize(src, 'kor+eng', {
       logger: m => {
         if (m.status === 'recognizing text') $('status').textContent = `글자 읽는 중... ${Math.round(m.progress * 100)}%`;
         else $('status').textContent = '인식 준비 중... (처음 한 번만 오래 걸립니다)';
@@ -848,8 +752,29 @@ $('imageUpload').addEventListener('change', async e => {
     console.error(err);
     $('status').textContent = '이미지를 읽는 중 오류가 발생했습니다. 직접 입력해 주세요.';
   }
+}
+function handleFile(file) {
+  if (!file) return;
+  if (isExcelFile(file)) handleExcel(file);
+  else runOCR(file);
+}
+$('imageUpload').addEventListener('change', e => {
+  handleFile(e.target.files && e.target.files[0]);
+  e.target.value = '';
 });
 $('reparse').onclick = () => applyParsed(parseText($('rawText').value));
+$('manualBtn').onclick = () => {
+  clearForm();
+  $('status').textContent = '직접 입력해 주세요.';
+  $('customer').focus();
+};
+$('imgDelBtn').onclick = () => {
+  $('preview').style.display = 'none';
+  $('preview').removeAttribute('src');
+  $('rawText').value = '';
+  $('status').textContent = '';
+  $('imageUpload').value = '';
+};
 
 const compact = s => s.replace(/\s+/g, '');
 const PHONE = '01[016789][-\\s.]?\\d{3,4}[-\\s.]?\\d{4}';
@@ -917,8 +842,7 @@ function parseText(raw) {
       if (isQuestion(l)) pairs.push({ q: compact(l), a: '' });
       else if (pairs.length) { const p = pairs[pairs.length - 1]; p.a = (p.a ? p.a + ' ' : '') + l.replace(/\s+/g, ' '); }
     }
-    const f = {};
-    const extra = [];
+    const f = {}; const extra = [];
     pairs.forEach(p => {
       if (!p.a) return;
       if (/서비스를/.test(p.q)) f.service = p.a;
@@ -953,20 +877,11 @@ function parseText(raw) {
   return out;
 }
 
-/* 엑셀 파일 복붙 지원 */
 /* ===== 엑셀 읽기 도우미 ===== */
 const HEADER_RULES = [
-  ['skip', /기록일시|기록시각/],
-  ['engPhone', /기사.*(연락|전화|번호)/],
-  ['engineer', /담당|기사|엔지니어/],
-  ['phone', /연락처|전화|휴대/],
-  ['visit', /일시|일자|날짜|방문일/],
-  ['note', /주소/],
-  ['report', /기록/],
-  ['request', /요청|내용|작업/],
-  ['cost', /비용|금액/],
-  ['status', /상태/],
-  ['customer', /고객|성함|이름/]
+  ['skip', /기록일시|기록시각/], ['engPhone', /기사.*(연락|전화|번호)/], ['engineer', /담당|기사|엔지니어/],
+  ['phone', /연락처|전화|휴대/], ['visit', /일시|일자|날짜|방문일/], ['note', /주소/], ['report', /기록/],
+  ['request', /요청|내용|작업/], ['cost', /비용|금액/], ['status', /상태/], ['customer', /고객|성함|이름/]
 ];
 function headerKey(c) {
   if (typeof c !== 'string') return null;
@@ -1010,9 +925,7 @@ function cellVal(k, v) {
   if (k === 'cost' && typeof v === 'number') return v.toLocaleString('ko-KR');
   return cellStr(v);
 }
-function tsvRows(text) {
-  return text.replace(/\r/g, '').split('\n').filter(l => l.trim()).map(l => l.split('\t'));
-}
+function tsvRows(text) { return text.replace(/\r/g, '').split('\n').filter(l => l.trim()).map(l => l.split('\t')); }
 
 function processRows(rows) {
   rows = rows.filter(r => r && r.some(c => cellStr(c)));
@@ -1067,14 +980,17 @@ async function handleExcel(file) {
     $('status').textContent = '엑셀 파일을 읽는 중 오류가 발생했습니다.';
   }
 }
+
+/* 붙여넣기 (수정: 이미지 우선 처리) */
 document.addEventListener('paste', e => {
   if (!$('tab-manage').classList.contains('active')) return;
   const cd = e.clipboardData; if (!cd) return;
   const t = e.target;
   const inField = t && (/^(INPUT|TEXTAREA|SELECT)$/.test(t.tagName) || t.isContentEditable);
   const text = cd.getData('text/plain') || '';
-  if (!inField && /\t/.test(text)) { e.preventDefault(); processRows(tsvRows(text)); return; }
   const files = [...(cd.files || [])].filter(f => /^image\//.test(f.type) || isExcelFile(f));
+  if (!inField && files.length) { e.preventDefault(); handleFile(files[0]); return; }
+  if (!inField && /\t/.test(text)) { e.preventDefault(); processRows(tsvRows(text)); return; }
   if (!inField && text.trim().length >= 5) {
     e.preventDefault();
     const t2 = text.trim().replace(/^"([\s\S]*)"$/, '$1').replace(/""/g, '"');
@@ -1105,7 +1021,6 @@ $('pasteBtn').onclick = async () => {
     $('status').textContent = '붙여넣기 권한이 없습니다. 이 화면을 한 번 클릭한 뒤 Ctrl+V를 눌러 주세요.';
   }
 };
-
 
 function applyParsed(p) {
   setForm(p);
@@ -1156,17 +1071,17 @@ function downloadBlob(blob, name) {
 }
 function exportExcel() {
   if (!schedules.length) { alert('저장할 스케줄이 없습니다.'); return; }
-  const head = ['진행 상태', '고객명', '연락처', '방문 일시', '요청 사항', '처리 비용', '담당 기사', '기사 연락처', '방문 주소', '방문 후 기록', '기록 일시'];
+  const head = ['진행 상태','고객명','연락처','방문 일시','요청 사항','처리 비용','담당 기사','기사 연락처','방문 주소','방문 후 기록','기록 일시'];
   const rows = [...schedules].sort((a, b) => (a.visit || '9999').localeCompare(b.visit || '9999'))
     .map(s => [s.status, s.customer, s.phone, fmtDate(s.visit), s.request, s.cost, s.engineer, s.engPhone, s.note, s.report, s.reportAt].map(v => v || ''));
   const name = '현장스케줄_' + nowStr().slice(0, 10);
   if (typeof XLSX !== 'undefined') {
     const wb = XLSX.utils.book_new();
     const ws = XLSX.utils.aoa_to_sheet([head, ...rows]);
-    ws['!cols'] = [12, 10, 15, 17, 36, 22, 10, 15, 36, 50, 17].map(w => ({ wch: w }));
+    ws['!cols'] = [12,10,15,17,36,22,10,15,36,50,17].map(w => ({ wch: w }));
     XLSX.utils.book_append_sheet(wb, ws, '스케줄');
     if (employees.length) {
-      const we = XLSX.utils.aoa_to_sheet([['이름', '연락처'], ...employees.map(e => [e.name, e.phone || ''])]);
+      const we = XLSX.utils.aoa_to_sheet([['이름','연락처'], ...employees.map(e => [e.name, e.phone || ''])]);
       we['!cols'] = [{ wch: 12 }, { wch: 16 }];
       XLSX.utils.book_append_sheet(wb, we, '직원');
     }
@@ -1185,7 +1100,6 @@ fillStageOptions($('stage'), STAGES[0], false);
 $('stage').addEventListener('change', () => { $('stage').style.background = STAGE_COLORS[$('stage').value] || '#fff'; });
 renderEmp();
 $('empBox').open = employees.length === 0;
-
 restoreDraft();
 renderCalendar();
 render();
