@@ -5,6 +5,14 @@
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
 <meta name="robots" content="noindex,nofollow">
 <title>현장 방문 및 스케줄 관리</title>
+<link rel="manifest" href="manifest.webmanifest">
+<meta name="theme-color" content="#2563eb">
+<link rel="icon" type="image/png" sizes="192x192" href="icon-192.png">
+<link rel="apple-touch-icon" href="apple-touch-icon.png">
+<meta name="apple-mobile-web-app-capable" content="yes">
+<meta name="mobile-web-app-capable" content="yes">
+<meta name="apple-mobile-web-app-status-bar-style" content="default">
+<meta name="apple-mobile-web-app-title" content="현장스케줄">
 <link rel="icon" href="data:image/svg+xml,%3Csvg xmlns=%22http://www.w3.org/2000/svg%22 viewBox=%220 0 100 100%22%3E%3Ctext y=%22.9em%22 font-size=%2290%22%3E📅%3C/text%3E%3C/svg%3E">
 <style>
 :root{--primary:#2563eb;--bg-color:#f8f9fa;--card-bg:#fff;--text-main:#333;--text-sub:#666;--border:#ddd}
@@ -113,6 +121,10 @@ select{width:100%;padding:10px;border:1px solid #ddd;border-radius:4px;box-sizin
 .name-cell{cursor:pointer;color:var(--primary);font-weight:bold;text-decoration:underline;white-space:nowrap}
 #syncStatus{position:fixed;top:10px;right:10px;background:rgba(0,0,0,.7);color:#fff;padding:6px 12px;border-radius:20px;font-size:.8rem;z-index:100;font-weight:bold;display:none}
 @media (max-width:560px){.grid{grid-template-columns:1fr}.guide-preview-card{padding:14px}}
+#installBtn{display:none;border:none;border-radius:20px;padding:6px 14px;font-size:.82rem;font-weight:bold;color:#fff;background:linear-gradient(180deg,#3b82f6,#1d4ed8);box-shadow:0 3px 0 #1e3a8a,0 4px 8px rgba(0,0,0,.2);cursor:pointer;white-space:nowrap}
+#installBtn:active{transform:translateY(2px);box-shadow:0 1px 0 #1e3a8a}
+#iosGuide{display:none;position:fixed;left:10px;right:10px;bottom:16px;background:#1f2937;color:#fff;padding:14px 16px;border-radius:12px;font-size:.88rem;line-height:1.5;z-index:300;box-shadow:0 6px 20px rgba(0,0,0,.35)}
+#iosGuide button{float:right;background:none;border:none;color:#fff;font-size:1.1rem;cursor:pointer}
 </style>
 </head>
 <body>
@@ -121,7 +133,10 @@ select{width:100%;padding:10px;border:1px solid #ddd;border-radius:4px;box-sizin
   <h2>현장 방문 및 스케줄 관리</h2>
   <div id="serverBar">
     <span id="serverState"></span>
+    <button type="button" id="installBtn">📲 앱 설치</button>
   </div>
+<div id="iosGuide"><button type="button" onclick="this.parentNode.style.display='none'">✖</button>
+  📲 <b>아이폰에 앱으로 설치하기</b><br>사파리 아래쪽 <b>공유 버튼(□↑)</b> → <b>'홈 화면에 추가'</b>를 누르세요.</div>
   <div class="tab-menu">
     <button type="button" class="tab-btn active" data-tab="calendar" onclick="switchTab('calendar')">📅 캘린더 보기</button>
     <button type="button" class="tab-btn" data-tab="manage" onclick="switchTab('manage')">📋 스케줄 입력 및 목록</button>
@@ -1896,6 +1911,32 @@ $('empBox').open = employees.length === 0;
 restoreDraft();
 renderCalendar();
 render();
+</script>
+<script>
+// ===== 휴대폰 앱 설치 (PWA) =====
+if ('serviceWorker' in navigator) {
+  window.addEventListener('load', () => navigator.serviceWorker.register('sw.js').catch(() => {}));
+}
+(function(){
+  const btn = document.getElementById('installBtn');
+  const isStandalone = window.matchMedia('(display-mode: standalone)').matches || window.navigator.standalone;
+  if (isStandalone) return; // 이미 앱으로 실행 중이면 버튼 숨김
+  let deferred = null;
+  window.addEventListener('beforeinstallprompt', e => {
+    e.preventDefault(); deferred = e; btn.style.display = 'inline-block';
+  });
+  const isIOS = /iphone|ipad|ipod/i.test(navigator.userAgent);
+  if (isIOS) btn.style.display = 'inline-block';
+  btn.addEventListener('click', async () => {
+    if (deferred) {
+      deferred.prompt();
+      await deferred.userChoice; deferred = null; btn.style.display = 'none';
+    } else if (isIOS) {
+      document.getElementById('iosGuide').style.display = 'block';
+    }
+  });
+  window.addEventListener('appinstalled', () => { btn.style.display = 'none'; });
+})();
 </script>
 </body>
 </html>
