@@ -3,12 +3,16 @@
 <head>
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
+<meta name="robots" content="noindex,nofollow">
 <title>현장 방문 및 스케줄 관리</title>
+<link rel="icon" href="data:image/svg+xml,%3Csvg xmlns=%22http://www.w3.org/2000/svg%22 viewBox=%220 0 100 100%22%3E%3Ctext y=%22.9em%22 font-size=%2290%22%3E📅%3C/text%3E%3C/svg%3E">
 <style>
 :root{--primary:#2563eb;--bg-color:#f8f9fa;--card-bg:#fff;--text-main:#333;--text-sub:#666;--border:#ddd}
 body{font-family:'Malgun Gothic',sans-serif;background:var(--bg-color);margin:0;padding:15px;color:var(--text-main)}
 .container{max-width:1000px;margin:0 auto;background:var(--card-bg);padding:20px;border-radius:12px;box-shadow:0 4px 12px rgba(0,0,0,.08)}
 h2{text-align:center;font-size:1.4rem;margin-bottom:20px}
+#serverBar{display:flex;align-items:center;justify-content:space-between;gap:8px;background:#f1f3f5;border-radius:8px;padding:8px 10px;margin-bottom:14px;font-size:.82rem}
+#serverBar.on{background:#e6fcf5}
 .tab-menu{display:flex;background:#e9ecef;border-radius:10px;padding:4px;margin-bottom:20px}
 .tab-btn{flex:1;padding:10px;text-align:center;font-size:.95rem;font-weight:bold;border:none;background:transparent;border-radius:8px;cursor:pointer;color:var(--text-sub);transition:all .2s}
 .tab-btn.active{background:#fff;color:var(--primary);box-shadow:0 2px 4px rgba(0,0,0,.05)}
@@ -46,8 +50,11 @@ input[type="text"],input[type="datetime-local"]{width:100%;padding:10px;border:1
 .btn-excel{background:linear-gradient(#38d9a9,#0ca678);--edge:#087f5b;color:#fff;padding:6px 12px;font-size:.8rem}
 .btn-record{background:linear-gradient(#ffa94d,#f76707);--edge:#a84300;color:#fff;padding:4px 9px;font-size:.78rem;margin-top:6px}
 .btn-card{background:linear-gradient(#845ef7,#7950f2);--edge:#5f3dc4;color:#fff;padding:4px 9px;font-size:.78rem;margin-top:4px}
-.btn-edit,.btn-del,.btn-clear,.btn-excel,.btn-record,.btn-card{box-shadow:0 3px 0 var(--edge),0 5px 8px rgba(0,0,0,.22)}
-.btn-edit:active,.btn-del:active,.btn-clear:active,.btn-excel:active,.btn-record:active,.btn-card:active{top:2px;box-shadow:0 1px 0 var(--edge),0 2px 3px rgba(0,0,0,.22)}
+.btn-save{background:linear-gradient(#4da3ff,#007bff 55%,#0066d6);--edge:#00479a;color:#fff;padding:7px 14px;font-size:.88rem}
+.btn-mini{padding:6px 12px;font-size:.8rem}
+.btn-sm{padding:7px 12px;font-size:.85rem;margin-bottom:0}
+.btn-edit,.btn-del,.btn-clear,.btn-excel,.btn-record,.btn-card,.btn-save,.btn-mini,.btn-sm{box-shadow:0 3px 0 var(--edge),0 5px 8px rgba(0,0,0,.22)}
+.btn-edit:active,.btn-del:active,.btn-clear:active,.btn-excel:active,.btn-record:active,.btn-card:active,.btn-save:active,.btn-mini:active,.btn-sm:active{top:2px;box-shadow:0 1px 0 var(--edge),0 2px 3px rgba(0,0,0,.22)}
 textarea.field{width:100%;padding:10px;border:1px solid #ddd;border-radius:4px;box-sizing:border-box;font-size:.95rem;font-family:inherit;resize:vertical}
 td.rec{min-width:180px}
 .rec-text{white-space:pre-wrap;max-height:90px;overflow:auto;font-size:.8rem}
@@ -59,9 +66,15 @@ td.rec{min-width:180px}
 .history-list{display:flex;flex-direction:column;gap:10px;margin-top:15px}
 .history-item{border:1px solid #ddd;border-radius:8px;padding:12px;background:#fdfdfd}
 .history-item.latest{border:2px solid var(--primary);background:#f0f4ff}
-.history-item .h-title{font-weight:bold;font-size:.95rem;margin-bottom:6px;color:var(--primary);display:flex;justify-content:space-between}
+.history-item.editing{border:2px solid #fd7e14;background:#fff9f0}
+.history-item .h-title{font-weight:bold;font-size:.95rem;margin-bottom:6px;color:var(--primary);display:flex;justify-content:space-between;gap:8px;align-items:center}
 .history-item .h-detail{font-size:.85rem;color:#444;line-height:1.5}
 .history-item .h-report{margin-top:8px;padding-top:8px;border-top:1px dashed #ccc;color:#d97706;font-weight:bold;font-size:.85rem}
+.dup-badge{background:#fff3bf;border:1px solid #fcc419;color:#a16207;font-size:.72rem;padding:1px 6px;border-radius:4px;margin-left:6px;white-space:nowrap}
+.day-btns{display:flex;gap:10px;margin-top:12px;flex-wrap:wrap;padding-bottom:4px}
+.day-edit .form-group{margin-bottom:8px}
+.day-edit label{font-size:.78rem;margin-bottom:3px}
+.day-edit input[type="text"],.day-edit input[type="datetime-local"],.day-edit select,.day-edit textarea{padding:8px;font-size:.88rem}
 .list-head{display:flex;justify-content:space-between;align-items:center;margin-top:30px;margin-bottom:10px}
 .list-head h3{font-size:1.2rem;margin:0}
 .table-responsive{overflow-x:auto}
@@ -106,9 +119,12 @@ select{width:100%;padding:10px;border:1px solid #ddd;border-radius:4px;box-sizin
 <div id="syncStatus">🔄 연동 중...</div>
 <div class="container">
   <h2>현장 방문 및 스케줄 관리</h2>
+  <div id="serverBar">
+    <span id="serverState"></span>
+  </div>
   <div class="tab-menu">
-    <button type="button" class="tab-btn active" onclick="switchTab('calendar')">📅 캘린더 보기</button>
-    <button type="button" class="tab-btn" onclick="switchTab('manage')">📋 스케줄 입력 및 목록</button>
+    <button type="button" class="tab-btn active" data-tab="calendar" onclick="switchTab('calendar')">📅 캘린더 보기</button>
+    <button type="button" class="tab-btn" data-tab="manage" onclick="switchTab('manage')">📋 스케줄 입력 및 목록</button>
   </div>
 
   <div id="tab-calendar" class="tab-content active">
@@ -121,12 +137,12 @@ select{width:100%;padding:10px;border:1px solid #ddd;border-radius:4px;box-sizin
       <div class="cal-day-name" style="color:#ef4444;">일</div><div class="cal-day-name">월</div><div class="cal-day-name">화</div><div class="cal-day-name">수</div><div class="cal-day-name">목</div><div class="cal-day-name">금</div><div class="cal-day-name" style="color:#3b82f6;">토</div>
     </div>
     <div class="calendar-grid" id="calBody"></div>
-    <p class="hint" style="text-align:center;margin-top:12px;">💡 달력의 <b>날짜 숫자(예: 16)</b>를 누르면 해당 날짜 스케줄만 팝업으로 볼 수 있고, 빈 칸을 누르면 새 일정을 등록할 수 있습니다.<br><b>이름(스케줄 배지)을 누르면 해당 고객의 이력</b>을 볼 수 있습니다.</p>
+    <p class="hint" style="text-align:center;margin-top:12px;">💡 달력의 <b>날짜 숫자(예: 16)</b>를 누르면 해당 날짜 스케줄을 팝업으로 보고 <b>수정·삭제</b>할 수 있고, 빈 칸을 누르면 새 일정을 등록할 수 있습니다.<br><b>이름(스케줄 배지)을 누르면 해당 고객의 이력</b>을 볼 수 있습니다.</p>
   </div>
 
   <div id="tab-manage" class="tab-content">
     <div class="upload-box">
-      <input type="file" id="imageUpload" accept="image/*,.xlsx,.xlsm,.xls,.csv,.pdf,.doc,.docx">
+      <input type="file" id="imageUpload" accept="image/*,.heic,.heif,.xlsx,.xlsm,.xls,.csv,.pdf,.doc,.docx">
       <p class="hint">이미지·엑셀 파일은 글자를 읽어 폼에 입력하고 원본도 Drive에 저장합니다. PDF·Word 견적서는 원본을 Drive에 보관합니다.<br>복사한 이미지·엑셀 셀은 <b>Ctrl+V</b>로 붙여 넣을 수 있습니다.</p>
       <div style="display:flex;gap:8px;justify-content:center;margin-top:10px;">
         <button type="button" class="btn btn-paste" id="pasteBtn">📋 붙여넣기</button>
@@ -151,7 +167,7 @@ select{width:100%;padding:10px;border:1px solid #ddd;border-radius:4px;box-sizin
         <div class="form-group"><label>방문 일시</label><input type="datetime-local" id="visitDate"></div>
         <div class="form-group"><label>처리 비용</label><input type="text" id="cost" placeholder="예: 무료 방문실측"></div>
         <div class="form-group full"><label>요청 사항</label><input type="text" id="request" placeholder="예: 문틀 교체" required></div>
-        
+
         <div id="payBox" class="full pay-box" style="display:none;">
           <div class="pay-title">💰 계약금 / 잔금 관리</div>
           <div class="grid">
@@ -169,14 +185,14 @@ select{width:100%;padding:10px;border:1px solid #ddd;border-radius:4px;box-sizin
         </div>
         <div class="form-group"><label>기사 연락처</label><input type="text" id="engPhone" placeholder="예: 010-8866-6944"></div>
         <div class="form-group full"><label>방문 주소</label><input type="text" id="note" placeholder="예: 대략적인 주소 또는 상세 주소"></div>
-        
-        <!-- 💡 방문 후 기록 및 현장 사진 첨부 영역 (구글 드라이브 자동 연동) -->
+
+        <!-- 방문 후 기록 및 현장 사진 첨부 영역 (구글 드라이브 자동 연동) -->
         <div class="form-group full" style="background:#f1f3f5; padding:12px; border-radius:8px; border:1px solid #ced4da;">
           <label style="color:#007bff; margin-bottom:6px;">📝 방문 후 기록 및 현장 사진 (입력/수정 시 즉시 저장 및 드라이브 백업)</label>
           <textarea id="report" class="field" rows="3" placeholder="실측 사이즈, 작업 내용, 특이사항 등을 기재"></textarea>
           <div style="margin-top:8px;">
             <label style="font-size:0.85rem; font-weight:normal; margin-bottom:4px;">현장 사진 첨부</label>
-            <input type="file" id="formReportImage" accept="image/*" style="font-size:0.85rem; margin-bottom:6px;">
+            <input type="file" id="formReportImage" accept="image/*,.heic,.heif" style="font-size:0.85rem; margin-bottom:6px;">
             <div>
               <img id="formReportImgPreview" src="" alt="미리보기" style="max-width:100%; max-height:160px; border-radius:4px; display:none; border:1px solid #ddd;">
             </div>
@@ -186,6 +202,7 @@ select{width:100%;padding:10px;border:1px solid #ddd;border-radius:4px;box-sizin
       </div>
       <div class="btn-row">
         <button type="submit" class="btn btn-submit" id="submitBtn">스케줄 추가</button>
+        <button type="button" class="btn btn-del" id="formDeleteBtn" style="display:none;padding:12px;font-size:1rem;">🗑 삭제</button>
         <button type="button" class="btn btn-draft" id="draftBtn">💾 임시저장</button>
         <button type="button" class="btn btn-reset" id="resetForm">입력 지우기</button>
       </div>
@@ -243,7 +260,7 @@ select{width:100%;padding:10px;border:1px solid #ddd;border-radius:4px;box-sizin
 </div>
 
 <div id="daySchedulesModal" class="modal">
-  <div class="modal-box" style="max-width:550px;">
+  <div class="modal-box" style="max-width:600px;">
     <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:15px;">
       <h4 id="dayModalTitle" style="margin:0;color:var(--primary);font-size:1.2rem;">해당 날짜 스케줄</h4>
       <button type="button" onclick="closeDayModal()" style="background:none;border:none;font-size:1.2rem;cursor:pointer;">✖</button>
@@ -301,6 +318,15 @@ select{width:100%;padding:10px;border:1px solid #ddd;border-radius:4px;box-sizin
 <script src="https://cdn.jsdelivr.net/npm/html2canvas@1.4.1/dist/html2canvas.min.js"></script>
 <script>
 const $ = id => document.getElementById(id);
+/* 화면에 글자를 안전하게 넣기 위한 도우미 */
+const esc = s => String(s == null ? '' : s).replace(/[&<>"']/g, c => ({ '&':'&amp;', '<':'&lt;', '>':'&gt;', '"':'&quot;', "'":'&#39;' }[c]));
+const safeUrl = u => /^https?:\/\//i.test(u || '') ? u : '';
+function nowStr() {
+  const d = new Date(), z = n => String(n).padStart(2, '0');
+  return `${d.getFullYear()}-${z(d.getMonth() + 1)}-${z(d.getDate())} ${z(d.getHours())}:${z(d.getMinutes())}`;
+}
+const uid = () => Date.now() + Math.random().toString(36).slice(2, 6);
+
 const STORE_KEY = 'siteSchedules_v3';
 const FIELD_IDS = { status:'stage', customer:'customer', phone:'phone', visit:'visitDate', request:'request', cost:'cost', engineer:'engineer', engPhone:'engPhone', note:'note', report:'report', total:'contractTotal', deposit:'depositAmt', balance:'balanceAmt' };
 const STAGES = ['문의접수','견적','방문 및 실측','계약','시공 중','처리완료','보류/취소'];
@@ -318,67 +344,80 @@ function fillStageOptions(sel, val, allowEmpty) {
 }
 let filterStage = '';
 
+/* ===== 구글 시트·드라이브 연결 주소 (코드에 직접 입력) ===== */
 const SCRIPT_URL = 'https://script.google.com/macros/s/AKfycbyz-rek9QpDuDmxnhhjlrAPgmO0ZTE6b1mBVXTzOiApGAlTzcvBsiNdNoAehrBhOdo/exec';
+function updateServerState() {
+  $('serverBar').classList.toggle('on', !!SCRIPT_URL);
+  $('serverState').textContent = SCRIPT_URL ? '☁️ 구글 시트·드라이브와 연결됨 (직원과 공유 중)' : '💾 이 기기에만 저장 중';
+}
 
 let schedules = [];
 try { schedules = JSON.parse(localStorage.getItem(STORE_KEY) || '[]'); } catch (e) { schedules = []; }
+if (!Array.isArray(schedules)) schedules = [];
+function ensureIds() { schedules.forEach(s => { if (!s.id) s.id = uid(); }); }
+ensureIds();
 
 let isSyncing = false;
+let resync = false;
 let currentFormReportImage = '';
 let currentFormReportImageLink = '';
 
 function showSync(msg) {
   const el = $('syncStatus');
   el.textContent = msg; el.style.display = 'block';
-  setTimeout(() => { el.style.display = 'none'; }, 2000);
+  clearTimeout(showSync.t);
+  showSync.t = setTimeout(() => { el.style.display = 'none'; }, 2000);
 }
 
 async function save() {
   try { localStorage.setItem(STORE_KEY, JSON.stringify(schedules)); } catch (e) {}
   renderCalendar();
   render();
-  if (SCRIPT_URL && !isSyncing) {
-    showSync("🔄 구글 시트 및 드라이브 연동 중...");
-    isSyncing = true;
-    try {
-      const res = await fetch(SCRIPT_URL, { method:'POST', body: JSON.stringify(schedules) });
-      const saved = await res.json();
-      if (!Array.isArray(saved)) throw new Error('저장 응답 형식 오류');
-      schedules = saved;
+  if (!SCRIPT_URL) return;
+  if (isSyncing) { resync = true; return; }   // 저장 중에 또 바뀌면 끝난 뒤 한 번 더 저장
+  showSync("🔄 구글 시트 및 드라이브 연동 중...");
+  isSyncing = true;
+  try {
+    const res = await fetch(SCRIPT_URL, { method:'POST', body: JSON.stringify(schedules) });
+    const saved = await res.json();
+    if (!Array.isArray(saved)) throw new Error('저장 응답 형식 오류');
+    if (!resync) {
+      schedules = saved; ensureIds();
       try { localStorage.setItem(STORE_KEY, JSON.stringify(schedules)); } catch (e) {}
-      renderCalendar(); render();
-      showSync("✅ 구글 시트 및 드라이브 저장 완료");
-    } catch (err) {
-      showSync("⚠️ 연동 실패 (이 기기에 임시 저장됨)");
-    } finally { isSyncing = false; }
+      renderCalendar(); render(); refreshPopups();
+    }
+    showSync("✅ 구글 시트 및 드라이브 저장 완료");
+  } catch (err) {
+    showSync("⚠️ 연동 실패 (이 기기에 임시 저장됨)");
+  } finally {
+    isSyncing = false;
+    if (resync) { resync = false; save(); }
   }
 }
 
-window.onload = async () => {
-  if (SCRIPT_URL) {
-    showSync("🔄 데이터 불러오는 중...");
-    try {
-      const res = await fetch(SCRIPT_URL);
-      const data = await res.json();
-      if (data && data.length > 0) {
-        schedules = data;
-        localStorage.setItem(STORE_KEY, JSON.stringify(schedules));
-        renderCalendar(); render();
-        showSync("✅ 최신 상태입니다");
-      }
-    } catch (err) { showSync("⚠️ 인터넷 연결 불안정"); }
-  }
-};
+async function loadFromServer() {
+  if (!SCRIPT_URL || isSyncing) return;
+  showSync("🔄 데이터 불러오는 중...");
+  try {
+    const res = await fetch(SCRIPT_URL);
+    const data = await res.json();
+    if (Array.isArray(data) && data.length > 0) {
+      schedules = data; ensureIds();
+      localStorage.setItem(STORE_KEY, JSON.stringify(schedules));
+      renderCalendar(); render(); refreshPopups();
+      showSync("✅ 최신 상태입니다");
+    }
+  } catch (err) { showSync("⚠️ 인터넷 연결 불안정"); }
+}
+window.onload = () => { loadFromServer(); loadEmployees(); };
 
 let editingId = null;
 let currentYear = new Date().getFullYear();
 let currentMonth = new Date().getMonth();
 
 function switchTab(tabId) {
-  document.querySelectorAll('.tab-content').forEach(el => el.classList.remove('active'));
-  document.querySelectorAll('.tab-btn').forEach(el => el.classList.remove('active'));
-  $('tab-' + tabId).classList.add('active');
-  event.currentTarget.classList.add('active');
+  document.querySelectorAll('.tab-content').forEach(el => el.classList.toggle('active', el.id === 'tab-' + tabId));
+  document.querySelectorAll('.tab-btn').forEach(el => el.classList.toggle('active', el.dataset.tab === tabId));
   if (tabId === 'calendar') renderCalendar();
 }
 
@@ -389,23 +428,36 @@ function renderCalendar() {
   const firstDay = new Date(currentYear, currentMonth, 1).getDay();
   const lastDate = new Date(currentYear, currentMonth + 1, 0).getDate();
   const prevLastDate = new Date(currentYear, currentMonth, 0).getDate();
-  let html = '';
-  for (let i = firstDay - 1; i >= 0; i--) html += `<div class="cal-cell other-month"><div class="cal-date-num">${prevLastDate - i}</div></div>`;
+  const mk = cls => { const d = document.createElement('div'); d.className = cls; return d; };
+  for (let i = firstDay - 1; i >= 0; i--) {
+    const c = mk('cal-cell other-month'), n = mk('cal-date-num');
+    n.textContent = prevLastDate - i; c.appendChild(n); calBody.appendChild(c);
+  }
+  const today = todayStr();
   for (let d = 1; d <= lastDate; d++) {
     const dateStr = `${currentYear}-${String(currentMonth + 1).padStart(2,'0')}-${String(d).padStart(2,'0')}`;
-    const daySchedules = schedules.filter(s => s.visit && s.visit.startsWith(dateStr));
-    const isToday = new Date().toISOString().slice(0, 10) === dateStr ? 'today' : '';
-    html += `<div class="cal-cell ${isToday}" onclick="selectDateForVisit(event, '${dateStr}')"><div class="cal-date-num" onclick="event.stopPropagation(); openDaySchedulesModal('${dateStr}')" title="이 날짜 스케줄 모아보기">${d}</div>`;
+    const daySchedules = schedules.filter(s => s.visit && s.visit.startsWith(dateStr))
+      .sort((a, b) => (a.visit || '').localeCompare(b.visit || ''));
+    const cell = mk('cal-cell' + (today === dateStr ? ' today' : ''));
+    cell.addEventListener('click', ev => selectDateForVisit(ev, dateStr));
+    const num = mk('cal-date-num');
+    num.textContent = d; num.title = '이 날짜 스케줄 모아보기·수정·삭제';
+    num.addEventListener('click', ev => { ev.stopPropagation(); openDaySchedulesModal(dateStr); });
+    cell.appendChild(num);
     daySchedules.forEach(s => {
-      const bg = STAGE_COLORS[s.status] || '#f1f3f5';
-      const ac = STAGE_ACCENT[s.status] || '#adb5bd';
+      const b = document.createElement('span');
+      b.className = 'cal-badge';
+      const bg = STAGE_COLORS[s.status] || '#f1f3f5', ac = STAGE_ACCENT[s.status] || '#adb5bd';
       const cancel = /취소/.test(s.status || '');
+      b.style.cssText = `background:${bg}; color:#222; border-left:4px solid ${ac};${cancel ? ' text-decoration:line-through; opacity:.7;' : ''}`;
+      b.title = `${s.customer || ''} · ${s.status || '상태 미지정'}: ${s.request || ''}`;
       const tm = s.visit.slice(11, 16);
-      html += `<span class="cal-badge" style="background:${bg}; color:#222; border-left:4px solid ${ac};${cancel ? ' text-decoration:line-through; opacity:.7;' : ''}" title="${s.customer} · ${s.status || '상태 미지정'}: ${s.request}" onclick="openCustomerHistoryModal(event, '${s.customer}', '${s.phone}')">${tm ? tm + ' ' : ''}${s.customer}</span>`;
+      b.textContent = `${tm ? tm + ' ' : ''}${s.customer || ''}`;
+      b.addEventListener('click', ev => openCustomerHistoryModal(ev, s.customer, s.phone));
+      cell.appendChild(b);
     });
-    html += `</div>`;
+    calBody.appendChild(cell);
   }
-  calBody.innerHTML = html;
 }
 
 function moveMonth(dir) {
@@ -418,11 +470,69 @@ function moveMonth(dir) {
 function selectDateForVisit(event, dateStr) {
   if (event.target.classList.contains('cal-badge') || event.target.classList.contains('cal-date-num')) return;
   $('visitDate').value = dateStr + 'T09:00';
-  document.querySelectorAll('.tab-btn')[1].click();
+  switchTab('manage');
   $('visitDate').focus();
 }
 
+/* ===== 팝업 공통: 일정 카드 (보기 · 수정 · 저장 · 삭제) =====
+   날짜 팝업과 고객 이력 팝업이 같은 카드를 씁니다. */
+let dayModalDate = '';
+let dayEditId = null;
+let histName = '', histPhone = '';
+let histEditId = null;
+
+const POPUPS = {
+  day: {
+    getEdit: () => dayEditId, setEdit: v => { dayEditId = v; },
+    render: () => renderDayModal(), close: () => closeDayModal(), showDate: false,
+    inScope: s => toLocalInput(s.visit).slice(0, 10) === dayModalDate
+  },
+  hist: {
+    getEdit: () => histEditId, setEdit: v => { histEditId = v; },
+    render: () => renderHistoryModal(), close: () => closeHistoryModal(), showDate: true,
+    inScope: s => (s.customer || '') === histName && (s.phone || '') === histPhone
+  }
+};
+
+function liveItem(item) {
+  if (schedules.includes(item)) return item;
+  return schedules.find(s => s.id === item.id) || null;
+}
+function staleNotice(ctx) {
+  alert('다른 곳에서 이미 삭제되었거나 바뀐 일정입니다.\n최신 내용으로 다시 표시합니다.');
+  ctx.setEdit(null); ctx.render();
+}
+function refreshPopups() {
+  if ($('daySchedulesModal').classList.contains('show') && !dayEditId) renderDayModal();
+  if ($('customerHistoryModal').classList.contains('show') && !histEditId) renderHistoryModal();
+}
+function toLocalInput(v) {
+  let d = v || '';
+  if (d.length === 10) d += 'T09:00';
+  return d.replace(' ', 'T').substring(0, 16);
+}
+function dupKey(s) {
+  return [(s.customer || '').replace(/\s+/g, ''), (s.phone || '').replace(/\D/g, ''), (s.request || '').replace(/\s+/g, ''), (s.visit || '').slice(0, 10)].join('|');
+}
+function countDups(list) {
+  const counts = {};
+  list.forEach(s => { const k = dupKey(s); counts[k] = (counts[k] || 0) + 1; });
+  return counts;
+}
+
+/* --- 날짜 팝업 --- */
 function openDaySchedulesModal(dateStr) {
+  dayModalDate = dateStr; dayEditId = null;
+  renderDayModal();
+  $('addScheduleFromDayBtn').onclick = () => { closeDayModal(); clearForm(); $('visitDate').value = dayModalDate + 'T09:00'; switchTab('manage'); $('visitDate').focus(); };
+  $('daySchedulesModal').classList.add('show');
+}
+function closeDayModal() { dayEditId = null; $('daySchedulesModal').classList.remove('show'); }
+
+function renderDayModal() {
+  const dateStr = dayModalDate;
+  const box = $('daySchedulesModal').querySelector('.modal-box');
+  const keepScroll = box.scrollTop;
   const daySchedules = schedules.filter(s => s.visit && s.visit.slice(0, 10) === dateStr)
     .sort((a, b) => (a.visit || '9999').localeCompare(b.visit || '9999'));
   $('dayModalTitle').textContent = `📅 ${dateStr} 스케줄 목록 (${daySchedules.length}건)`;
@@ -431,82 +541,323 @@ function openDaySchedulesModal(dateStr) {
   if (!daySchedules.length) {
     container.innerHTML = '<div style="text-align:center;color:#999;padding:20px;">이 날짜에 등록된 스케줄이 없습니다.</div>';
   } else {
+    const counts = countDups(daySchedules);
     daySchedules.forEach(item => {
-      const card = document.createElement('div');
-      card.className = 'history-item';
-      const title = document.createElement('div'); title.className = 'h-title';
-      const name = document.createElement('span'); name.textContent = `👤 ${item.customer || '이름 없음'} (${item.phone || '연락처 없음'})`;
-      const status = document.createElement('select');
-      status.setAttribute('aria-label', `${item.customer || '일정'} 진행 상태 변경`);
-      status.style.cssText = 'width:auto;min-width:112px;padding:5px 8px;border:1px solid #ced4da;border-radius:5px;font-size:.8rem;font-weight:bold;cursor:pointer;appearance:auto;';
-      fillStageOptions(status, item.status || STAGES[0], false);
-      status.addEventListener('change', async () => {
-        item.status = status.value;
-        status.style.background = STAGE_COLORS[item.status] || '#fff';
-        await save();
-      });
-      title.append(name, status);
-      const detail = document.createElement('div'); detail.className = 'h-detail';
-      const time = item.visit && item.visit.length >= 16 ? item.visit.slice(11, 16) : '시간 미지정';
-      detail.textContent = `방문 시간: ${time} · 요청사항: ${item.request || '-'} · 비용/주소: ${item.cost || '-'} / ${item.note || '-'} · 담당기사: ${item.engineer || '미배정'}`;
-      card.append(title, detail);
-      if (item.report) { const report = document.createElement('div'); report.className = 'h-report'; report.textContent = `✔️ 방문 후 기록: ${item.report}`; card.appendChild(report); }
-      if (item.reportImageLink) {
-        const linkDiv = document.createElement('div');
-        linkDiv.style.marginTop = '6px';
-        linkDiv.innerHTML = `<a href="${item.reportImageLink}" target="_blank" style="color:#2563eb;font-weight:bold;font-size:0.8rem;">🔗 드라이브 저장된 현장 사진 보기</a>`;
-        card.appendChild(linkDiv);
-      }
-      container.appendChild(card);
+      container.appendChild(item.id === dayEditId ? buildEditCard(item, POPUPS.day) : buildScheduleCard(item, counts[dupKey(item)] > 1, POPUPS.day));
     });
   }
-  $('addScheduleFromDayBtn').onclick = () => { closeDayModal(); clearForm(); $('visitDate').value = dateStr + 'T09:00'; document.querySelectorAll('.tab-btn')[1].click(); $('visitDate').focus(); };
-  $('daySchedulesModal').classList.add('show');
+  box.scrollTop = keepScroll;
 }
-function closeDayModal() { $('daySchedulesModal').classList.remove('show'); }
 
+/* --- 고객 이력 팝업 --- */
 function openCustomerHistoryModal(event, customerName, phone) {
-  event.stopPropagation();
-  $('historyTitle').textContent = `${customerName} 고객 현황 이력`;
-  const customerHistory = schedules.filter(s => s.customer === customerName && s.phone === phone)
-    .sort((a, b) => (a.visit || '9999').localeCompare(b.visit || '9999'));
-  const listContainer = $('historyListContainer');
-  listContainer.innerHTML = '';
-  if (customerHistory.length === 0) {
-    listContainer.innerHTML = '<div style="text-align:center; color:#999; padding:20px;">기록이 없습니다.</div>';
-  } else {
-    customerHistory.forEach((item, index) => {
-      const isLatest = index === customerHistory.length - 1;
-      const badgeStyle = `padding:2px 6px; border-radius:4px; font-size:0.75rem; background:${STAGE_COLORS[item.status] || '#eee'}; color:#222; border:1px solid #ddd;`;
-      const card = document.createElement('div');
-      card.className = `history-item ${isLatest ? 'latest' : ''}`;
-      card.innerHTML = `
-        <div class="h-title"><span>${fmtDate(item.visit)}</span><span style="${badgeStyle}">${item.status}</span></div>
-        <div class="h-detail">
-          <div><b>요청사항:</b> ${item.request || '-'}</div>
-          <div><b>비용/주소:</b> ${item.cost || '-'} / ${item.note || '-'}</div>
-          <div><b>담당기사:</b> ${item.engineer || '미배정'} ${item.engPhone ? '(' + item.engPhone + ')' : ''}</div>
-        </div>
-        ${item.report ? `<div class="h-report">✔️ 방문 후 기록: ${item.report}</div>` : ''}
-        ${item.reportImageLink ? `<div style="margin-top:6px;"><a href="${item.reportImageLink}" target="_blank" style="color:#2563eb;font-weight:bold;font-size:0.8rem;">🔗 드라이브 저장된 현장 사진 보기</a></div>` : ''}`;
-      listContainer.appendChild(card);
-    });
-  }
+  if (event) event.stopPropagation();
+  histName = customerName || ''; histPhone = phone || ''; histEditId = null;
+  renderHistoryModal();
   $('addScheduleFromHistoryBtn').onclick = () => {
     closeHistoryModal(); clearForm();
-    $('customer').value = customerName;
-    $('phone').value = phone || '';
-    document.querySelectorAll('.tab-btn')[1].click();
+    $('customer').value = histName;
+    $('phone').value = histPhone;
+    switchTab('manage');
   };
   $('customerHistoryModal').classList.add('show');
 }
-function closeHistoryModal() { $('customerHistoryModal').classList.remove('show'); }
+function closeHistoryModal() { histEditId = null; $('customerHistoryModal').classList.remove('show'); }
+
+function renderHistoryModal() {
+  $('historyTitle').textContent = `${histName} 고객 현황 이력`;
+  const box = $('customerHistoryModal').querySelector('.modal-box');
+  const keepScroll = box.scrollTop;
+  const list = schedules.filter(s => (s.customer || '') === histName && (s.phone || '') === histPhone)
+    .sort((a, b) => (a.visit || '9999').localeCompare(b.visit || '9999'));
+  const container = $('historyListContainer');
+  container.innerHTML = '';
+  if (!list.length) {
+    container.innerHTML = '<div style="text-align:center; color:#999; padding:20px;">기록이 없습니다.</div>';
+  } else {
+    const counts = countDups(list);
+    list.forEach((item, index) => {
+      if (item.id === histEditId) { container.appendChild(buildEditCard(item, POPUPS.hist)); return; }
+      const card = buildScheduleCard(item, counts[dupKey(item)] > 1, POPUPS.hist);
+      if (index === list.length - 1) card.classList.add('latest');
+      container.appendChild(card);
+    });
+  }
+  box.scrollTop = keepScroll;
+}
+
+/* 사진을 저장용 글자(데이터 주소)로 바꿈. 큰 사진은 가로·세로 1600px 이하로 줄입니다. */
+function photoToDataUrl(file) {
+  return new Promise((resolve, reject) => {
+    const reader = new FileReader();
+    reader.onerror = () => reject(reader.error || new Error('파일 읽기 실패'));
+    reader.onload = () => {
+      const raw = reader.result;
+      const img = new Image();
+      img.onerror = () => resolve(raw);
+      img.onload = () => {
+        try {
+          const k = Math.min(1, 1600 / Math.max(img.width, img.height));
+          if (k >= 1) { resolve(raw); return; }
+          const c = document.createElement('canvas');
+          c.width = Math.round(img.width * k); c.height = Math.round(img.height * k);
+          c.getContext('2d').drawImage(img, 0, 0, c.width, c.height);
+          resolve(c.toDataURL('image/jpeg', 0.85));
+        } catch (e) { resolve(raw); }
+      };
+      img.src = raw;
+    };
+    reader.readAsDataURL(file);
+  });
+}
+
+/* --- 보기 카드 --- */
+function buildScheduleCard(item, isDup, ctx) {
+  const card = document.createElement('div');
+  card.className = 'history-item';
+  const title = document.createElement('div'); title.className = 'h-title';
+  const name = document.createElement('span');
+  name.textContent = ctx.showDate
+    ? `📅 ${fmtDate(item.visit) || '방문일 미정'}`
+    : `👤 ${item.customer || '이름 없음'} (${item.phone || '연락처 없음'})`;
+  if (isDup) {
+    const b = document.createElement('span'); b.className = 'dup-badge'; b.textContent = '⚠️ 중복 의심';
+    b.title = '같은 날 같은 고객·같은 요청이 또 있습니다. 필요 없는 쪽을 삭제하세요.';
+    name.appendChild(b);
+  }
+  const status = document.createElement('select');
+  status.setAttribute('aria-label', `${item.customer || '일정'} 진행 상태 변경`);
+  status.style.cssText = 'width:auto;min-width:112px;padding:5px 8px;border:1px solid #ced4da;border-radius:5px;font-size:.8rem;font-weight:bold;cursor:pointer;appearance:auto;';
+  fillStageOptions(status, item.status || STAGES[0], false);
+  status.addEventListener('change', async () => {
+    const live = liveItem(item);
+    if (!live) { staleNotice(ctx); return; }
+    live.status = status.value;
+    status.style.background = STAGE_COLORS[live.status] || '#fff';
+    await save();
+    refreshPopups();
+  });
+  title.append(name, status);
+
+  const detail = document.createElement('div'); detail.className = 'h-detail';
+  const time = item.visit && item.visit.length >= 16 ? item.visit.slice(11, 16) : '시간 미지정';
+  detail.textContent = `${ctx.showDate ? '' : `방문 시간: ${time} · `}요청사항: ${item.request || '-'} · 비용/주소: ${item.cost || '-'} / ${item.note || '-'} · 담당기사: ${item.engineer || '미배정'}${item.engPhone ? ' (' + item.engPhone + ')' : ''}`;
+  card.append(title, detail);
+  if (item.report) {
+    const report = document.createElement('div'); report.className = 'h-report';
+    report.textContent = `✔️ 방문 후 기록: ${item.report}`;
+    card.appendChild(report);
+  }
+  if (safeUrl(item.reportImageLink)) {
+    const linkDiv = document.createElement('div'); linkDiv.style.marginTop = '6px';
+    const a = document.createElement('a');
+    a.href = safeUrl(item.reportImageLink); a.target = '_blank'; a.rel = 'noopener';
+    a.style.cssText = 'color:#2563eb;font-weight:bold;font-size:0.8rem;';
+    a.textContent = '🔗 드라이브 저장된 현장 사진 보기';
+    linkDiv.appendChild(a); card.appendChild(linkDiv);
+  }
+
+  const btns = document.createElement('div'); btns.className = 'day-btns';
+  const eb = document.createElement('button');
+  eb.type = 'button'; eb.className = 'btn btn-edit btn-sm'; eb.textContent = '✏️ 수정';
+  eb.onclick = () => { ctx.setEdit(item.id); ctx.render(); };
+  const db = document.createElement('button');
+  db.type = 'button'; db.className = 'btn btn-del btn-sm'; db.textContent = '🗑 삭제';
+  db.onclick = async () => {
+    const live = liveItem(item);
+    if (!live) { staleNotice(ctx); return; }
+    if (!confirm(`'${live.customer || '이름 없음'}' (${fmtDate(live.visit)}) 일정을 삭제할까요?\n삭제하면 되돌릴 수 없습니다.`)) return;
+    const idx = schedules.indexOf(live);
+    if (idx >= 0) schedules.splice(idx, 1);
+    if (editingId === live.id) clearForm();
+    ctx.setEdit(null);
+    refreshPopups();
+    await save();
+    refreshPopups();
+    showSync('🗑 삭제했습니다');
+  };
+  btns.append(eb, db);
+  card.appendChild(btns);
+  return card;
+}
+
+/* --- 수정 카드 (저장 버튼 포함) --- */
+function buildEditCard(item, ctx) {
+  const card = document.createElement('div');
+  card.className = 'history-item editing day-edit';
+  const head = document.createElement('div'); head.className = 'h-title';
+  head.textContent = `✏️ ${item.customer || '일정'} 수정 중`;
+  card.appendChild(head);
+
+  const fld = (label, el, full) => {
+    const g = document.createElement('div'); g.className = 'form-group' + (full ? ' full' : '');
+    const l = document.createElement('label'); l.textContent = label;
+    g.append(l, el); return g;
+  };
+  const inp = (type, val, ph) => { const i = document.createElement('input'); i.type = type; i.value = val || ''; if (ph) i.placeholder = ph; return i; };
+
+  const f = {};
+  f.customer = inp('text', item.customer);
+  f.phone = inp('text', item.phone, '010-0000-0000');
+  f.visit = inp('datetime-local', toLocalInput(item.visit));
+  f.cost = inp('text', item.cost);
+  f.request = inp('text', item.request);
+  f.note = inp('text', item.note, '대략적인 주소 또는 상세 주소');
+  f.engPhone = inp('text', item.engPhone, '010-0000-0000');
+  f.status = document.createElement('select'); fillStageOptions(f.status, item.status || STAGES[0], false);
+  f.status.addEventListener('change', () => { f.status.style.background = STAGE_COLORS[f.status.value] || '#fff'; });
+  f.report = document.createElement('textarea'); f.report.className = 'field'; f.report.rows = 3; f.report.value = item.report || '';
+  f.report.placeholder = '실측 사이즈, 작업 내용, 특이사항 등을 기재';
+
+  // 담당 기사: 직원 목록에서 선택 (없으면 직접 입력)
+  const engSel = document.createElement('select');
+  const addOpt = (v, t) => { const o = document.createElement('option'); o.value = v; o.textContent = t; engSel.appendChild(o); };
+  addOpt('', '미배정');
+  employees.forEach(e => addOpt(e.name, e.phone ? `${e.name} (${e.phone})` : e.name));
+  const cur = item.engineer || '';
+  if (cur && !employees.some(e => e.name === cur)) addOpt(cur, cur);
+  addOpt('__custom__', '직접 입력');
+  engSel.value = cur;
+  const engTxt = inp('text', '', '기사 이름 직접 입력');
+  engTxt.style.display = 'none'; engTxt.style.marginTop = '6px';
+  engSel.addEventListener('change', () => {
+    if (engSel.value === '__custom__') { engTxt.style.display = 'block'; engTxt.focus(); return; }
+    engTxt.style.display = 'none';
+    const emp = employees.find(e => e.name === engSel.value);
+    if (emp) f.engPhone.value = emp.phone || '';
+    else if (!engSel.value) f.engPhone.value = '';
+  });
+  const engWrap = document.createElement('div'); engWrap.append(engSel, engTxt);
+
+  // 현장 사진 첨부 (HEIC는 자동으로 JPG 변환)
+  let newImage = item.reportImage || '', newLink = item.reportImageLink || '', photoChanged = false;
+  const photoInp = document.createElement('input'); photoInp.type = 'file'; photoInp.accept = 'image/*,.heic,.heif';
+  photoInp.style.cssText = 'font-size:.85rem;padding:0;border:none;';
+  const photoPrev = document.createElement('img');
+  photoPrev.alt = '현장 사진 미리보기'; photoPrev.style.cssText = 'max-width:100%;max-height:160px;border-radius:4px;border:1px solid #ddd;margin-top:6px;display:none;';
+  const photoLink = document.createElement('div'); photoLink.style.marginTop = '6px';
+  const photoDel = document.createElement('button');
+  photoDel.type = 'button'; photoDel.className = 'btn btn-del btn-sm'; photoDel.textContent = '🗑 사진 삭제'; photoDel.style.marginTop = '6px';
+  const showPhoto = () => {
+    if (newImage) { photoPrev.src = newImage; photoPrev.style.display = 'block'; } else { photoPrev.removeAttribute('src'); photoPrev.style.display = 'none'; }
+    photoLink.innerHTML = '';
+    if (!newImage && safeUrl(newLink)) {
+      const a = document.createElement('a'); a.href = safeUrl(newLink); a.target = '_blank'; a.rel = 'noopener';
+      a.style.cssText = 'color:#2563eb;font-weight:bold;font-size:.8rem;'; a.textContent = '🔗 드라이브에 저장된 현장 사진 보기';
+      photoLink.appendChild(a);
+    }
+    photoDel.style.display = (newImage || newLink) ? '' : 'none';
+  };
+  photoInp.addEventListener('change', async () => {
+    let file = photoInp.files && photoInp.files[0];
+    if (!file) return;
+    try {
+      if (isHeic(file)) file = await normalizeImage(file);
+      newImage = await photoToDataUrl(file);
+      newLink = ''; photoChanged = true;
+      showPhoto();
+    } catch (err) {
+      console.error(err);
+      alert('사진을 불러오지 못했습니다.\nHEIC는 인터넷 연결이 필요하며, 계속 안 되면 JPG로 바꿔서 올려 주세요.');
+      photoInp.value = '';
+    }
+  });
+  photoDel.onclick = () => { newImage = ''; newLink = ''; photoChanged = true; photoInp.value = ''; showPhoto(); };
+  const photoWrap = document.createElement('div');
+  photoWrap.append(photoInp, photoPrev, photoLink, photoDel);
+  showPhoto();
+
+  const g = document.createElement('div'); g.className = 'grid';
+  g.append(
+    fld('진행 상태', f.status, true),
+    fld('고객명', f.customer), fld('연락처', f.phone),
+    fld('방문 일시', f.visit), fld('처리 비용', f.cost),
+    fld('요청 사항', f.request, true),
+    fld('담당 기사', engWrap), fld('기사 연락처', f.engPhone),
+    fld('방문 주소', f.note, true),
+    fld('방문 후 기록', f.report, true),
+    fld('현장 사진 첨부', photoWrap, true)
+  );
+  card.appendChild(g);
+
+  const btns = document.createElement('div'); btns.className = 'day-btns';
+  const saveBtn = document.createElement('button');
+  saveBtn.type = 'button'; saveBtn.className = 'btn btn-save'; saveBtn.textContent = '💾 저장';
+  saveBtn.onclick = async () => {
+    const live = liveItem(item);
+    if (!live) { staleNotice(ctx); return; }
+    const nm = f.customer.value.trim();
+    if (!nm) { alert('고객명을 입력해 주세요.'); f.customer.focus(); return; }
+    const newReport = f.report.value.trim();
+    live.customer = nm;
+    live.phone = normPhone(f.phone.value.trim());
+    live.visit = f.visit.value;
+    live.request = f.request.value.trim();
+    live.cost = f.cost.value.trim();
+    live.note = f.note.value.trim();
+    live.engineer = engSel.value === '__custom__' ? engTxt.value.trim() : engSel.value;
+    live.engPhone = normPhone(f.engPhone.value.trim());
+    live.status = f.status.value;
+    if (photoChanged) { live.reportImage = newImage; live.reportImageLink = newLink; }
+    if (newReport !== (live.report || '')) { live.report = newReport; live.reportAt = newReport ? nowStr() : ''; }
+    ctx.setEdit(null);
+    refreshPopups();
+    await save();
+    refreshPopups();
+    showSync(ctx.inScope(live) ? '✅ 수정 내용을 저장했습니다' : '✅ 저장했습니다 (조건이 바뀌어 이 목록에서는 사라집니다)');
+  };
+  const cancelBtn = document.createElement('button');
+  cancelBtn.type = 'button'; cancelBtn.className = 'btn btn-reset btn-sm'; cancelBtn.textContent = '취소';
+  cancelBtn.onclick = () => { ctx.setEdit(null); ctx.render(); };
+  const fullBtn = document.createElement('button');
+  fullBtn.type = 'button'; fullBtn.className = 'btn btn-card btn-sm'; fullBtn.textContent = '📝 계약금·사진까지 전체 수정';
+  fullBtn.onclick = () => { const id = item.id; ctx.close(); openEditModal(id); };
+  btns.append(saveBtn, cancelBtn, fullBtn);
+  card.appendChild(btns);
+  return card;
+}
 
 /* 직원 관리 */
 const EMP_KEY = 'siteEmployees_v1';
 let employees = [];
 try { employees = JSON.parse(localStorage.getItem(EMP_KEY) || '[]'); } catch (e) { employees = []; }
-function saveEmp() { try { localStorage.setItem(EMP_KEY, JSON.stringify(employees)); } catch (e) {} }
+let empServerOk = false;   // 구글 서버가 직원 저장을 지원하는지 (지원 확인 전에는 절대 전송하지 않음)
+let empSyncing = false, empResync = false;
+function saveEmp() {
+  try { localStorage.setItem(EMP_KEY, JSON.stringify(employees)); } catch (e) {}
+  pushEmployees();
+}
+async function pushEmployees() {
+  if (!SCRIPT_URL || !empServerOk) return;
+  if (empSyncing) { empResync = true; return; }
+  empSyncing = true;
+  try {
+    const res = await fetch(SCRIPT_URL, { method:'POST', body: JSON.stringify({ action:'saveEmployees', employees }) });
+    const data = await res.json();
+    if (!data || !Array.isArray(data.employees)) throw new Error('응답 오류');
+    showSync('✅ 직원 목록 구글 시트 저장 완료');
+  } catch (e) { showSync('⚠️ 직원 목록 서버 저장 실패 (이 기기에는 저장됨)'); }
+  finally { empSyncing = false; if (empResync) { empResync = false; pushEmployees(); } }
+}
+async function loadEmployees() {
+  if (!SCRIPT_URL) return;
+  try {
+    const res = await fetch(SCRIPT_URL + '?action=employees');
+    const data = await res.json();
+    // 예전 서버는 일정 배열을 돌려줌 → 직원 기능 미지원으로 보고 아무것도 하지 않음
+    if (!data || Array.isArray(data) || !Array.isArray(data.employees)) { empServerOk = false; return; }
+    empServerOk = true;
+    if (data.employees.length) {
+      employees = data.employees.filter(e => e && e.name).map(e => ({
+        id: e.id || ('e' + Date.now() + Math.random().toString(36).slice(2, 5)),
+        name: String(e.name), phone: String(e.phone || '') }));
+      try { localStorage.setItem(EMP_KEY, JSON.stringify(employees)); } catch (e) {}
+      renderEmp();
+    } else if (employees.length) {
+      pushEmployees();   // 서버가 비어 있고 이 기기에 직원이 있으면 올려 줌
+    }
+  } catch (e) {}
+}
 let editingEmpId = null;
 function normPhone(p) { const d = p.replace(/\D/g, ''); return /^01[016789]\d{7,8}$/.test(d) ? fmtPhone(p) : p; }
 
@@ -684,7 +1035,7 @@ function setForm(o) {
     if (k === 'status') continue;
     let val = o[k] || '';
     if (k === 'visit' && val) {
-      if (val.length === 10) val += 'T09:00'; 
+      if (val.length === 10) val += 'T09:00';
       val = val.replace(' ', 'T').substring(0, 16);
     }
     if ($(FIELD_IDS[k])) {
@@ -713,9 +1064,43 @@ function setForm(o) {
   syncEngSelect();
 }
 
-$('formReportImage').addEventListener('change', e => {
-  const file = e.target.files && e.target.files[0];
+/* ===== 아이폰 HEIC/HEIF 사진 → JPG 자동 변환 =====
+   (HEIC는 크롬·윈도우에서 열리지 않아서 JPG로 바꿔 저장합니다. 변환 도구는 필요할 때만 불러옵니다.) */
+let heicLoading = null;
+const isHeic = f => /\.(heic|heif)$/i.test((f && f.name) || '') || /image\/hei[cf]/i.test((f && f.type) || '');
+function loadHeicLib() {
+  if (typeof heic2any !== 'undefined') return Promise.resolve();
+  if (heicLoading) return heicLoading;
+  heicLoading = new Promise((resolve, reject) => {
+    const sc = document.createElement('script');
+    sc.src = 'https://cdn.jsdelivr.net/npm/heic2any@0.0.4/dist/heic2any.min.js';
+    sc.onload = resolve;
+    sc.onerror = () => { heicLoading = null; reject(new Error('HEIC 변환 도구를 불러오지 못했습니다')); };
+    document.head.appendChild(sc);
+  });
+  return heicLoading;
+}
+async function normalizeImage(file) {
+  if (!isHeic(file)) return file;
+  showSync('🖼️ HEIC 사진을 JPG로 변환 중...');
+  await loadHeicLib();
+  let out = await heic2any({ blob: file, toType: 'image/jpeg', quality: 0.85 });
+  if (Array.isArray(out)) out = out[0];
+  const name = ((file.name || 'photo').replace(/\.(heic|heif)$/i, '') || 'photo') + '.jpg';
+  return new File([out], name, { type: 'image/jpeg' });
+}
+
+$('formReportImage').addEventListener('change', async e => {
+  let file = e.target.files && e.target.files[0];
   if (!file) return;
+  if (isHeic(file)) {
+    try { file = await normalizeImage(file); }
+    catch (err) {
+      console.error(err);
+      alert('HEIC 사진을 변환하지 못했습니다.\n인터넷 연결을 확인하거나 JPG로 바꿔서 올려 주세요.');
+      e.target.value = ''; return;
+    }
+  }
   const reader = new FileReader();
   reader.onload = function(uploadEvent) {
     currentFormReportImage = uploadEvent.target.result;
@@ -728,7 +1113,7 @@ $('formReportImage').addEventListener('change', e => {
 });
 
 function clearForm() {
-  closeEditModal(); 
+  closeEditModal();
   currentFormReportImage = '';
   currentFormReportImageLink = '';
   $('formReportImgPreview').style.display = 'none';
@@ -738,9 +1123,11 @@ function clearForm() {
   $('formMode').textContent = '';
   $('submitBtn').textContent = '스케줄 추가';
   $('resetForm').textContent = '입력 지우기';
+  updateDeleteBtn();
   render();
 }
 
+let fQ = '', fEng = '', fPay = '', fFrom = '', fTo = '';
 function renderFilter() {
   const sel = $('filterStage'); sel.innerHTML = '';
   const add = (v, t) => { const o = document.createElement('option'); o.value = v; o.textContent = t; sel.appendChild(o); };
@@ -758,7 +1145,6 @@ function renderFilter() {
   es.value = fEng;
   if (es.value !== fEng) { fEng = ''; es.value = ''; }
 }
-let fQ = '', fEng = '', fPay = '', fFrom = '', fTo = '';
 function isFiltered() { return !!(filterStage || fQ || fEng || fPay || fFrom || fTo); }
 function payState(s) {
   const t = toNum(s.total), paid = (s.depositPaid ? toNum(s.deposit) : 0) + (s.balancePaid ? toNum(s.balance) : 0);
@@ -816,7 +1202,6 @@ function render() {
     td.colSpan = 12; td.className = 'empty';
     td.textContent = schedules.length ? '조건에 맞는 스케줄이 없습니다.' : '등록된 스케줄이 없습니다.';
     tr.appendChild(td); body.appendChild(tr);
-    renderCalendar();
     return;
   }
   [...rows].sort((a, b) => (a.visit || '9999').localeCompare(b.visit || '9999')).forEach(item => {
@@ -849,11 +1234,11 @@ function render() {
     const visitTd = document.createElement('td');
     const visitInput = document.createElement('input');
     visitInput.type = 'datetime-local'; visitInput.className = 'stage-sel'; visitInput.style.width = '160px';
-    
+
     let vDate = item.visit || '';
     if (vDate.length === 10) vDate += 'T09:00';
     visitInput.value = vDate.replace(' ', 'T').substring(0, 16);
-    
+
     visitInput.onchange = () => { item.visit = visitInput.value; save(); };
     visitTd.appendChild(visitInput); tr.appendChild(visitTd);
 
@@ -866,10 +1251,14 @@ function render() {
       const t = document.createElement('div'); t.className = 'rec-text'; t.textContent = item.report; rc.appendChild(t);
       if (item.reportAt) { const a = document.createElement('div'); a.className = 'rec-at'; a.textContent = item.reportAt + ' 기록'; rc.appendChild(a); }
     }
-    if (item.reportImageLink) {
+    if (safeUrl(item.reportImageLink)) {
       const linkDiv = document.createElement('div');
       linkDiv.style.marginTop = '4px';
-      linkDiv.innerHTML = `<a href="${item.reportImageLink}" target="_blank" style="color:#2563eb;font-weight:bold;font-size:0.75rem;">🔗 드라이브 사진</a>`;
+      const a = document.createElement('a');
+      a.href = safeUrl(item.reportImageLink); a.target = '_blank'; a.rel = 'noopener';
+      a.style.cssText = 'color:#2563eb;font-weight:bold;font-size:0.75rem;';
+      a.textContent = '🔗 드라이브 사진';
+      linkDiv.appendChild(a);
       rc.appendChild(linkDiv);
     }
     const rb = document.createElement('button');
@@ -892,9 +1281,19 @@ function render() {
     td.appendChild(eb); td.appendChild(document.createElement('br')); td.appendChild(db);
     tr.appendChild(td); body.appendChild(tr);
   });
-  renderCalendar();
 }
 
+function updateDeleteBtn() { $('formDeleteBtn').style.display = editingId ? '' : 'none'; }
+$('formDeleteBtn').onclick = async () => {
+  const item = schedules.find(x => x.id === editingId);
+  if (!item) return;
+  if (!confirm(`'${item.customer || '이름 없음'}' (${fmtDate(item.visit)}) 일정을 삭제할까요?\n삭제하면 되돌릴 수 없습니다.`)) return;
+  schedules = schedules.filter(x => x.id !== item.id);
+  clearForm();
+  await save();
+  refreshPopups();
+  showSync('🗑 삭제했습니다');
+};
 let formHome = null;
 function openEditModal(id) {
   const item = schedules.find(x => x.id === id);
@@ -904,6 +1303,7 @@ function openEditModal(id) {
   $('submitBtn').textContent = '수정 저장';
   $('resetForm').textContent = '수정 취소';
   $('editModalTitle').textContent = `${item.customer} · 스케줄 수정`;
+  updateDeleteBtn();
   const f = $('scheduleForm');
   if (!formHome) formHome = { parent: f.parentNode, next: f.nextSibling };
   $('editModalBody').appendChild(f);
@@ -973,6 +1373,7 @@ function openCardModal(id) {
 function closeCardModal() { $('cardModal').classList.remove('show'); }
 
 $('downloadCardBtn').onclick = () => {
+  if (typeof html2canvas === 'undefined') { alert('이미지 저장 도구를 불러오지 못했습니다. 인터넷 연결을 확인해 주세요.'); return; }
   html2canvas($('captureArea'), { scale: 3, backgroundColor: '#ffffff', useCORS: true }).then(canvas => {
     const link = document.createElement('a');
     link.download = `안내장_${cardFile || '고객'}.png`;
@@ -1012,6 +1413,7 @@ function restoreDraft() {
     $('formMode').textContent = `'${it.customer}' 수정 중 (임시저장 불러옴)`;
     $('submitBtn').textContent = '수정 저장';
     $('resetForm').textContent = '수정 취소';
+    updateDeleteBtn();
   } else {
     $('formMode').textContent = '💾 임시저장된 내용을 불러왔습니다';
   }
@@ -1037,7 +1439,7 @@ $('scheduleForm').addEventListener('submit', e => {
     const dup = schedules.some(s => Object.keys(FIELD_IDS).every(k => s[k] === data[k]));
     if (dup && !confirm('똑같은 내용이 이미 등록되어 있습니다. 그래도 추가할까요?')) return;
     if (data.report) data.reportAt = nowStr();
-    schedules.push({ ...data, id: Date.now() + Math.random().toString(36).slice(2, 6) });
+    schedules.push({ ...data, id: uid() });
   }
   save(); clearForm();
 });
@@ -1121,11 +1523,19 @@ async function uploadOriginalFile(file) {
     showSync('⚠️ 원본 Drive 저장 실패');
   }
 }
-function handleFile(file) {
+async function handleFile(file) {
   if (!file) return;
+  if (isHeic(file)) {
+    try { file = await normalizeImage(file); }
+    catch (err) {
+      console.error(err);
+      $('status').textContent = 'HEIC 사진을 변환하지 못했습니다. 인터넷 연결을 확인하거나 JPG로 바꿔서 올려 주세요.';
+      return;
+    }
+  }
   uploadOriginalFile(file);
   if (isExcelFile(file)) handleExcel(file);
-  else if (/^image\//i.test(file.type) || /\.(png|jpe?g|gif|webp|bmp)$/i.test(file.name || '')) runOCR(file);
+  else if (/^image\//i.test(file.type) || /\.(png|jpe?g|gif|webp|bmp|heic|heif)$/i.test(file.name || '')) runOCR(file);
   else $('status').textContent = '원본 파일은 Drive에 저장하며, 이 형식은 글자 자동 인식 없이 보관합니다.';
 }
 $('imageUpload').addEventListener('change', e => {
@@ -1357,14 +1767,9 @@ function processRows(rows) {
   const fresh = items.filter(o => !schedules.some(s => Object.keys(FIELD_IDS).every(k => (s[k] || '') === (o[k] || ''))));
   if (!fresh.length) { $('status').textContent = `엑셀 ${items.length}건은 이미 모두 등록되어 있습니다.`; return; }
   if (!confirm(`엑셀에서 ${items.length}건을 찾았습니다.\n(이미 등록된 ${items.length - fresh.length}건 제외)\n${fresh.length}건을 목록에 추가할까요?`)) { $('status').textContent = '엑셀 가져오기를 취소했습니다.'; return; }
-  fresh.forEach((o, i) => schedules.push({ ...o, id: Date.now() + Math.random().toString(36).slice(2, 6) + i }));
+  fresh.forEach(o => schedules.push({ ...o, id: uid() }));
   save(); render();
   $('status').textContent = `엑셀에서 ${fresh.length}건을 목록에 추가했습니다.`;
-}
-
-async function nowStr() {
-  const d = new Date(), z = n => String(n).padStart(2, '0');
-  return `${d.getFullYear()}-${z(d.getMonth() + 1)}-${z(d.getDate())} ${z(d.getHours())}:${z(d.getMinutes())}`;
 }
 
 async function handleExcel(file) {
@@ -1432,7 +1837,7 @@ $('pasteBtn').onclick = async () => {
 
 function applyParsed(p) {
   setForm(p);
-  if (editingId) { editingId = null; $('formMode').textContent = ''; $('submitBtn').textContent = '스케줄 추가'; $('resetForm').textContent = '입력 지우기'; render(); }
+  if (editingId) { editingId = null; $('formMode').textContent = ''; $('submitBtn').textContent = '스케줄 추가'; $('resetForm').textContent = '입력 지우기'; updateDeleteBtn(); render(); }
   const labels = { customer:'고객명', phone:'연락처', visit:'방문 일시', request:'요청 사항', cost:'처리 비용', engineer:'담당 기사', engPhone:'기사 연락처' };
   const missing = Object.keys(labels).filter(k => !p[k]).map(k => labels[k]);
   $('status').textContent = missing.length ? `자동 입력 완료 · 이미지에서 찾지 못한 항목: ${missing.join(', ')} → 직접 입력 후 [스케줄 추가]를 눌러 주세요.` : '자동 입력 완료! 내용 확인 후 [스케줄 추가]를 눌러 주세요.';
@@ -1451,7 +1856,7 @@ function exportExcel() {
   const payTxt = (s, k) => s[k + 'Paid'] ? '입금완료' + ([s[k + 'PaidAt'], s[k + 'Method']].filter(Boolean).length ? ' (' + [s[k + 'PaidAt'], s[k + 'Method']].filter(Boolean).join(' · ') + ')' : '') : (s[k] ? '미입금' : '');
   const rows = [...schedules].sort((a, b) => (a.visit || '9999').localeCompare(b.visit || '9999'))
     .map(s => [s.status, s.customer, s.phone, fmtDate(s.visit), s.request, s.cost, s.total, s.deposit, payTxt(s,'deposit'), s.balance, payTxt(s,'balance'), s.engineer, s.engPhone, s.note, s.report, s.reportAt, s.reportImageLink || ''].map(v => v || ''));
-  const name = '현장스케줄_' + new Date().toISOString().slice(0, 10);
+  const name = '현장스케줄_' + todayStr();
   if (typeof XLSX !== 'undefined') {
     const wb = XLSX.utils.book_new();
     const ws = XLSX.utils.aoa_to_sheet([head, ...rows]);
@@ -1465,22 +1870,27 @@ function exportExcel() {
     const out = XLSX.write(wb, { bookType: 'xlsx', type: 'array' });
     downloadBlob(new Blob([out], { type: 'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet' }), name + '.xlsx');
   } else {
-    const esc = v => '"' + String(v).replace(/"/g, '""') + '"';
-    const csv = '\uFEFF' + [head, ...rows].map(r => r.map(esc).join(',')).join('\r\n');
+    const esc2 = v => '"' + String(v).replace(/"/g, '""') + '"';
+    const csv = '\uFEFF' + [head, ...rows].map(r => r.map(esc2).join(',')).join('\r\n');
     downloadBlob(new Blob([csv], { type: 'text/csv;charset=utf-8' }), name + '.csv');
     alert('인터넷 연결이 없어 엑셀(.xlsx) 대신 CSV 파일로 저장했습니다.');
   }
 }
-exportExcel = exportExcel; // 선언 유지
 $('exportExcel').onclick = exportExcel;
 
 document.querySelectorAll('.modal:not(#editModal)').forEach(modal => {
   modal.addEventListener('click', event => {
-    if (event.target === modal) modal.classList.remove('show');
+    if (event.target !== modal) return;
+    if (modal.id === 'daySchedulesModal' && dayEditId) return;       // 수정 중에는 바깥을 눌러도 닫히지 않음
+    if (modal.id === 'customerHistoryModal' && histEditId) return;
+    if (modal.id === 'daySchedulesModal') dayEditId = null;
+    if (modal.id === 'customerHistoryModal') histEditId = null;
+    modal.classList.remove('show');
   });
 });
 fillStageOptions($('stage'), STAGES[0], false);
 $('stage').addEventListener('change', () => { $('stage').style.background = STAGE_COLORS[$('stage').value] || '#fff'; });
+updateServerState();
 renderEmp();
 $('empBox').open = employees.length === 0;
 restoreDraft();
