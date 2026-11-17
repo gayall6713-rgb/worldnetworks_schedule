@@ -19,8 +19,9 @@
 body{font-family:'Malgun Gothic',sans-serif;background:var(--bg-color);margin:0;padding:15px;color:var(--text-main)}
 .container{max-width:1000px;margin:0 auto;background:var(--card-bg);padding:20px;border-radius:12px;box-shadow:0 4px 12px rgba(0,0,0,.08)}
 h2{text-align:center;font-size:1.4rem;margin-bottom:20px}
-#serverBar{display:flex;align-items:center;justify-content:space-between;gap:8px;background:#f1f3f5;border-radius:8px;padding:8px 10px;margin-bottom:14px;font-size:.82rem}
-#serverBar.on{background:#e6fcf5}
+#serverBar{display:flex;align-items:center;justify-content:flex-end;gap:8px;margin-bottom:10px;font-size:.82rem}
+#serverState{display:none}
+.btn-dl{background:linear-gradient(#ffa94d,#f76707);--edge:#a84300;color:#fff}
 .tab-menu{display:flex;background:#e9ecef;border-radius:10px;padding:4px;margin-bottom:20px}
 .tab-btn{flex:1;padding:10px;text-align:center;font-size:.95rem;font-weight:bold;border:none;background:transparent;border-radius:8px;cursor:pointer;color:var(--text-sub);transition:all .2s}
 .tab-btn.active{background:#fff;color:var(--primary);box-shadow:0 2px 4px rgba(0,0,0,.05)}
@@ -125,6 +126,61 @@ select{width:100%;padding:10px;border:1px solid #ddd;border-radius:4px;box-sizin
 #installBtn:active{transform:translateY(2px);box-shadow:0 1px 0 #1e3a8a}
 #iosGuide{display:none;position:fixed;left:10px;right:10px;bottom:16px;background:#1f2937;color:#fff;padding:14px 16px;border-radius:12px;font-size:.88rem;line-height:1.5;z-index:300;box-shadow:0 6px 20px rgba(0,0,0,.35)}
 #iosGuide button{float:right;background:none;border:none;color:#fff;font-size:1.1rem;cursor:pointer}
+/* ===== 검색 · 달력/목록 전환 · 상세 보기 ===== */
+.cal-search{position:relative;margin-bottom:10px}
+.cal-search input{width:100%;padding:12px 40px 12px 12px;border:1.5px solid #c5cbd3;border-radius:10px;font-size:1rem;box-sizing:border-box}
+.cal-search input:focus{outline:none;border-color:var(--primary)}
+.cal-search button{position:absolute;right:6px;top:50%;transform:translateY(-50%);border:none;background:none;font-size:1.1rem;cursor:pointer;color:#888;display:none;padding:6px}
+.view-toggle{display:flex;gap:6px;margin-bottom:14px}
+.view-toggle button{flex:1;padding:10px;border:1px solid var(--border);background:#fff;border-radius:8px;font-weight:bold;cursor:pointer;color:var(--text-sub);font-size:.95rem;font-family:inherit}
+.view-toggle button.on{background:var(--primary);color:#fff;border-color:var(--primary)}
+.cal-dots{display:none;flex-wrap:wrap;gap:3px;margin-top:3px;align-items:center}
+.cal-dot{width:8px;height:8px;border-radius:50%}
+.cal-more{font-size:.62rem;color:#555;font-weight:bold;line-height:8px}
+.cal-cell.selected{outline:2.5px solid #f59f00;outline-offset:-2px}
+.agenda{display:flex;flex-direction:column;gap:6px}
+.ag-date{font-weight:bold;font-size:.9rem;color:#444;margin:12px 0 2px;padding-bottom:4px;border-bottom:1px solid #eee}
+.ag-date:first-child{margin-top:0}
+.ag-date.today{color:var(--primary)}
+.ag-section{font-weight:bold;font-size:.95rem;color:#868e96;margin:20px 0 4px}
+.ag-item{display:flex;align-items:center;gap:10px;padding:11px 12px;border:1px solid #e5e7eb;border-left:5px solid #adb5bd;border-radius:8px;background:#fff;cursor:pointer;text-align:left;width:100%;box-sizing:border-box;font-family:inherit;font-size:.92rem;color:#222}
+.ag-item:hover{background:#f8f9fa}
+.ag-item:active{background:#f1f3f5}
+.ag-time{font-weight:bold;min-width:42px;color:#333;font-size:.88rem}
+.ag-main{flex:1;min-width:0}
+.ag-name{font-weight:bold}
+.ag-sub{font-size:.8rem;color:#666;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;margin-top:2px}
+.ag-stage{font-size:.72rem;padding:3px 8px;border-radius:10px;white-space:nowrap;font-weight:bold;color:#222}
+.ag-item.cancel .ag-name{text-decoration:line-through;opacity:.6}
+.ag-empty{text-align:center;color:#999;padding:20px;font-size:.9rem}
+#dayPanel{margin-top:16px}
+.dp-head{display:flex;justify-content:space-between;align-items:center;margin-bottom:8px;gap:8px}
+.dp-head b{font-size:1rem}
+#detailModal{z-index:55}
+#editModal,#cardModal{z-index:60}
+.detail-row{display:flex;gap:10px;padding:10px 0;border-bottom:1px solid #f1f3f5;font-size:.95rem;align-items:flex-start}
+.detail-row .dl{min-width:78px;color:#868e96;font-weight:bold;font-size:.82rem;padding-top:2px}
+.detail-row .dv{flex:1;min-width:0;word-break:break-all;white-space:pre-wrap}
+.quick-btns{display:flex;gap:6px;flex-wrap:wrap;margin-top:6px}
+.qbtn{display:inline-block;padding:7px 11px;border-radius:6px;font-size:.82rem;font-weight:bold;text-decoration:none;border:1px solid #ced4da;background:#f8f9fa;color:#222;white-space:nowrap}
+.qbtn.call{background:#e7f5ff;border-color:#74c0fc;color:#1864ab}
+.qbtn.sms{background:#f3f0ff;border-color:#b197fc;color:#5f3dc4}
+.qbtn.naver{background:#ebfbee;border-color:#8ce99a;color:#2b8a3e}
+.qbtn.kakao{background:#fff9db;border-color:#ffe066;color:#5c3d00}
+.detail-photo{max-width:100%;max-height:240px;border-radius:6px;border:1px solid #ddd;margin-top:4px}
+@media (max-width:600px){
+  body{padding:6px}
+  .container{padding:12px}
+  h2{font-size:1.2rem;margin:6px 0 14px}
+  .calendar-grid{gap:3px}
+  .cal-cell{min-height:52px;padding:4px 3px}
+  .cal-badge{display:none!important}
+  .cal-dots{display:flex}
+  .cal-date-num{text-decoration:none}
+  .calendar-header{font-size:1rem}
+  .calendar-header button{padding:6px 10px;font-size:.82rem}
+  .desk-only{display:none}
+}
 </style>
 </head>
 <body>
@@ -143,6 +199,15 @@ select{width:100%;padding:10px;border:1px solid #ddd;border-radius:4px;box-sizin
   </div>
 
   <div id="tab-calendar" class="tab-content active">
+    <div class="cal-search">
+      <input type="text" id="calQ" placeholder="🔍 고객명·연락처·주소·요청사항·기사 검색" autocomplete="off" enterkeyhint="search">
+      <button type="button" id="calQClear" aria-label="검색어 지우기">✖</button>
+    </div>
+    <div class="view-toggle" id="viewToggle">
+      <button type="button" data-view="cal" class="on">📅 달력</button>
+      <button type="button" data-view="list">📋 목록</button>
+    </div>
+    <div id="viewCal">
     <div class="calendar-header">
       <button type="button" onclick="moveMonth(-1)">◀ 이전 달</button>
       <span id="calTitle"></span>
@@ -152,7 +217,17 @@ select{width:100%;padding:10px;border:1px solid #ddd;border-radius:4px;box-sizin
       <div class="cal-day-name" style="color:#ef4444;">일</div><div class="cal-day-name">월</div><div class="cal-day-name">화</div><div class="cal-day-name">수</div><div class="cal-day-name">목</div><div class="cal-day-name">금</div><div class="cal-day-name" style="color:#3b82f6;">토</div>
     </div>
     <div class="calendar-grid" id="calBody"></div>
-    <p class="hint" style="text-align:center;margin-top:12px;">💡 달력의 <b>날짜 숫자(예: 16)</b>를 누르면 해당 날짜 스케줄을 팝업으로 보고 <b>수정·삭제</b>할 수 있고, 빈 칸을 누르면 새 일정을 등록할 수 있습니다.<br><b>이름(스케줄 배지)을 누르면 해당 고객의 이력</b>을 볼 수 있습니다.</p>
+    <p class="hint desk-only" style="text-align:center;margin-top:12px;">💡 <b>날짜 숫자(예: 16)</b>를 누르면 그날 일정 목록이 나오고, <b>일정(배지)</b>을 누르면 상세 내용을 볼 수 있습니다.<br>빈 칸을 누르면 새 일정을 등록할 수 있습니다.</p>
+    <div id="dayPanel"></div>
+    </div>
+    <div id="viewList" style="display:none;">
+      <label class="chk" style="justify-content:flex-end;margin:0 0 8px;"><input type="checkbox" id="showPast"> 지난 일정도 보기</label>
+      <div id="agendaList" class="agenda"></div>
+    </div>
+    <div id="viewSearch" style="display:none;">
+      <div id="searchInfo" class="hint" style="margin:0 0 8px;font-weight:bold;"></div>
+      <div id="searchList" class="agenda"></div>
+    </div>
   </div>
 
   <div id="tab-manage" class="tab-content">
@@ -328,6 +403,17 @@ select{width:100%;padding:10px;border:1px solid #ddd;border-radius:4px;box-sizin
   </div>
 </div>
 
+<div id="detailModal" class="modal">
+  <div class="modal-box" style="max-width:520px;">
+    <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:10px;">
+      <h4 id="detailTitle" style="margin:0;color:var(--primary);font-size:1.2rem;">일정 상세</h4>
+      <button type="button" onclick="closeDetail()" style="background:none;border:none;font-size:1.2rem;cursor:pointer;">✖</button>
+    </div>
+    <div id="detailBody"></div>
+    <div id="detailBtns" class="day-btns" style="margin-top:16px;"></div>
+  </div>
+</div>
+
 <script src="https://cdn.jsdelivr.net/npm/tesseract.js@5.1.1/dist/tesseract.min.js"></script>
 <script src="https://cdn.jsdelivr.net/npm/xlsx@0.18.5/dist/xlsx.full.min.js"></script>
 <script src="https://cdn.jsdelivr.net/npm/html2canvas@1.4.1/dist/html2canvas.min.js"></script>
@@ -429,6 +515,7 @@ window.onload = () => { loadFromServer(); loadEmployees(); };
 let editingId = null;
 let currentYear = new Date().getFullYear();
 let currentMonth = new Date().getMonth();
+let selDate = '';   // 휴대폰에서 선택한 날짜
 
 function switchTab(tabId) {
   document.querySelectorAll('.tab-content').forEach(el => el.classList.toggle('active', el.id === 'tab-' + tabId));
@@ -437,6 +524,7 @@ function switchTab(tabId) {
 }
 
 function renderCalendar() {
+  if (!selDate) selDate = todayStr();
   $('calTitle').textContent = `${currentYear}년 ${currentMonth + 1}월`;
   const calBody = $('calBody');
   calBody.innerHTML = '';
@@ -453,12 +541,29 @@ function renderCalendar() {
     const dateStr = `${currentYear}-${String(currentMonth + 1).padStart(2,'0')}-${String(d).padStart(2,'0')}`;
     const daySchedules = schedules.filter(s => s.visit && s.visit.startsWith(dateStr))
       .sort((a, b) => (a.visit || '').localeCompare(b.visit || ''));
-    const cell = mk('cal-cell' + (today === dateStr ? ' today' : ''));
-    cell.addEventListener('click', ev => selectDateForVisit(ev, dateStr));
+    const mobile = isMobile();
+    const cell = mk('cal-cell' + (today === dateStr ? ' today' : '') + (mobile && selDate === dateStr ? ' selected' : ''));
+    cell.addEventListener('click', ev => {
+      if (isMobile()) { selDate = dateStr; renderCalendar(); return; }
+      selectDateForVisit(ev, dateStr);
+    });
     const num = mk('cal-date-num');
-    num.textContent = d; num.title = '이 날짜 스케줄 모아보기·수정·삭제';
-    num.addEventListener('click', ev => { ev.stopPropagation(); openDaySchedulesModal(dateStr); });
+    num.textContent = d; num.title = '이 날짜 스케줄 모아보기';
+    num.addEventListener('click', ev => {
+      ev.stopPropagation();
+      if (isMobile()) { selDate = dateStr; renderCalendar(); return; }
+      openDaySchedulesModal(dateStr);
+    });
     cell.appendChild(num);
+    // 휴대폰용: 일정 개수만큼 색깔 점 표시
+    if (daySchedules.length) {
+      const dots = mk('cal-dots');
+      daySchedules.slice(0, 6).forEach(s => {
+        const dot = mk('cal-dot'); dot.style.background = STAGE_ACCENT[s.status] || '#adb5bd'; dots.appendChild(dot);
+      });
+      if (daySchedules.length > 6) { const more = document.createElement('span'); more.className = 'cal-more'; more.textContent = '+' + (daySchedules.length - 6); dots.appendChild(more); }
+      cell.appendChild(dots);
+    }
     daySchedules.forEach(s => {
       const b = document.createElement('span');
       b.className = 'cal-badge';
@@ -468,17 +573,20 @@ function renderCalendar() {
       b.title = `${s.customer || ''} · ${s.status || '상태 미지정'}: ${s.request || ''}`;
       const tm = s.visit.slice(11, 16);
       b.textContent = `${tm ? tm + ' ' : ''}${s.customer || ''}`;
-      b.addEventListener('click', ev => openCustomerHistoryModal(ev, s.customer, s.phone));
+      b.addEventListener('click', ev => { ev.stopPropagation(); openDetail(s.id); });
       cell.appendChild(b);
     });
     calBody.appendChild(cell);
   }
+  renderViews();
 }
 
 function moveMonth(dir) {
   currentMonth += dir;
   if (currentMonth > 11) { currentMonth = 0; currentYear++; }
   else if (currentMonth < 0) { currentMonth = 11; currentYear--; }
+  const ym = `${currentYear}-${String(currentMonth + 1).padStart(2, '0')}`;
+  selDate = todayStr().startsWith(ym) ? todayStr() : ym + '-01';
   renderCalendar();
 }
 
@@ -551,15 +659,15 @@ function renderDayModal() {
   const daySchedules = schedules.filter(s => s.visit && s.visit.slice(0, 10) === dateStr)
     .sort((a, b) => (a.visit || '9999').localeCompare(b.visit || '9999'));
   $('dayModalTitle').textContent = `📅 ${dateStr} 스케줄 목록 (${daySchedules.length}건)`;
+  $('dayModalTitle').textContent = `📅 ${dateLabel(dateStr)} (${daySchedules.length}건)`;
   const container = $('dayModalListContainer');
   container.innerHTML = '';
+  container.style.gap = '6px';
   if (!daySchedules.length) {
     container.innerHTML = '<div style="text-align:center;color:#999;padding:20px;">이 날짜에 등록된 스케줄이 없습니다.</div>';
   } else {
-    const counts = countDups(daySchedules);
-    daySchedules.forEach(item => {
-      container.appendChild(item.id === dayEditId ? buildEditCard(item, POPUPS.day) : buildScheduleCard(item, counts[dupKey(item)] > 1, POPUPS.day));
-    });
+    // 목록에서 일정을 누르면 상세 내용이 열립니다
+    daySchedules.forEach(item => container.appendChild(agendaItem(item)));
   }
   box.scrollTop = keepScroll;
 }
@@ -671,6 +779,7 @@ function buildScheduleCard(item, isDup, ctx) {
     a.textContent = '🔗 드라이브 저장된 현장 사진 보기';
     linkDiv.appendChild(a); card.appendChild(linkDiv);
   }
+  if (hasPhoto(item)) { const d = photoDlButton(item); d.style.marginTop = '6px'; card.appendChild(d); }
 
   const btns = document.createElement('div'); btns.className = 'day-btns';
   const eb = document.createElement('button');
@@ -1140,6 +1249,11 @@ function clearForm() {
   $('resetForm').textContent = '입력 지우기';
   updateDeleteBtn();
   render();
+  // 상세 화면에서 [수정]으로 들어왔으면 저장·취소 후 다시 상세 화면으로 돌아감
+  if (detailReturn) {
+    const id = detailReturn; detailReturn = null;
+    if (schedules.some(x => x.id === id)) openDetail(id);
+  }
 }
 
 let fQ = '', fEng = '', fPay = '', fFrom = '', fTo = '';
@@ -1276,6 +1390,7 @@ function render() {
       linkDiv.appendChild(a);
       rc.appendChild(linkDiv);
     }
+    if (hasPhoto(item)) { const d = photoDlButton(item); d.style.cssText += 'margin:4px 4px 0 0;padding:4px 9px;font-size:.78rem;'; rc.appendChild(d); }
     const rb = document.createElement('button');
     rb.type = 'button'; rb.className = 'btn btn-record'; rb.textContent = item.report || item.reportImage ? '기록 수정' : '✏️ 기록하기';
     rb.onclick = () => openEditModal(item.id);
@@ -1893,9 +2008,284 @@ function exportExcel() {
 }
 $('exportExcel').onclick = exportExcel;
 
+/* ===== 검색 · 목록 보기 · 휴대폰 날짜 목록 · 일정 상세 ===== */
+let viewMode = 'cal';     // 'cal' 달력, 'list' 목록
+let calQ = '';            // 검색어
+let detailId = null;      // 상세 화면에 열린 일정
+let detailReturn = null;  // 수정 후 돌아올 상세 일정
+const WEEK = '일월화수목금토';
+const mobileMQ = window.matchMedia('(max-width:600px)');
+function isMobile() { return mobileMQ.matches; }
+const visitDay = s => (s.visit || '').slice(0, 10);
+const visitTime = s => (s.visit || '').length >= 16 ? s.visit.slice(11, 16) : '';
+const byVisitAsc = (a, b) => (a.visit || '9999').localeCompare(b.visit || '9999');
+const byVisitDesc = (a, b) => (b.visit || '0000').localeCompare(a.visit || '0000');
+
+function dateLabel(d) {
+  if (!d) return '방문일 미정';
+  const dt = new Date(d + 'T00:00');
+  if (isNaN(dt)) return d;
+  const y = dt.getFullYear() !== new Date().getFullYear() ? dt.getFullYear() + '년 ' : '';
+  return `${y}${dt.getMonth() + 1}월 ${dt.getDate()}일 (${WEEK[dt.getDay()]})${d === todayStr() ? ' · 오늘' : ''}`;
+}
+
+/* 목록 한 줄 (누르면 상세) */
+function agendaItem(s) {
+  const b = document.createElement('button');
+  b.type = 'button';
+  b.className = 'ag-item' + (/취소/.test(s.status || '') ? ' cancel' : '');
+  b.style.borderLeftColor = STAGE_ACCENT[s.status] || '#adb5bd';
+  const t = document.createElement('span'); t.className = 'ag-time'; t.textContent = visitTime(s) || '시간\n미정';
+  if (!visitTime(s)) { t.style.fontSize = '.7rem'; t.style.color = '#999'; t.style.whiteSpace = 'pre'; }
+  const main = document.createElement('span'); main.className = 'ag-main';
+  const nm = document.createElement('div'); nm.className = 'ag-name'; nm.textContent = s.customer || '이름 없음';
+  const sub = document.createElement('div'); sub.className = 'ag-sub';
+  sub.textContent = [s.request, s.note, s.engineer ? '👷 ' + s.engineer : ''].filter(Boolean).join(' · ') || '-';
+  main.append(nm, sub);
+  const st = document.createElement('span'); st.className = 'ag-stage';
+  st.textContent = s.status || '미지정'; st.style.background = STAGE_COLORS[s.status] || '#f1f3f5';
+  b.append(t, main, st);
+  b.onclick = () => openDetail(s.id);
+  return b;
+}
+/* 날짜별로 묶어서 표시 */
+function renderGrouped(box, list, emptyMsg) {
+  if (!list.length) { const e = document.createElement('div'); e.className = 'ag-empty'; e.textContent = emptyMsg; box.appendChild(e); return; }
+  let last = null;
+  list.forEach(s => {
+    const d = visitDay(s);
+    if (d !== last) {
+      const h = document.createElement('div');
+      h.className = 'ag-date' + (d === todayStr() ? ' today' : '');
+      h.textContent = dateLabel(d);
+      box.appendChild(h); last = d;
+    }
+    box.appendChild(agendaItem(s));
+  });
+}
+
+function updateViewVisibility() {
+  const searching = !!calQ;
+  $('viewSearch').style.display = searching ? '' : 'none';
+  $('viewToggle').style.display = searching ? 'none' : '';
+  $('viewCal').style.display = !searching && viewMode === 'cal' ? '' : 'none';
+  $('viewList').style.display = !searching && viewMode === 'list' ? '' : 'none';
+  $('calQClear').style.display = searching ? 'block' : 'none';
+  document.querySelectorAll('#viewToggle button').forEach(b => b.classList.toggle('on', b.dataset.view === viewMode));
+}
+
+/* 휴대폰: 달력 아래에 선택한 날짜의 일정 목록 */
+function renderDayPanel() {
+  const p = $('dayPanel');
+  if (!isMobile()) { p.style.display = 'none'; p.innerHTML = ''; return; }
+  p.style.display = '';
+  p.innerHTML = '';
+  const list = schedules.filter(s => visitDay(s) === selDate).sort(byVisitAsc);
+  const head = document.createElement('div'); head.className = 'dp-head';
+  const t = document.createElement('b'); t.textContent = `${dateLabel(selDate)} · ${list.length}건`;
+  const add = document.createElement('button');
+  add.type = 'button'; add.className = 'btn btn-save'; add.textContent = '➕ 새 일정';
+  add.onclick = () => { clearForm(); $('visitDate').value = selDate + 'T09:00'; switchTab('manage'); $('customer').focus(); };
+  head.append(t, add);
+  const box = document.createElement('div'); box.className = 'agenda';
+  if (list.length) list.forEach(s => box.appendChild(agendaItem(s)));
+  else { const e = document.createElement('div'); e.className = 'ag-empty'; e.textContent = '이 날짜에는 일정이 없습니다.'; box.appendChild(e); }
+  p.append(head, box);
+}
+
+/* 목록 보기: 오늘 이후 일정 (선택 시 지난 일정 포함) */
+function renderListView() {
+  const box = $('agendaList'); box.innerHTML = '';
+  const today = todayStr();
+  const dated = schedules.filter(s => visitDay(s));
+  renderGrouped(box, dated.filter(s => visitDay(s) >= today).sort(byVisitAsc), '오늘 이후 등록된 일정이 없습니다.');
+  const nodate = schedules.filter(s => !visitDay(s));
+  if (nodate.length) {
+    const h = document.createElement('div'); h.className = 'ag-section'; h.textContent = `📌 방문일 미정 (${nodate.length}건)`;
+    box.appendChild(h); nodate.forEach(s => box.appendChild(agendaItem(s)));
+  }
+  if ($('showPast').checked) {
+    const past = dated.filter(s => visitDay(s) < today).sort(byVisitDesc);
+    const h = document.createElement('div'); h.className = 'ag-section'; h.textContent = `🕘 지난 일정 (${past.length}건 · 최근 순)`;
+    box.appendChild(h);
+    renderGrouped(box, past, '지난 일정이 없습니다.');
+  }
+}
+
+/* 검색 */
+function renderSearch() {
+  const box = $('searchList'); box.innerHTML = '';
+  if (!calQ) return;
+  const words = calQ.toLowerCase().split(/\s+/).filter(Boolean);
+  const hits = schedules.filter(s => {
+    const hay = [s.customer, s.phone, (s.phone || '').replace(/\D/g, ''), s.request, s.note, s.engineer, s.engPhone, s.cost, s.report, s.status].join(' ').toLowerCase();
+    return words.every(w => hay.includes(w));
+  });
+  const dated = hits.filter(s => visitDay(s)).sort(byVisitDesc), nodate = hits.filter(s => !visitDay(s));
+  $('searchInfo').textContent = `🔍 "${calQ}" 검색 결과 ${hits.length}건 (최근 날짜 순)`;
+  if (!hits.length) { const e = document.createElement('div'); e.className = 'ag-empty'; e.textContent = '찾는 일정이 없습니다. 다른 단어로 검색해 보세요.'; box.appendChild(e); return; }
+  renderGrouped(box, dated, '');
+  if (nodate.length) {
+    const h = document.createElement('div'); h.className = 'ag-section'; h.textContent = '📌 방문일 미정';
+    box.appendChild(h); nodate.forEach(s => box.appendChild(agendaItem(s)));
+  }
+}
+
+function renderViews() {
+  updateViewVisibility();
+  renderDayPanel();
+  renderListView();
+  renderSearch();
+  refreshPopups();
+  if (detailId && $('detailModal').classList.contains('show')) renderDetail();
+}
+
+$('calQ').addEventListener('input', () => { calQ = $('calQ').value.trim(); updateViewVisibility(); renderSearch(); });
+$('calQ').addEventListener('keydown', e => { if (e.key === 'Enter') e.target.blur(); });
+$('calQClear').onclick = () => { $('calQ').value = ''; calQ = ''; updateViewVisibility(); renderViews(); };
+document.querySelectorAll('#viewToggle button').forEach(b => b.addEventListener('click', () => {
+  viewMode = b.dataset.view; updateViewVisibility();
+  if (viewMode === 'list') renderListView();
+}));
+$('showPast').addEventListener('change', renderListView);
+mobileMQ.addEventListener ? mobileMQ.addEventListener('change', renderCalendar) : mobileMQ.addListener(renderCalendar);
+
+/* ===== 현장 사진 다운로드 ===== */
+const localPhoto = s => (s.reportImage && /^data:image\//i.test(s.reportImage)) ? s.reportImage : '';
+function driveId(u) {
+  if (!safeUrl(u)) return '';
+  const m = u.match(/\/d\/([\w-]{10,})/) || u.match(/[?&]id=([\w-]{10,})/);
+  return m ? m[1] : '';
+}
+const hasPhoto = s => !!(localPhoto(s) || safeUrl(s.reportImageLink));
+function photoFileName(s, ext) {
+  const nm = (s.customer || '고객').replace(/[\\/:*?"<>|\s]+/g, '');
+  const d = (s.visit || '').slice(0, 10) || todayStr();
+  return `현장사진_${nm}_${d}.${ext || 'jpg'}`;
+}
+async function downloadPhoto(s) {
+  const data = localPhoto(s);
+  if (data) {
+    const mime = (data.match(/^data:([^;]+)/) || [])[1] || 'image/jpeg';
+    const ext = (mime.split('/')[1] || 'jpg').replace('jpeg', 'jpg');
+    const blob = await (await fetch(data)).blob();
+    const file = new File([blob], photoFileName(s, ext), { type: mime });
+    // 휴대폰: 공유 창에서 '이미지 저장'으로 사진첩에 바로 저장
+    if (isMobile() && navigator.canShare && navigator.canShare({ files: [file] })) {
+      try { await navigator.share({ files: [file], title: file.name }); return; }
+      catch (e) { if (e && e.name === 'AbortError') return; }
+    }
+    downloadBlob(blob, file.name);
+    return;
+  }
+  // 드라이브에만 있는 사진: 드라이브 다운로드 주소로 엶
+  const id = driveId(s.reportImageLink);
+  window.open(id ? `https://drive.google.com/uc?export=download&id=${id}` : safeUrl(s.reportImageLink), '_blank', 'noopener');
+}
+function photoDlButton(s) {
+  const b = document.createElement('button');
+  b.type = 'button'; b.className = 'btn btn-sm btn-dl'; b.textContent = '📥 사진 다운로드';
+  b.onclick = ev => { ev.stopPropagation(); downloadPhoto(s).catch(err => { console.error(err); alert('사진을 내려받지 못했습니다. 다시 시도해 주세요.'); }); };
+  return b;
+}
+
+/* ===== 일정 상세 화면 ===== */
+function openDetail(id) {
+  detailId = id;
+  renderDetail();
+  if (detailId) $('detailModal').classList.add('show');
+}
+function closeDetail() { detailId = null; $('detailModal').classList.remove('show'); }
+
+function renderDetail() {
+  const s = schedules.find(x => x.id === detailId);
+  if (!s) { closeDetail(); return; }
+  $('detailTitle').textContent = `👤 ${s.customer || '이름 없음'}`;
+  const body = $('detailBody'); body.innerHTML = '';
+
+  const st = document.createElement('select');
+  st.setAttribute('aria-label', '진행 상태 변경');
+  st.style.cssText = 'font-weight:bold;margin-bottom:4px;';
+  fillStageOptions(st, s.status || STAGES[0], false);
+  st.onchange = () => {
+    const live = schedules.find(x => x.id === detailId);
+    if (!live) return;
+    live.status = st.value; save(); showSync('✅ 진행 상태를 바꿨습니다');
+  };
+  body.appendChild(st);
+
+  const qa = (cls, href, text, blank) => {
+    const a = document.createElement('a'); a.className = 'qbtn ' + cls; a.href = href; a.textContent = text;
+    if (blank) { a.target = '_blank'; a.rel = 'noopener'; }
+    return a;
+  };
+  const row = (label, value, btns) => {
+    const r = document.createElement('div'); r.className = 'detail-row';
+    const l = document.createElement('div'); l.className = 'dl'; l.textContent = label;
+    const v = document.createElement('div'); v.className = 'dv'; v.textContent = value || '-';
+    if (btns && btns.length) { const q = document.createElement('div'); q.className = 'quick-btns'; q.append(...btns); v.appendChild(q); }
+    r.append(l, v); body.appendChild(r); return v;
+  };
+  const tel = p => (p || '').replace(/[^\d+]/g, '');
+
+  row('방문 일시', visitDay(s) ? `${dateLabel(visitDay(s))}${visitTime(s) ? ' ' + visitTime(s) : ''}` : '방문일 미정');
+  row('고객 연락처', s.phone, tel(s.phone) ? [qa('call', 'tel:' + tel(s.phone), '📞 전화'), qa('sms', 'sms:' + tel(s.phone), '💬 문자')] : null);
+  row('요청 사항', s.request);
+  const addr = (s.note || '').trim(), q = encodeURIComponent(addr);
+  row('방문 주소', addr, addr ? [qa('naver', 'https://map.naver.com/p/search/' + q, '🗺 네이버지도', true), qa('kakao', 'https://map.kakao.com/link/search/' + q, '🗺 카카오맵', true)] : null);
+  row('처리 비용', s.cost);
+  if (s.total || s.deposit || s.balance) {
+    const lines = [];
+    if (s.total) lines.push('최종 ' + won(s.total));
+    if (s.deposit) lines.push(`계약금 ${won(s.deposit)} ${s.depositPaid ? '✅ 입금' + (s.depositPaidAt ? ' (' + s.depositPaidAt + ')' : '') : '⬜ 미입금'}`);
+    if (s.balance) lines.push(`잔금 ${won(s.balance)} ${s.balancePaid ? '✅ 입금' + (s.balancePaidAt ? ' (' + s.balancePaidAt + ')' : '') : '⬜ 미입금'}`);
+    const t = toNum(s.total);
+    if (t) {
+      const remain = t - ((s.depositPaid ? toNum(s.deposit) : 0) + (s.balancePaid ? toNum(s.balance) : 0));
+      lines.push(remain <= 0 ? '완납 ✅' : '미수금 ' + remain.toLocaleString('ko-KR') + '원');
+    }
+    row('입금 현황', lines.join('\n'));
+  }
+  row('담당 기사', [s.engineer || '미배정', s.engPhone].filter(Boolean).join('  '), tel(s.engPhone) ? [qa('call', 'tel:' + tel(s.engPhone), '📞 기사 전화')] : null);
+  row('방문 후 기록', s.report ? s.report + (s.reportAt ? `\n(${s.reportAt} 기록)` : '') : '');
+  if (hasPhoto(s)) {
+    const v = row('현장 사진', '');
+    v.textContent = '';
+    const img = localPhoto(s), fid = driveId(s.reportImageLink);
+    const src = img || (fid ? `https://drive.google.com/thumbnail?id=${fid}&sz=w1000` : '');
+    if (src) {
+      const im = document.createElement('img'); im.className = 'detail-photo'; im.src = src; im.alt = '현장 사진';
+      im.onerror = () => im.remove();   // 미리보기를 못 불러오면 숨김 (버튼으로는 계속 열 수 있음)
+      v.appendChild(im);
+    }
+    const q2 = document.createElement('div'); q2.className = 'quick-btns';
+    const dl = photoDlButton(s); dl.classList.remove('btn', 'btn-sm'); dl.className = 'qbtn call'; q2.appendChild(dl);
+    if (safeUrl(s.reportImageLink)) q2.appendChild(qa('', safeUrl(s.reportImageLink), '🔗 드라이브에서 보기', true));
+    v.appendChild(q2);
+  }
+
+  const btns = $('detailBtns'); btns.innerHTML = '';
+  const mkBtn = (cls, text, fn) => { const b = document.createElement('button'); b.type = 'button'; b.className = 'btn btn-sm ' + cls; b.textContent = text; b.onclick = fn; btns.appendChild(b); };
+  mkBtn('btn-edit', '✏️ 수정', () => { const id = s.id; detailReturn = id; closeDetail(); openEditModal(id); });
+  mkBtn('btn-del', '🗑 삭제', async () => {
+    const live = schedules.find(x => x.id === detailId);
+    if (!live) { closeDetail(); return; }
+    if (!confirm(`'${live.customer || '이름 없음'}' (${fmtDate(live.visit) || '방문일 미정'}) 일정을 삭제할까요?\n삭제하면 되돌릴 수 없습니다.`)) return;
+    schedules = schedules.filter(x => x.id !== live.id);
+    if (editingId === live.id) clearForm();
+    closeDetail();
+    await save();
+    showSync('🗑 삭제했습니다');
+  });
+  if (STAGE_GUIDE[s.status]) mkBtn('btn-card', '🖼️ 안내장', () => openCardModal(s.id));
+  mkBtn('btn-mini btn-excel', '📂 고객 이력', () => { const n = s.customer, p = s.phone; closeDetail(); openCustomerHistoryModal(null, n, p); });
+  mkBtn('btn-reset', '닫기', closeDetail);
+}
+
 document.querySelectorAll('.modal:not(#editModal)').forEach(modal => {
   modal.addEventListener('click', event => {
     if (event.target !== modal) return;
+    if (modal.id === 'detailModal') detailId = null;
     if (modal.id === 'daySchedulesModal' && dayEditId) return;       // 수정 중에는 바깥을 눌러도 닫히지 않음
     if (modal.id === 'customerHistoryModal' && histEditId) return;
     if (modal.id === 'daySchedulesModal') dayEditId = null;
