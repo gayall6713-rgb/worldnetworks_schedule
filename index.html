@@ -464,7 +464,10 @@ function normVisit(v) {
   if (typeof v !== 'string') return v ? String(v) : '';
   if (!/^\d{4}-\d{2}-\d{2}T\d{2}:\d{2}(:\d{2}(\.\d+)?)?(Z|[+-]\d{2}:?\d{2})$/.test(v.trim())) return v;
   const d = new Date(v.trim());
-  return isNaN(d) ? v : isoLocal(d);
+  if (isNaN(d)) return v;
+  const local = isoLocal(d);
+  // 한국 시간 자정(00:00)은 날짜만 입력된 일정 → '시간 미정'으로 표시
+  return local.endsWith('T00:00') ? local.slice(0, 10) : local;
 }
 function ensureIds() { schedules.forEach(s => { if (!s.id) s.id = uid(); if (s.visit) s.visit = normVisit(s.visit); }); }
 ensureIds();
