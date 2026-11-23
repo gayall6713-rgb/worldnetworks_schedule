@@ -240,7 +240,9 @@ body.role-view #viewNotice{display:block}
     <input type="password" id="loginPw2" placeholder="비밀번호 한 번 더" style="display:none;" autocomplete="new-password">
     <label class="chk" style="justify-content:center;"><input type="checkbox" id="loginKeep" checked> 이 기기에서 로그인 유지 (30일)</label>
     <button type="submit" class="btn btn-submit" id="loginBtn">로그인</button>
+    <button type="button" class="btn btn-reset" id="loginOther" style="width:100%;margin-top:12px;font-size:.9rem;padding:10px;">👥 다른 사람으로 로그인</button>
     <div id="loginMsg"></div>
+    <div style="text-align:center;font-size:.7rem;color:#adb5bd;margin-top:10px;">앱 버전 1123-7</div>
   </form>
 </div>
 <div id="logModal" class="modal">
@@ -267,7 +269,7 @@ body.role-view #viewNotice{display:block}
     <div class="btn-row"><button type="submit" class="btn btn-submit">변경</button><button type="button" class="btn btn-reset" onclick="$('pwModal').classList.remove('show')">닫기</button></div>
   </form>
 </div>
-<div id="appVer" style="position:fixed;left:6px;bottom:4px;font-size:.65rem;color:#adb5bd;z-index:1;pointer-events:none;">앱 버전 1123-6</div>
+<div id="appVer" style="position:fixed;left:6px;bottom:4px;font-size:.65rem;color:#adb5bd;z-index:1;pointer-events:none;">앱 버전 1123-7</div>
 <div id="syncStatus">🔄 연동 중...</div>
 <div class="container">
   <h2>현장 방문 및 스케줄 관리</h2>
@@ -810,6 +812,7 @@ function showSetup(on) {
   $('loginPw2').style.display = on ? '' : 'none';
   $('loginPw').autocomplete = on ? 'new-password' : 'current-password';
   $('loginBtn').textContent = on ? '관리자 계정 만들고 시작' : '로그인';
+  $('loginOther').style.display = on ? 'none' : '';
 }
 function unlock() {
   document.body.classList.remove('locked');
@@ -897,6 +900,13 @@ function renderLoginLog() {
 $('logWho').addEventListener('change', renderLoginLog);
 $('logKind').addEventListener('change', renderLoginLog);
 $('logReload').onclick = openLoginLog;
+
+/* 로그인 화면: 다른 사람으로 로그인 (저장된 이름·비밀번호 지우기) */
+$('loginOther').onclick = () => {
+  $('loginName').value = ''; $('loginPw').value = ''; $('loginPw2').value = '';
+  $('loginMsg').textContent = '다른 사람의 이름과 비밀번호를 입력하세요.';
+  $('loginName').focus();
+};
 
 /* 앱 시작: 로그인 확인 */
 async function boot() {
