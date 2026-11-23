@@ -1645,7 +1645,7 @@ $('empForm').addEventListener('submit', ev => {
 $('empCancel').onclick = () => { resetEmpForm(); renderEmp(); };
 
 /* ===== 계약금 / 잔금 관리 ===== */
-const PAY_STAGES = ['계약', '공사진행', '처리완료'];
+const PAY_STAGES = ['방문시공', '계약', '공사진행', '처리완료'];
 const toNum = v => parseInt(String(v || '').replace(/[^\d]/g, ''), 10) || 0;
 const won = v => { const n = toNum(v); return n ? n.toLocaleString('ko-KR') + '원' : ''; };
 const todayStr = () => nowStr().slice(0, 10);
