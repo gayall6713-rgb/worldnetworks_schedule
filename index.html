@@ -151,6 +151,8 @@ img.thumb.t전{outline:3px solid #ffa94d;outline-offset:-3px}img.thumb.t후{outl
 body:not(.role-admin) .exp-btn{display:none!important}
 .stat-tbl{min-width:0;font-size:.8rem;width:100%}.stat-tbl td,.stat-tbl th{padding:6px 6px;white-space:nowrap}
 .stat-tbl td.n{text-align:right;font-variant-numeric:tabular-nums}.stat-tbl tr.sum td{font-weight:bold;background:#f1f3f5}
+.stat-tbl tr.clickable{cursor:pointer}.stat-tbl tr.clickable:hover td{background:#e7f5ff}.stat-tbl tr.clickable td:first-child{color:#1c7ed6;text-decoration:underline}
+#detailModal.over{z-index:60}
 .stat-tbl td.zero{color:#ced4da}.stat-h{margin:14px 0 6px;font-size:.95rem;color:#343a40}.stat-h span{font-weight:normal;color:#868e96;font-size:.8rem}
 .stat-cards{display:grid;grid-template-columns:repeat(auto-fit,minmax(130px,1fr));gap:8px}
 .stat-card{background:#f8f9fa;border:1px solid #e9ecef;border-left:4px solid #adb5bd;border-radius:8px;padding:8px 10px}
@@ -276,7 +278,7 @@ body.locked #notifyBar{display:none!important}
     <button type="submit" class="btn btn-submit" id="loginBtn">로그인</button>
     <button type="button" class="btn btn-reset" id="loginOther" style="width:100%;margin-top:12px;font-size:.9rem;padding:10px;">👥 다른 사람으로 로그인</button>
     <div id="loginMsg"></div>
-    <div style="text-align:center;font-size:.7rem;color:#adb5bd;margin-top:10px;">앱 버전 1123-17</div>
+    <div style="text-align:center;font-size:.7rem;color:#adb5bd;margin-top:10px;">앱 버전 1123-18</div>
   </form>
 </div>
 <div id="expModal" class="modal" style="z-index:70;">
@@ -300,6 +302,22 @@ body.locked #notifyBar{display:none!important}
   </div>
 </div>
 <datalist id="expVendors"></datalist>
+<div id="statListModal" class="modal" style="z-index:52;">
+  <div class="modal-box" style="max-width:1000px;width:100%;">
+    <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:8px;gap:8px;">
+      <h4 id="slTitle" style="margin:0;font-size:1.1rem;color:var(--primary);">내역</h4>
+      <button type="button" onclick="$('statListModal').classList.remove('show')" style="background:none;border:none;font-size:1.2rem;cursor:pointer;">✖</button>
+    </div>
+    <div class="stat-cards" id="slCards" style="margin-bottom:8px;"></div>
+    <div class="hint" style="margin:0 0 6px;">줄을 누르면 그 일정의 상세 화면이 열립니다</div>
+    <div class="table-responsive" style="max-height:60vh;overflow:auto;"><table class="stat-tbl" id="slTable"></table></div>
+    <div class="btn-row" style="margin-top:12px;">
+      <button type="button" class="btn btn-save save-now">💾 저장</button>
+      <button type="button" class="btn btn-excel" id="slExcel">📥 이 내역 엑셀 저장</button>
+      <button type="button" class="btn btn-reset" onclick="$('statListModal').classList.remove('show')">닫기</button>
+    </div>
+  </div>
+</div>
 <div id="statModal" class="modal">
   <div class="modal-box" style="max-width:1100px;width:100%;">
     <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:10px;gap:8px;">
@@ -314,12 +332,16 @@ body.locked #notifyBar{display:none!important}
     </div>
     <div id="statInfo" class="hint" style="margin:0 0 8px;"></div>
     <div class="stat-cards" id="statCards"></div>
-    <h5 class="stat-h">① 진행 상태별 현황 <span id="statRangeLbl"></span></h5>
+    <h5 class="stat-h">① 진행 상태별 현황 <span id="statRangeLbl"></span> <span>· 줄을 누르면 내역이 열려요</span></h5>
     <div class="table-responsive"><table class="stat-tbl" id="statStage"></table></div>
-    <h5 class="stat-h">② 기간별 현황</h5>
+    <h5 class="stat-h">② 기간별 현황 <span>· 월·분기·년도 줄을 누르면 그 기간 내역이 열려요</span></h5>
     <div class="table-responsive"><table class="stat-tbl" id="statPeriod"></table></div>
     <h5 class="stat-h">③ 협력업체·지출처별 결제 현황 <span id="statVendLbl"></span></h5>
     <div class="table-responsive"><table class="stat-tbl" id="statVendor"></table></div>
+    <div class="btn-row" style="margin-top:12px;">
+      <button type="button" class="btn btn-save save-now">💾 저장</button>
+      <button type="button" class="btn btn-reset" onclick="$('statModal').classList.remove('show')">닫기</button>
+    </div>
   </div>
 </div>
 <div id="logModal" class="modal">
@@ -346,7 +368,7 @@ body.locked #notifyBar{display:none!important}
     <div class="btn-row"><button type="submit" class="btn btn-submit">변경</button><button type="button" class="btn btn-reset" onclick="$('pwModal').classList.remove('show')">닫기</button></div>
   </form>
 </div>
-<div id="appVer" style="position:fixed;left:6px;bottom:4px;font-size:.65rem;color:#adb5bd;z-index:1;pointer-events:none;">앱 버전 1123-17</div>
+<div id="appVer" style="position:fixed;left:6px;bottom:4px;font-size:.65rem;color:#adb5bd;z-index:1;pointer-events:none;">앱 버전 1123-18</div>
 <div id="syncStatus">🔄 연동 중...</div>
 <div class="container">
   <h2>현장 방문 및 스케줄 관리</h2>
@@ -557,6 +579,7 @@ body.locked #notifyBar{display:none!important}
     <div id="dayModalListContainer" class="history-list"></div>
     <div class="btn-row" style="margin-top:20px;">
       <button type="button" class="btn btn-submit" id="addScheduleFromDayBtn" style="background:#10b981;">➕ 이 날짜로 새 일정 추가</button>
+      <button type="button" class="btn btn-save save-now" data-role-ok>💾 저장</button>
       <button type="button" class="btn btn-reset" onclick="closeDayModal()">닫기</button>
     </div>
   </div>
@@ -570,6 +593,7 @@ body.locked #notifyBar{display:none!important}
     <div id="historyListContainer" class="history-list"></div>
     <div class="btn-row" style="margin-top:20px;">
       <button type="button" class="btn btn-submit" id="addScheduleFromHistoryBtn" style="background:#10b981;">➕ 이 고객으로 새 일정 추가</button>
+      <button type="button" class="btn btn-save save-now" data-role-ok>💾 저장</button>
       <button type="button" class="btn btn-reset" onclick="closeHistoryModal()">닫기</button>
     </div>
   </div>
@@ -1101,11 +1125,11 @@ function statData() {
   const periods = statPeriods(mode, year);
   const inRange = mode === 'month' || mode === 'quarter' ? jobs.filter(x => visitDay(x).slice(0, 4) === year) : jobs;
   const stages = [...STAGES]; if (inRange.some(x => !x.status) || jobs.some(x => !x.status)) stages.push('');
-  const stageRows = stages.map(st => { const l = inRange.filter(x => (x.status || '') === st); return { st, n: l.length, ...statMoney(l) }; });
+  const stageRows = stages.map(st => { const l = inRange.filter(x => (x.status || '') === st); return { st, n: l.length, items: l, ...statMoney(l) }; });
   const periodRows = periods.map(p => {
     const l = jobs.filter(x => p.test(visitDay(x)));
     const cnt = {}; stages.forEach(st => { cnt[st] = l.filter(x => (x.status || '') === st).length; });
-    return { label: p.label, n: l.length, cnt, ...statMoney(l) };
+    return { label: p.label, n: l.length, cnt, items: l, ...statMoney(l) };
   });
   const vm = {};
   inRange.forEach(x => expList(x).forEach(e => {
@@ -1139,14 +1163,17 @@ function renderStats() {
   const moneyCells = r => num(r.total) + num(r.deposit) + num(r.middle) + num(r.balance) + num(r.paid) + num(r.unpaid) + num(r.out) + num(r.other) +
     `<td class="n${r.profit ? '' : ' zero'}" style="font-weight:bold;color:${r.profit < 0 ? '#e03131' : '#2f9e44'}">${statWon(r.profit)}</td>` + `<td class="n${r.total ? '' : ' zero'}">${pct(r)}</td>`;
   $('statStage').innerHTML = `<thead><tr><th>진행 상태</th><th>건수</th>${moneyHead}</tr></thead><tbody>` +
-    D.stageRows.map(r => `<tr><td><span style="display:inline-block;width:10px;height:10px;border-radius:2px;background:${STAGE_ACCENT[r.st] || '#adb5bd'};margin-right:6px;"></span>${escAttr(stName(r.st))}</td>${cnum(r.n)}${moneyCells(r)}</tr>`).join('') +
+    D.stageRows.map((r, i) => `<tr class="${r.n ? 'clickable' : ''}" data-st="${i}"><td><span style="display:inline-block;width:10px;height:10px;border-radius:2px;background:${STAGE_ACCENT[r.st] || '#adb5bd'};margin-right:6px;"></span>${escAttr(stName(r.st))}</td>${cnum(r.n)}${moneyCells(r)}</tr>`).join('') +
     `<tr class="sum"><td>합계</td>${cnum(D.all.n)}${moneyCells(D.all)}</tr></tbody>`;
   const ps = D.periodRows, tot = { n: 0, cnt: {}, ...statMoney(D.mode === 'month' || D.mode === 'quarter' ? D.inRange : statJobs().filter(x => !D.src || (D.src === '__none__' ? !x.source : x.source === D.src))) };
   ps.forEach(r => { tot.n += r.n; D.stages.forEach(st => { tot.cnt[st] = (tot.cnt[st] || 0) + r.cnt[st]; }); });
   $('statPeriod').innerHTML = `<thead><tr><th>기간</th>${D.stages.map(st => `<th>${escAttr(stName(st))}</th>`).join('')}<th>합계</th>${moneyHead}</tr></thead><tbody>` +
-    ps.map(r => `<tr><td>${r.label}</td>${D.stages.map(st => cnum(r.cnt[st])).join('')}${cnum(r.n)}${moneyCells(r)}</tr>`).join('') +
+    ps.map((r, i) => `<tr class="${r.n ? 'clickable' : ''}" data-pi="${i}"><td>${r.label}</td>${D.stages.map(st => cnum(r.cnt[st])).join('')}${cnum(r.n)}${moneyCells(r)}</tr>`).join('') +
     (ps.length > 1 ? `<tr class="sum"><td>합계</td>${D.stages.map(st => cnum(tot.cnt[st] || 0)).join('')}${cnum(tot.n)}${moneyCells(tot)}</tr>` : '') + '</tbody>';
   renderVendorStats(D);
+  const rng = `${D.rangeLbl}${D.src ? ' · ' + (D.src === '__none__' ? '수주처 미지정' : D.src) : ''}`;
+  $('statStage').querySelectorAll('tr.clickable').forEach(tr => tr.onclick = () => { const r = D.stageRows[+tr.dataset.st]; openStatList(`${stName(r.st)} · ${rng}`, r.items); });
+  $('statPeriod').querySelectorAll('tr.clickable').forEach(tr => tr.onclick = () => { const r = ps[+tr.dataset.pi]; openStatList(`${r.label}${D.src ? ' · ' + (D.src === '__none__' ? '수주처 미지정' : D.src) : ''}`, r.items); });
 }
 function renderVendorStats(D) {
   $('statVendLbl').textContent = `(${D.rangeLbl})`;
@@ -1176,6 +1203,50 @@ $('statExcel').onclick = () => {
   const modeLbl = { month: '월별', quarter: '분기별', year: '년도별', all: '전체' }[D.mode];
   XLSX.writeFile(wb, `진행현황표_${modeLbl}${/month|quarter/.test(D.mode) ? '_' + D.year : ''}_${todayStr()}.xlsx`);
 };
+
+/* 현황표에서 줄(월·분기·년도·상태)을 누르면 해당 내역 팝업 */
+let slItems = [], slTitleText = '';
+function openStatList(title, items) {
+  if (!isAdmin()) return;
+  slTitleText = title; slItems = [...items].sort((a, b) => (visitDay(a) || '9999').localeCompare(visitDay(b) || '9999'));
+  renderStatList(); $('statListModal').classList.add('show');
+}
+function renderStatList() {
+  slItems = slItems.map(x => schedules.find(y => y.id === x.id)).filter(Boolean);   // 수정된 내용 반영
+  const M = statMoney(slItems);
+  $('slTitle').textContent = `📋 ${slTitleText} 내역 (${slItems.length}건)`;
+  const card = (t, v, c, sub) => `<div class="stat-card" style="border-left-color:${c}"><small>${t}</small><b>${v}</b>${sub ? `<small>${sub}</small>` : ''}</div>`;
+  $('slCards').innerHTML = card('공사 총금액', statWon(M.total) + '원', '#1c7ed6') + card('입금 완료', statWon(M.paid) + '원', '#2f9e44') +
+    card('미수금', statWon(M.unpaid) + '원', '#e03131') + card('지출 합계', statWon(M.cost) + '원', '#f08c00', `외주비 ${statWon(M.out)}원`) +
+    card('순이익', statWon(M.profit) + '원', M.profit < 0 ? '#e03131' : '#2f9e44', `이익률 ${pct(M)}`);
+  const num = v => `<td class="n${v ? '' : ' zero'}">${statWon(v)}</td>`;
+  const one = x => statMoney([x]);
+  $('slTable').innerHTML = '<thead><tr><th>방문일</th><th>진행 상태</th><th>수주처</th><th>고객명</th><th>요청 사항</th><th>공사 총금액</th><th>입금 완료</th><th>미수금</th><th>지출</th><th>순이익</th></tr></thead><tbody>' +
+    slItems.map((x, i) => { const m = one(x); return `<tr class="clickable" data-i="${i}"><td>${visitDay(x) || '미정'}</td><td><span style="display:inline-block;width:9px;height:9px;border-radius:2px;background:${STAGE_ACCENT[x.status] || '#adb5bd'};margin-right:5px;"></span>${escAttr(x.status || '미지정')}</td><td>${escAttr(x.source || '-')}</td><td>${escAttr(x.customer || '이름 없음')}</td><td style="white-space:normal;min-width:140px;">${escAttr(x.request || '')}</td>${num(m.total)}${num(m.paid)}${num(m.unpaid)}${num(m.cost)}<td class="n" style="font-weight:bold;color:${m.profit < 0 ? '#e03131' : '#2f9e44'}">${statWon(m.profit)}</td></tr>`; }).join('') +
+    `<tr class="sum"><td colspan="5">합계</td>${num(M.total)}${num(M.paid)}${num(M.unpaid)}${num(M.cost)}<td class="n">${statWon(M.profit)}</td></tr></tbody>`;
+  $('slTable').querySelectorAll('tr.clickable').forEach(tr => tr.onclick = () => { $('detailModal').classList.add('over'); openDetail(slItems[+tr.dataset.i].id); });
+}
+$('slExcel').onclick = () => {
+  if (typeof XLSX === 'undefined') { alert('엑셀 기능을 불러오지 못했습니다. 인터넷 연결을 확인해 주세요.'); return; }
+  const rows = slItems.map(x => { const m = statMoney([x]); return [visitDay(x), x.status, x.source, x.customer, x.phone, x.request, m.total, m.deposit, m.middle, m.balance, m.paid, m.unpaid, m.out, m.other, m.profit]; });
+  const wb = XLSX.utils.book_new();
+  XLSX.utils.book_append_sheet(wb, XLSX.utils.aoa_to_sheet([['방문일', '진행 상태', '수주처', '고객명', '연락처', '요청 사항', '공사 총금액', '계약금', '중도금', '잔금', '입금 완료', '미수금', '외주비', '기타 지출', '순이익'], ...rows]), '내역');
+  XLSX.writeFile(wb, `내역_${slTitleText.replace(/[\\/:*?"<>|·\s]+/g, '_')}_${todayStr()}.xlsx`);
+};
+
+/* ===== 모든 창의 💾 저장 버튼: 지금 내용을 구글 시트에 저장 ===== */
+async function saveNow(btn) {
+  if (btn) { btn.disabled = true; btn.dataset.t = btn.dataset.t || btn.textContent; btn.textContent = '🔄 저장 중...'; }
+  try { await save(); } finally {
+    if (btn) { btn.textContent = '✅ 저장됨'; setTimeout(() => { btn.textContent = btn.dataset.t; btn.disabled = false; }, 1500); }
+  }
+  if (!authToken) showSync('💾 이 기기에 저장했습니다');
+}
+function saveNowBtn(cls) {
+  const b = document.createElement('button'); b.type = 'button'; b.className = 'btn ' + (cls || '') + ' btn-save save-now'; b.textContent = '💾 저장'; b.dataset.roleOk = '';
+  b.onclick = () => saveNow(b); return b;
+}
+document.addEventListener('click', e => { const b = e.target.closest && e.target.closest('button.save-now'); if (b && !b.onclick) saveNow(b); });
 
 /* ===== 관리자: 접속 기록 보기 ===== */
 let loginLog = [];
@@ -3293,6 +3364,7 @@ function showPhotoAt() {
     });
     btns.appendChild(tb);
   }
+  if (me) btns.appendChild(saveNowBtn('btn-sm'));
   mk('btn-reset', '닫기', closePhoto);
   // 아래쪽 작은 사진 줄 (누르면 그 사진으로 이동)
   let strip = $('pmStrip');
@@ -3321,7 +3393,7 @@ function openDetail(id) {
   renderDetail();
   if (detailId) $('detailModal').classList.add('show');
 }
-function closeDetail() { detailId = null; $('detailModal').classList.remove('show'); }
+function closeDetail() { detailId = null; $('detailModal').classList.remove('show', 'over'); if ($('statListModal').classList.contains('show')) renderStatList(); }
 
 function renderDetail() {
   const s = schedules.find(x => x.id === detailId);
@@ -3452,6 +3524,7 @@ function renderDetail() {
   lockView(body);
   const btns = $('detailBtns'); btns.innerHTML = '';
   const mkBtn = (cls, text, fn) => { const b = document.createElement('button'); b.type = 'button'; b.className = 'btn btn-sm ' + cls; b.textContent = text; b.onclick = fn; btns.appendChild(b); };
+  btns.appendChild(saveNowBtn('btn-sm'));
   mkBtn('btn-edit', '✏️ 수정', () => { const id = s.id; detailReturn = id; closeDetail(); openEditModal(id); });
   mkBtn('btn-del', '🗑 삭제', async () => {
     const live = schedules.find(x => x.id === detailId);
