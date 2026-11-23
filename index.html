@@ -141,6 +141,7 @@ body:not(.role-admin) .btn-del:not(.keep),body:not(.role-admin) #clearAll,body:n
 body.role-view .upload-box,body.role-view #addScheduleFromDayBtn,body.role-view #addScheduleFromHistoryBtn,body.role-view .dp-add,body.role-view #draftBtn,body.role-view #resetForm,body.role-view .view-hide{display:none!important}
 body.role-view #tab-manage>#scheduleForm{display:none}
 body.role-partner #filterSource,body.role-partner #filterPay,body.role-partner .partner-hide{display:none!important}
+#smsModal .btn{flex:1 1 0;margin:0;padding:10px 8px;font-size:.9rem}
 #expModal .btn{width:auto;flex:0 0 auto;margin:0}
 .pend-strip{margin-top:6px}.pend-h{font-size:.78rem;color:#495057;margin-bottom:4px}.pend-row{display:flex;gap:6px;flex-wrap:wrap}
 .pend-item{position:relative;width:78px}.pend-item img{width:78px;height:78px;object-fit:cover;border-radius:6px;border:3px solid #dee2e6;cursor:pointer;display:block}
@@ -289,7 +290,7 @@ body.locked #notifyBar{display:none!important}
     <button type="submit" class="btn btn-submit" id="loginBtn">로그인</button>
     <button type="button" class="btn btn-reset" id="loginOther" style="width:100%;margin-top:12px;font-size:.9rem;padding:10px;">👥 다른 사람으로 로그인</button>
     <div id="loginMsg"></div>
-    <div style="text-align:center;font-size:.7rem;color:#adb5bd;margin-top:10px;">앱 버전 1123-23</div>
+    <div style="text-align:center;font-size:.7rem;color:#adb5bd;margin-top:10px;">앱 버전 1123-24</div>
   </form>
 </div>
 <div id="expModal" class="modal" style="z-index:70;">
@@ -313,6 +314,23 @@ body.locked #notifyBar{display:none!important}
   </div>
 </div>
 <datalist id="expVendors"></datalist>
+<div id="smsModal" class="modal" style="z-index:66;">
+  <div class="modal-box" style="max-width:480px;">
+    <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:8px;gap:8px;">
+      <h4 style="margin:0;font-size:1.15rem;color:var(--primary);">💬 문자 보내기</h4>
+      <button type="button" onclick="$('smsModal').classList.remove('show')" style="background:none;border:none;font-size:1.2rem;cursor:pointer;">✖</button>
+    </div>
+    <div class="form-group"><label>받는 사람</label><select id="smsTo"></select></div>
+    <div class="form-group"><label>문자 종류 (고르면 내용이 자동으로 채워져요)</label><select id="smsTpl"></select></div>
+    <div class="form-group"><label>내용 (고쳐서 보내도 됩니다)</label><textarea id="smsBody" rows="9" style="font-size:.9rem;"></textarea></div>
+    <div class="hint" style="margin:0 0 8px;">휴대폰에서는 [문자앱 열기]를 누르면 내용이 채워진 문자 화면이 열리고, 거기서 전송을 누르면 됩니다. PC에서는 [복사]해서 쓰세요.</div>
+    <div class="btn-row">
+      <button type="button" class="btn btn-excel" id="smsOpen">📱 문자앱 열기</button>
+      <button type="button" class="btn btn-save" id="smsCopy">📋 복사</button>
+      <button type="button" class="btn btn-reset" onclick="$('smsModal').classList.remove('show')">닫기</button>
+    </div>
+  </div>
+</div>
 <div id="reportModal" class="modal" style="z-index:65;">
   <div class="modal-box" style="max-width:560px;">
     <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:8px;gap:8px;">
@@ -405,7 +423,7 @@ body.locked #notifyBar{display:none!important}
     <div class="btn-row"><button type="submit" class="btn btn-submit">변경</button><button type="button" class="btn btn-reset" onclick="$('pwModal').classList.remove('show')">닫기</button></div>
   </form>
 </div>
-<div id="appVer" style="position:fixed;left:6px;bottom:4px;font-size:.65rem;color:#adb5bd;z-index:1;pointer-events:none;">앱 버전 1123-23</div>
+<div id="appVer" style="position:fixed;left:6px;bottom:4px;font-size:.65rem;color:#adb5bd;z-index:1;pointer-events:none;">앱 버전 1123-24</div>
 <div id="syncStatus">🔄 연동 중...</div>
 <div class="container">
   <h2>현장 방문 및 스케줄 관리</h2>
@@ -1537,6 +1555,72 @@ function checkNewlyDone() {
     if (confirm(`'${s.customer || '이름 없음'}' 일정을 처리완료로 바꿨습니다.\n시공 사진대지(엑셀)를 만들까요?`)) openReport(s.id);
   }, 400);
 }
+
+/* ===== 💬 문자 보내기 (고객·담당 기사·협력업체) — 휴대폰 문자앱을 내용이 채워진 채로 엶 ===== */
+const SMS_SIGN = '[월드네트웍스]';
+function smsWhen(s) { const d = visitDay(s); return d ? `${dateLabel(d).replace(' · 오늘', '')}${visitTime(s) ? ' ' + ampm(visitTime(s)) : ''}` : '(날짜 미정)'; }
+function smsTemplates(s, who) {
+  const eng = s.engineer ? `${s.engineer} 엔지니어${s.engPhone ? ' (' + s.engPhone + ')' : ''}` : '';
+  const addr = s.note || '', when = smsWhen(s), nm = s.customer ? s.customer + ' 고객님' : '고객님';
+  if (who === 'customer') {
+    const remain = toNum(s.total) ? toNum(s.total) - paidSum(s) : 0;
+    const t = [
+      ['방문 안내', `${SMS_SIGN}\n안녕하세요 ${nm}.\n요청하신 [${s.request || '창호'}] 건으로 아래 일정에 방문 예정입니다.\n\n■ 일시: ${when}\n■ 주소: ${addr}${eng ? '\n■ 담당: ' + eng : ''}\n\n방문 전에 미리 연락드리겠습니다. 감사합니다.`],
+      ['시공 안내', `${SMS_SIGN}\n안녕하세요 ${nm}.\n[${s.request || '창호'}] 시공 일정 안내드립니다.\n\n■ 시공일: ${s.installDate ? dateLabel(s.installDate.slice(0, 10)).replace(' · 오늘', '') + (s.installDate.length >= 16 ? ' ' + ampm(s.installDate.slice(11, 16)) : '') : when}\n■ 주소: ${addr}${eng ? '\n■ 담당: ' + eng : ''}\n\n작업 당일 연락드리고 방문하겠습니다. 감사합니다.`],
+      ['일정 변경 안내', `${SMS_SIGN}\n안녕하세요 ${nm}.\n방문 일정이 아래와 같이 변경되었습니다.\n\n■ 변경 일시: ${when}\n■ 주소: ${addr}\n\n불편을 드려 죄송합니다. 문의 사항은 회신 부탁드립니다.`],
+      ['견적 안내', `${SMS_SIGN}\n안녕하세요 ${nm}.\n[${s.request || '창호'}] 견적 안내드립니다.\n\n■ 금액: ${won(s.total) || s.cost || '(금액 입력)'}\n\n궁금하신 점은 편하게 연락 주세요. 감사합니다.`],
+      ['입금 요청', `${SMS_SIGN}\n안녕하세요 ${nm}.\n[${s.request || '창호'}] 공사 대금 안내드립니다.\n\n■ 계약 금액: ${won(s.total) || '-'}\n■ 남은 금액: ${remain > 0 ? remain.toLocaleString('ko-KR') + '원' : '-'}\n\n입금 후 회신 주시면 확인하겠습니다. 감사합니다.`],
+      ['완료 인사', `${SMS_SIGN}\n안녕하세요 ${nm}.\n[${s.request || '창호'}] 작업이 완료되었습니다.\n이용해 주셔서 감사합니다.\n\n사용 중 불편한 점이나 하자가 있으면 언제든 연락 주세요.`],
+      ['직접 쓰기', `${SMS_SIGN}\n안녕하세요 ${nm}.\n`]
+    ];
+    return t;
+  }
+  const job = `■ 고객: ${s.customer || '-'}${s.phone ? ' (' + s.phone + ')' : ''}\n■ 일시: ${when}\n■ 주소: ${addr || '-'}\n■ 내용: ${s.request || '-'}${s.report ? '\n■ 메모: ' + s.report.split('\n')[0] : ''}`;
+  return [
+    ['작업 배정', `${SMS_SIGN} 작업 배정 안내\n\n${job}\n\n확인 후 회신 부탁드립니다.`],
+    ['일정 변경', `${SMS_SIGN} 일정 변경 안내\n\n${job}\n\n변경된 일정 확인 부탁드립니다.`],
+    ['작업 취소', `${SMS_SIGN} 작업 취소 안내\n\n■ 고객: ${s.customer || '-'}\n■ 일시: ${when}\n\n위 작업이 취소되었습니다.`],
+    ['직접 쓰기', `${SMS_SIGN}\n`]
+  ];
+}
+let smsId = null;
+function openSms(id, who) {
+  const s = schedules.find(x => x.id === id); if (!s) return;
+  smsId = id;
+  const pe = s.partner ? employees.find(e => e.name === s.partner) : null;
+  const opts = [];
+  if (tel(s.phone)) opts.push(['customer', `👤 고객 · ${s.customer || ''} ${s.phone}`, s.phone]);
+  if (tel(s.engPhone)) opts.push(['engineer', `🔧 담당 기사 · ${s.engineer || ''} ${s.engPhone}`, s.engPhone]);
+  if (pe && tel(pe.phone)) opts.push(['partner', `🤝 협력업체 · ${pe.name} ${pe.phone}`, pe.phone]);
+  if (!opts.length) { alert('연락처가 입력된 사람이 없습니다.'); return; }
+  $('smsTo').innerHTML = opts.map(o => `<option value="${o[0]}" data-tel="${escAttr(o[2])}">${escAttr(o[1])}</option>`).join('');
+  $('smsTo').value = opts.some(o => o[0] === who) ? who : opts[0][0];
+  fillSmsTpl();
+  $('smsModal').classList.add('show');
+}
+function fillSmsTpl() {
+  const s = schedules.find(x => x.id === smsId); if (!s) return;
+  const who = $('smsTo').value === 'customer' ? 'customer' : 'worker';
+  const list = smsTemplates(s, who);
+  $('smsTpl').innerHTML = list.map((t, i) => `<option value="${i}">${t[0]}</option>`).join('');
+  let pick = 0;
+  if (who === 'customer') pick = /처리완료/.test(s.status || '') ? 5 : /공사진행|방문시공|계약/.test(s.status || '') ? 1 : /견적/.test(s.status || '') ? 3 : 0;
+  $('smsTpl').value = String(pick);
+  $('smsBody').value = list[pick][1];
+}
+const tel = p => (p || '').replace(/[^\d+]/g, '');
+$('smsTo').onchange = fillSmsTpl;
+$('smsTpl').onchange = () => { const s = schedules.find(x => x.id === smsId); if (!s) return; const l = smsTemplates(s, $('smsTo').value === 'customer' ? 'customer' : 'worker'); $('smsBody').value = (l[+$('smsTpl').value] || l[0])[1]; };
+$('smsOpen').onclick = () => {
+  const num = tel($('smsTo').selectedOptions[0] && $('smsTo').selectedOptions[0].dataset.tel), body = $('smsBody').value;
+  if (!num) return;
+  const ios = /iPhone|iPad|iPod/i.test(navigator.userAgent);
+  location.href = `sms:${num}${ios ? '&' : '?'}body=${encodeURIComponent(body)}`;
+};
+$('smsCopy').onclick = async () => {
+  try { await navigator.clipboard.writeText($('smsBody').value); showSync('📋 문자 내용을 복사했습니다'); }
+  catch (e) { $('smsBody').select(); document.execCommand && document.execCommand('copy'); showSync('📋 복사했습니다'); }
+};
 
 /* ===== 모든 창의 💾 저장 버튼: 지금 내용을 구글 시트에 저장 ===== */
 async function saveNow(btn) {
@@ -3792,7 +3876,7 @@ function renderDetail() {
     const so = sourceOpenLink(s, 'qbtn');
     if (so) { so.style.cssText = 'background:#f3f0ff;border-color:#b197fc;color:#5f3dc4;'; const q = document.createElement('div'); q.className = 'quick-btns'; q.appendChild(so); v.appendChild(q); }
   }
-  row('고객 연락처', s.phone, tel(s.phone) ? [qa('call', 'tel:' + tel(s.phone), '📞 전화'), qa('sms', 'sms:' + tel(s.phone), '💬 문자')] : null);
+  row('고객 연락처', s.phone, tel(s.phone) ? [qa('call', 'tel:' + tel(s.phone), '📞 전화'), Object.assign(document.createElement('button'), { type: 'button', className: 'qbtn sms', textContent: '💬 문자', onclick: () => openSms(s.id, 'customer') })] : null);
   row('요청 사항', s.request);
   const addr = (s.note || '').trim(), q = encodeURIComponent(addr);
   row('방문 주소', addr, addr ? [qa('naver', 'https://map.naver.com/p/search/' + q, '🗺 네이버지도', true), qa('kakao', 'https://map.kakao.com/link/search/' + q, '🗺 카카오맵', true)] : null);
@@ -3816,8 +3900,8 @@ function renderDetail() {
     const b = document.createElement('button'); b.type = 'button'; b.className = 'qbtn'; b.style.cssText = 'background:#fff9db;border:1px solid #f59f00;color:#a15c00;cursor:pointer;'; b.textContent = ex.length ? '💸 지출 수정' : '💸 지출·외주비 입력'; b.onclick = () => openExpense(s.id);
     row('💸 지출·손익', ex.length ? lines.join('\n') : '입력된 지출 없음', [b]);
   }
-  row('담당 기사', [s.engineer || '미배정', s.engPhone].filter(Boolean).join('  '), tel(s.engPhone) ? [qa('call', 'tel:' + tel(s.engPhone), '📞 기사 전화')] : null);
-  if (s.partner) { const pe = employees.find(e => e.name === s.partner); row('🤝 협력업체', [s.partner, pe && pe.phone].filter(Boolean).join('  '), pe && tel(pe.phone) ? [qa('call', 'tel:' + tel(pe.phone), '📞 업체 전화')] : null); }
+  row('담당 기사', [s.engineer || '미배정', s.engPhone].filter(Boolean).join('  '), tel(s.engPhone) ? [qa('call', 'tel:' + tel(s.engPhone), '📞 기사 전화'), Object.assign(document.createElement('button'), { type: 'button', className: 'qbtn sms', textContent: '💬 기사 문자', onclick: () => openSms(s.id, 'engineer') })] : null);
+  if (s.partner) { const pe = employees.find(e => e.name === s.partner); row('🤝 협력업체', [s.partner, pe && pe.phone].filter(Boolean).join('  '), pe && tel(pe.phone) ? [qa('call', 'tel:' + tel(pe.phone), '📞 업체 전화'), Object.assign(document.createElement('button'), { type: 'button', className: 'qbtn sms', textContent: '💬 업체 문자', onclick: () => openSms(s.id, 'partner') })] : null); }
   if (s.updatedBy) row('최종 수정', `${s.updatedBy} · ${s.updatedAt || ''}`);
   row('방문 후 기록', s.report ? s.report + (s.reportAt ? `\n(${s.reportAt} 기록)` : '') : '');
   if (s.photoReportUrl && safeUrl(s.photoReportUrl) && canEdit()) { const a = document.createElement('a'); a.className = 'qbtn'; a.href = safeUrl(s.photoReportUrl); a.target = '_blank'; a.rel = 'noopener'; a.textContent = '📂 사진대지 열기'; row('📑 사진대지', s.photoReportAt ? `${s.photoReportAt} 저장` : '저장됨', [a]); }
