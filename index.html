@@ -142,6 +142,10 @@ body.role-view .upload-box,body.role-view #addScheduleFromDayBtn,body.role-view 
 body.role-view #tab-manage>#scheduleForm{display:none}
 body.role-partner #filterSource,body.role-partner #filterPay,body.role-partner .partner-hide{display:none!important}
 #expModal .btn{width:auto;flex:0 0 auto;margin:0}
+.pend-strip{margin-top:6px}.pend-h{font-size:.78rem;color:#495057;margin-bottom:4px}.pend-row{display:flex;gap:6px;flex-wrap:wrap}
+.pend-item{position:relative;width:78px}.pend-item img{width:78px;height:78px;object-fit:cover;border-radius:6px;border:3px solid #dee2e6;cursor:pointer;display:block}
+.pend-item.t전 img{border-color:#ffa94d}.pend-item.t후 img{border-color:#69db7c}.pend-lb{display:block;text-align:center;font-size:.7rem;font-weight:bold;color:#495057}
+.pend-x{position:absolute;top:-6px;right:-6px;width:22px;height:22px;border-radius:50%;border:none;background:#e03131;color:#fff;font-size:.75rem;cursor:pointer;line-height:22px;padding:0}
 .tag-pick{display:flex;gap:6px;margin:4px 0 6px}.tag-pick button{flex:1;padding:8px 6px;border:2px solid #dee2e6;background:#fff;border-radius:8px;font-weight:bold;font-size:.85rem;cursor:pointer;color:#868e96}
 .tag-pick button.on[data-t="전"]{border-color:#f08c00;background:#fff4e6;color:#d9480f}.tag-pick button.on[data-t="후"]{border-color:#2f9e44;background:#ebfbee;color:#2b8a3e}
 .ph-group{margin-bottom:8px}.ph-group .ph-h{font-size:.8rem;font-weight:bold;margin:2px 0 4px}.ph-group .ph-h.t전{color:#d9480f}.ph-group .ph-h.t후{color:#2b8a3e}.ph-group .ph-h.t{color:#868e96}
@@ -278,7 +282,7 @@ body.locked #notifyBar{display:none!important}
     <button type="submit" class="btn btn-submit" id="loginBtn">로그인</button>
     <button type="button" class="btn btn-reset" id="loginOther" style="width:100%;margin-top:12px;font-size:.9rem;padding:10px;">👥 다른 사람으로 로그인</button>
     <div id="loginMsg"></div>
-    <div style="text-align:center;font-size:.7rem;color:#adb5bd;margin-top:10px;">앱 버전 1123-18</div>
+    <div style="text-align:center;font-size:.7rem;color:#adb5bd;margin-top:10px;">앱 버전 1123-19</div>
   </form>
 </div>
 <div id="expModal" class="modal" style="z-index:70;">
@@ -368,7 +372,7 @@ body.locked #notifyBar{display:none!important}
     <div class="btn-row"><button type="submit" class="btn btn-submit">변경</button><button type="button" class="btn btn-reset" onclick="$('pwModal').classList.remove('show')">닫기</button></div>
   </form>
 </div>
-<div id="appVer" style="position:fixed;left:6px;bottom:4px;font-size:.65rem;color:#adb5bd;z-index:1;pointer-events:none;">앱 버전 1123-18</div>
+<div id="appVer" style="position:fixed;left:6px;bottom:4px;font-size:.65rem;color:#adb5bd;z-index:1;pointer-events:none;">앱 버전 1123-19</div>
 <div id="syncStatus">🔄 연동 중...</div>
 <div class="container">
   <h2>현장 방문 및 스케줄 관리</h2>
@@ -491,9 +495,10 @@ body.locked #notifyBar{display:none!important}
           <label style="color:#007bff; margin-bottom:6px;">📝 방문 후 기록 및 현장 사진 (입력/수정 시 즉시 저장 및 드라이브 백업)</label>
           <textarea id="report" data-role-ok class="field" rows="3" placeholder="실측 사이즈, 작업 내용, 특이사항 등을 기재"></textarea>
           <div style="margin-top:8px;">
-            <label style="font-size:0.85rem; font-weight:normal; margin-bottom:4px;">현장 사진 첨부 — 먼저 시공 전/후를 고르세요</label>
+            <label style="font-size:0.85rem; font-weight:normal; margin-bottom:4px;">현장 사진 첨부 — 먼저 시공 전/후를 고르세요 (여러 장 한 번에 가능)</label>
             <div id="formTagPick"></div>
-            <input type="file" id="formReportImage" data-role-ok accept="image/*,.heic,.heif" style="font-size:0.85rem; margin-bottom:6px;">
+            <input type="file" id="formReportImage" data-role-ok accept="image/*,.heic,.heif" multiple style="font-size:0.85rem; margin-bottom:6px;">
+            <div id="formPendBox"></div>
             <div>
               <img id="formReportImgPreview" src="" alt="미리보기" style="max-width:100%; max-height:160px; border-radius:4px; display:none; border:1px solid #ddd;">
             </div>
@@ -826,12 +831,56 @@ ensureIds();
 let isSyncing = false;
 let resync = false;
 let currentFormReportImage = '';
+const formImages = [];   // 입력 화면에서 고른 새 사진들 [{data, tag}]
+let formPend = null;
 let currentFormReportImageLink = '';
 /* 현장 사진 시공 전·후 구분 */
 const PHOTO_TAGS = { '전': '🔨 시공 전', '후': '✅ 시공 후' };
 const tagLabel = t => PHOTO_TAGS[t] || '📁 구분 안 됨';
 const defaultTag = status => /공사진행|처리완료/.test(status || '') ? '후' : '전';
 let currentFormTag = '전';
+/* 아직 저장 전인 새 사진들: [{ data, tag }] (예전 방식 reportImage 한 장도 포함) */
+function pendingPhotos(s) {
+  const out = [];
+  if (s && s.reportImage && /^data:image\//i.test(s.reportImage)) out.push({ data: s.reportImage, tag: s.reportImageTag || '' });
+  const arr = Array.isArray(s && s.reportImages) ? s.reportImages : [], tg = Array.isArray(s && s.reportImagesTags) ? s.reportImagesTags : [];
+  arr.forEach((d, i) => { if (/^data:image\//i.test(String(d || ''))) out.push({ data: d, tag: tg[i] || '' }); });
+  return out;
+}
+function setPending(s, list) {   // 새 사진 목록을 일정에 넣기 (서버는 reportImages 를 한 번에 올림)
+  s.reportImage = ''; s.reportImageTag = '';
+  s.reportImages = list.map(p => p.data); s.reportImagesTags = list.map(p => p.tag || '');
+}
+/* 여러 장 고르기 → 압축된 사진 목록 */
+async function filesToPhotos(files, tag) {
+  const out = [];
+  for (let f of files) {
+    try { if (isHeic(f)) f = await normalizeImage(f); out.push({ data: await photoToDataUrl(f), tag }); }
+    catch (err) { console.error(err); alert(`'${f.name}' 사진을 불러오지 못했습니다.\nHEIC는 인터넷 연결이 필요하며, 계속 안 되면 JPG로 바꿔서 올려 주세요.`); }
+  }
+  return out;
+}
+/* 고른 새 사진 미리보기 줄 (✕ 로 빼기, 눌러서 시공 전/후 바꾸기) */
+function pendingStrip(list, onChange) {
+  const box = document.createElement('div'); box.className = 'pend-strip';
+  const draw = () => {
+    box.innerHTML = '';
+    if (!list.length) return;
+    const h = document.createElement('div'); h.className = 'pend-h'; h.textContent = `📤 저장하면 올라갈 새 사진 ${list.length}장 (사진을 누르면 시공 전/후가 바뀝니다)`; box.appendChild(h);
+    const row = document.createElement('div'); row.className = 'pend-row';
+    list.forEach((p, i) => {
+      const w = document.createElement('div'); w.className = 'pend-item t' + (p.tag || '');
+      const im = document.createElement('img'); im.src = p.data; im.alt = '새 사진'; im.title = '눌러서 시공 전/후 바꾸기';
+      im.onclick = () => { p.tag = p.tag === '전' ? '후' : '전'; draw(); onChange(); };
+      const lb = document.createElement('span'); lb.className = 'pend-lb'; lb.textContent = p.tag === '전' ? '시공 전' : p.tag === '후' ? '시공 후' : '구분 없음';
+      const x = document.createElement('button'); x.type = 'button'; x.className = 'pend-x'; x.textContent = '✕'; x.title = '이 사진 빼기'; x.dataset.roleOk = '';
+      x.onclick = () => { list.splice(i, 1); draw(); onChange(); };
+      w.append(im, lb, x); row.appendChild(w);
+    });
+    box.appendChild(row);
+  };
+  box.redraw = draw; draw(); return box;
+}
 let formTagBox = null;
 
 function showSync(msg) {
@@ -1341,17 +1390,17 @@ async function save() {
   isSyncing = true;
   try {
     // 새 사진의 시공 전/후 구분: 저장 뒤 새로 생긴 드라이브 사진 ID에 붙임
-    const pendTags = schedules.filter(x => localPhoto(x) && x.reportImageTag).map(x => ({ id: x.id, tag: x.reportImageTag, old: (x.reportImageIds || []).slice() }));
+    const pendTags = schedules.filter(x => pendingPhotos(x).length).map(x => ({ id: x.id, tags: pendingPhotos(x).map(q => q.tag || ''), old: (x.reportImageIds || []).slice() }));
     const saved = await api('save', { schedules });
     if (!Array.isArray(saved)) throw new Error((saved && saved.error) || '저장 응답 형식 오류');
     if (!resync) {
       let tagged = false;
       pendTags.forEach(pt => {
-        const it = saved.find(x => x.id === pt.id); if (!it || localPhoto(it)) return;
+        const it = saved.find(x => x.id === pt.id); if (!it || pendingPhotos(it).length) return;
         const fresh = (it.reportImageIds || []).filter(id => !pt.old.includes(id));
         if (!fresh.length) return;
-        it.photoTags = Object.assign({}, it.photoTags || {}); fresh.forEach(id => { it.photoTags[id] = pt.tag; });
-        it.reportImageTag = ''; tagged = true;
+        it.photoTags = Object.assign({}, it.photoTags || {}); fresh.forEach((id, k) => { if (pt.tags[k]) it.photoTags[id] = pt.tags[k]; });
+        it.reportImageTag = ''; it.reportImagesTags = []; tagged = true;
       });
       if (tagged) resync = true;   // 구분 정보를 한 번 더 저장
       schedules = saved; ensureIds(); takeNotifySnap();
@@ -1746,9 +1795,11 @@ function buildEditCard(item, ctx) {
   f.partner = document.createElement('select'); fillPartnerSelect(f.partner, item.partner);
 
   // 현장 사진 첨부 (HEIC는 자동으로 JPG 변환)
-  let newImage = item.reportImage || '', newLink = item.reportImageLink || '', photoChanged = false, photoCleared = false, newTag = item.reportImageTag || defaultTag(item.status);
-  const tagBox = tagPicker(newTag, t => { newTag = t; if (newImage) photoChanged = true; });
-  const photoInp = document.createElement('input'); photoInp.dataset.roleOk = ''; photoInp.type = 'file'; photoInp.accept = 'image/*,.heic,.heif';
+  let newLink = item.reportImageLink || '', photoChanged = false, photoCleared = false, newTag = defaultTag(item.status);
+  const newImages = pendingPhotos(item).map(q => Object.assign({}, q));
+  const tagBox = tagPicker(newTag, t => { newTag = t; });
+  const photoInp = document.createElement('input'); photoInp.dataset.roleOk = ''; photoInp.type = 'file'; photoInp.accept = 'image/*,.heic,.heif'; photoInp.multiple = true;
+  const pend = pendingStrip(newImages, () => { photoChanged = true; showPhoto(); });
   photoInp.style.cssText = 'font-size:.85rem;padding:0;border:none;';
   const photoPrev = document.createElement('img');
   photoPrev.alt = '현장 사진 미리보기'; photoPrev.style.cssText = 'max-width:100%;max-height:160px;border-radius:4px;border:1px solid #ddd;margin-top:6px;display:none;';
@@ -1756,38 +1807,30 @@ function buildEditCard(item, ctx) {
   const photoDel = document.createElement('button');
   photoDel.type = 'button'; photoDel.className = 'btn btn-del btn-sm keep'; photoDel.textContent = '🗑 사진 삭제'; photoDel.style.marginTop = '6px';
   const showPhoto = () => {
-    if (newImage) { photoPrev.src = newImage; photoPrev.style.display = 'block'; } else { photoPrev.removeAttribute('src'); photoPrev.style.display = 'none'; }
+    photoPrev.style.display = 'none';
     photoLink.innerHTML = '';
     const driveCnt = photoCleared ? 0 : photoList({ reportImageIds: item.reportImageIds, reportImageLink: item.reportImageLink }).length;
     if (driveCnt) {
       const t = document.createElement('div'); t.style.cssText = 'font-size:.8rem;color:#495057;margin-bottom:4px;';
-      t.textContent = `☁️ 드라이브에 저장된 사진 ${driveCnt}장${newImage ? ' + 새 사진 1장 (저장하면 추가됩니다)' : ' · 새 사진을 고르면 추가됩니다'}`;
+      t.textContent = `☁️ 드라이브에 저장된 사진 ${driveCnt}장 · 사진을 눌러 크게 본 뒤 한 장씩 삭제할 수 있어요`;
       photoLink.appendChild(t);
       const b = document.createElement('button'); b.type = 'button'; b.className = 'btn btn-mini btn-reset'; b.textContent = '🔍 저장된 사진 보기';
-      b.onclick = () => openPhoto(item.id, localPhoto(item) ? 1 : 0); photoLink.appendChild(b);
+      b.onclick = () => openPhoto(item.id, 0); photoLink.appendChild(b);
     }
-    photoDel.style.display = (newImage || driveCnt || (!photoCleared && newLink)) ? '' : 'none';
+    photoDel.style.display = (newImages.length || driveCnt || (!photoCleared && newLink)) ? '' : 'none';
   };
   photoInp.addEventListener('change', async () => {
-    let file = photoInp.files && photoInp.files[0];
-    if (!file) return;
-    try {
-      if (isHeic(file)) file = await normalizeImage(file);
-      newImage = await photoToDataUrl(file);
-      photoChanged = true;
-      showPhoto();
-    } catch (err) {
-      console.error(err);
-      alert('사진을 불러오지 못했습니다.\nHEIC는 인터넷 연결이 필요하며, 계속 안 되면 JPG로 바꿔서 올려 주세요.');
-      photoInp.value = '';
-    }
+    const files = [...(photoInp.files || [])]; if (!files.length) return;
+    const got = await filesToPhotos(files, newTag);
+    newImages.push(...got); photoInp.value = '';
+    if (got.length) { photoChanged = true; pend.redraw(); showPhoto(); }
   });
   photoDel.onclick = () => {
-    if (!confirm('이 일정에서 사진을 모두 뺄까요?\n(구글 드라이브의 원본 파일은 지워지지 않습니다)')) return;
-    newImage = ''; newLink = ''; photoChanged = true; photoCleared = true; photoInp.value = ''; showPhoto();
+    if (!confirm('이 일정에서 사진을 모두 뺄까요?\n(구글 드라이브의 원본 파일은 지워지지 않습니다 · 한 장씩 지우려면 사진을 눌러 크게 본 뒤 [🗑 이 사진 삭제])')) return;
+    newImages.length = 0; newLink = ''; photoChanged = true; photoCleared = true; photoInp.value = ''; pend.redraw(); showPhoto();
   };
   const photoWrap = document.createElement('div');
-  photoWrap.append(tagBox, photoInp, photoPrev, photoLink, photoDel);
+  photoWrap.append(tagBox, photoInp, pend, photoPrev, photoLink, photoDel);
   showPhoto();
 
   const g = document.createElement('div'); g.className = 'grid';
@@ -1802,7 +1845,7 @@ function buildEditCard(item, ctx) {
     ...(isPartner() ? [] : [fld('🤝 협력업체', f.partner, true)]),
     fld('방문 주소', f.note, true),
     fld('방문 후 기록', f.report, true),
-    fld('현장 사진 첨부 (시공 전/후를 고른 뒤 사진 선택)', photoWrap, true)
+    fld('현장 사진 첨부 (시공 전/후를 고른 뒤 사진 선택 · 여러 장 가능)', photoWrap, true)
   );
   card.appendChild(g);
 
@@ -1828,7 +1871,7 @@ function buildEditCard(item, ctx) {
     live.status = f.status.value;
     live.source = sourceValue(srcSel, srcTxt);
     live.sourceUrl = f.sourceUrl.value.trim();
-    if (photoChanged) { live.reportImage = newImage; live.reportImageLink = newLink; live.reportImageTag = newImage ? newTag : ''; if (photoCleared) { live.reportImageIds = []; live.photoTags = {}; } }
+    if (photoChanged) { setPending(live, newImages); live.reportImageLink = newLink; if (photoCleared) { live.reportImageIds = []; live.photoTags = {}; } }
     if (newReport !== (live.report || '')) { live.report = newReport; live.reportAt = newReport ? nowStr() : ''; }
     const ir = syncInstall(live);
     ctx.setEdit(null);
@@ -2131,9 +2174,8 @@ function getForm() {
     }
   }
   o.receiptIssued = $('receiptIssued').checked;
-  o['reportImage'] = currentFormReportImage;
   o['reportImageLink'] = currentFormReportImageLink;
-  o.reportImageTag = currentFormReportImage ? currentFormTag : '';
+  setPending(o, formImages);
   PAY_PARTS.forEach(k => {
     const cb = $(k + 'Paid');
     o[k + 'Paid'] = cb ? cb.checked : false;
@@ -2156,17 +2198,11 @@ function setForm(o) {
     }
   }
   $('receiptIssued').checked = !!o.receiptIssued;
-  currentFormReportImage = o.reportImage || '';
   currentFormReportImageLink = o.reportImageLink || '';
-  currentFormTag = o.reportImageTag || defaultTag(o.status); if (formTagBox) formTagBox.set(currentFormTag);
-  const imgPrev = $('formReportImgPreview');
-  if (currentFormReportImage) {
-    imgPrev.src = currentFormReportImage;
-    imgPrev.style.display = 'block';
-  } else {
-    imgPrev.src = '';
-    imgPrev.style.display = 'none';
-  }
+  formImages.length = 0; formImages.push(...pendingPhotos(o).map(q => Object.assign({}, q)));
+  if (formPend) formPend.redraw();
+  currentFormTag = defaultTag(o.status); if (formTagBox) formTagBox.set(currentFormTag);
+  $('formReportImgPreview').style.display = 'none';
   $('formReportImage').value = '';
 
   PAY_PARTS.forEach(k => {
@@ -2210,33 +2246,21 @@ async function normalizeImage(file) {
 
 formTagBox = tagPicker(currentFormTag, t => { currentFormTag = t; });
 $('formTagPick').appendChild(formTagBox);
-$('stage').addEventListener('change', () => { if (!currentFormReportImage) { currentFormTag = defaultTag($('stage').value); formTagBox.set(currentFormTag); } });
+formPend = pendingStrip(formImages, () => scheduleDraft());
+$('formPendBox').appendChild(formPend);
+$('stage').addEventListener('change', () => { currentFormTag = defaultTag($('stage').value); formTagBox.set(currentFormTag); });
 $('formReportImage').addEventListener('change', async e => {
-  let file = e.target.files && e.target.files[0];
-  if (!file) return;
-  if (isHeic(file)) {
-    try { file = await normalizeImage(file); }
-    catch (err) {
-      console.error(err);
-      alert('HEIC 사진을 변환하지 못했습니다.\n인터넷 연결을 확인하거나 JPG로 바꿔서 올려 주세요.');
-      e.target.value = ''; return;
-    }
-  }
-  const reader = new FileReader();
-  reader.onload = function(uploadEvent) {
-    currentFormReportImage = uploadEvent.target.result;
-    currentFormReportImageLink = ''; // 새 이미지 업로드 시 기존 링크 초기화 후 재업로드 유도
-    const imgPrev = $('formReportImgPreview');
-    imgPrev.src = currentFormReportImage;
-    imgPrev.style.display = 'block';
-  };
-  reader.readAsDataURL(file);
+  const files = [...(e.target.files || [])]; if (!files.length) return;
+  const got = await filesToPhotos(files, currentFormTag);
+  formImages.push(...got); e.target.value = '';
+  if (got.length) { currentFormReportImageLink = ''; formPend.redraw(); scheduleDraft(); }
 });
 
 function clearForm() {
   closeEditModal();
   currentFormReportImage = '';
   currentFormReportImageLink = '';
+  formImages.length = 0; if (formPend) formPend.redraw();
   $('formReportImgPreview').style.display = 'none';
   $('formReportImgPreview').src = '';
   $('formReportImage').value = '';
@@ -2407,7 +2431,7 @@ function render() {
     }
     if (hasPhoto(item)) { const th = photoThumb(item); if (th) rc.appendChild(th); const d = photoDlButton(item); d.style.cssText += 'margin:4px 4px 0 0;padding:4px 9px;font-size:.78rem;'; rc.appendChild(d); }
     const rb = document.createElement('button');
-    rb.type = 'button'; rb.className = 'btn btn-record'; rb.textContent = item.report || item.reportImage ? '기록 수정' : '✏️ 기록하기';
+    rb.type = 'button'; rb.className = 'btn btn-record'; rb.textContent = item.report || pendingPhotos(item).length ? '기록 수정' : '✏️ 기록하기';
     rb.onclick = () => openEditModal(item.id);
     rc.appendChild(rb); tr.appendChild(rc);
 
@@ -2547,7 +2571,7 @@ let draftTimer = null;
 function saveDraft() {
   clearTimeout(draftTimer);
   const f = getForm();
-  const empty = Object.keys(f).filter(k => k !== 'status').every(k => !f[k]);
+  const empty = Object.keys(f).filter(k => k !== 'status').every(k => !f[k] || (Array.isArray(f[k]) && !f[k].length));
   if (empty) { try { localStorage.removeItem(DRAFT_KEY); } catch (e) {} $('draftStatus').textContent = ''; return false; }
   const d = { f, editingId, at: nowStr() };
   try { localStorage.setItem(DRAFT_KEY, JSON.stringify(d)); }
@@ -3220,7 +3244,7 @@ $('showPast').addEventListener('change', renderListView);
 mobileMQ.addEventListener ? mobileMQ.addEventListener('change', renderCalendar) : mobileMQ.addListener(renderCalendar);
 
 /* ===== 현장 사진 다운로드 ===== */
-const localPhoto = s => (s.reportImage && /^data:image\//i.test(s.reportImage)) ? s.reportImage : '';
+const localPhoto = s => { const p = pendingPhotos(s); return p.length ? p[0].data : ''; };
 function driveId(u) {
   if (!safeUrl(u)) return '';
   const m = u.match(/\/d\/([\w-]{10,})/) || u.match(/[?&]id=([\w-]{10,})/);
@@ -3229,22 +3253,37 @@ function driveId(u) {
 /* 사진 목록: 아직 올리지 않은 이 기기 사진 + 드라이브 사진 (최신 순) */
 /* 시공 전·후 구분: photoTags = { 드라이브사진ID: '전' | '후' }, 저장 전 새 사진은 reportImageTag */
 function photoList(s) {
-  const out = [], data = localPhoto(s), tags = (s.photoTags && typeof s.photoTags === 'object') ? s.photoTags : {};
+  const out = [], tags = (s.photoTags && typeof s.photoTags === 'object') ? s.photoTags : {};
   const ids = Array.isArray(s.reportImageIds) ? s.reportImageIds.filter(Boolean) : [];
   const one = driveId(s.reportImageLink);
   if (!ids.length && one) ids.push(one);
   ids.forEach(id => out.push({ id, src: `https://drive.google.com/thumbnail?id=${id}&sz=w1600`, tag: tags[id] || '' }));   // 올린 순서대로
-  if (data) out.push({ data, src: data, tag: s.reportImageTag || '' });   // 아직 저장 전인 새 사진은 맨 뒤
+  pendingPhotos(s).forEach((q, k) => out.push({ data: q.data, src: q.data, tag: q.tag, pi: k }));   // 아직 저장 전인 새 사진은 맨 뒤
   const rank = t => t === '전' ? 0 : t === '후' ? 1 : 2;
   return out.map((p, i) => [p, i]).sort((a, b) => rank(a[0].tag) - rank(b[0].tag) || a[1] - b[1]).map(x => x[0]);   // 시공 전 → 시공 후 → 구분 안 됨
 }
 /* 사진 구분 바꾸기 (크게 보기 화면에서) */
 function setPhotoTag(s, p, tag) {
   const live = schedules.find(x => x.id === s.id); if (!live || !p) return;
-  if (p.data) live.reportImageTag = tag;
+  if (p.data) { const pl = pendingPhotos(live); if (pl[p.pi]) { pl[p.pi].tag = tag; setPending(live, pl); } }
   else { live.photoTags = Object.assign({}, live.photoTags || {}); if (tag) live.photoTags[p.id] = tag; else delete live.photoTags[p.id]; }
   save(); refreshPopups(); if (detailId === live.id) renderDetail();
   showSync(`✅ 이 사진을 '${tagLabel(tag)}'(으)로 바꿨습니다`);
+}
+/* 사진 한 장 삭제 (드라이브 사진은 휴지통으로 이동 — 30일 안에는 드라이브 휴지통에서 되살릴 수 있음) */
+function deletePhoto(s, p) {
+  const live = schedules.find(x => x.id === s.id); if (!live || !p) return;
+  if (!confirm(`이 사진(${tagLabel(p.tag)})을 삭제할까요?` + (p.id ? '\n구글 드라이브에서도 휴지통으로 옮겨집니다.' : ''))) return;
+  if (p.data) { const pl = pendingPhotos(live); pl.splice(p.pi, 1); setPending(live, pl); }
+  else {
+    live.reportImageIds = (live.reportImageIds || []).filter(id => id !== p.id);
+    if (!live.reportImageIds.length && driveId(live.reportImageLink) === p.id) live.reportImageLink = '';
+    if (live.photoTags) { live.photoTags = Object.assign({}, live.photoTags); delete live.photoTags[p.id]; }
+    live.trashIds = [...new Set([...(live.trashIds || []), p.id])];
+  }
+  save(); refreshPopups(); if (detailId === live.id) renderDetail();
+  if (pmId === live.id) { if (photoList(live).length) showPhotoAt(); else closePhoto(); }
+  showSync('🗑 사진을 삭제했습니다');
 }
 /* 시공 전/후 고르는 버튼 두 개 */
 function tagPicker(initial, onPick) {
@@ -3364,6 +3403,7 @@ function showPhotoAt() {
     });
     btns.appendChild(tb);
   }
+  if (p && me && (p.data || p.id)) mk('btn-del keep', '🗑 이 사진 삭제', () => deletePhoto(s, p));
   if (me) btns.appendChild(saveNowBtn('btn-sm'));
   mk('btn-reset', '닫기', closePhoto);
   // 아래쪽 작은 사진 줄 (누르면 그 사진으로 이동)
