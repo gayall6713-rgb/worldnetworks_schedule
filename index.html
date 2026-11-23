@@ -152,6 +152,10 @@ body.role-view #viewNotice{display:block}
 #editModalBody .btn-submit{font-size:1.05rem}
 @media (max-width:560px){.grid{grid-template-columns:1fr}.guide-preview-card{padding:14px}}
 .site-link{border:none;border-radius:20px;padding:6px 14px;font-size:.82rem;font-weight:bold;color:#fff;background:linear-gradient(180deg,#8b5cf6,#6d28d9);box-shadow:0 3px 0 #4c1d95,0 4px 8px rgba(0,0,0,.2);cursor:pointer;white-space:nowrap;text-decoration:none;display:inline-block}
+.site-menu{display:none;position:absolute;right:0;top:calc(100% + 6px);background:#fff;border:1px solid #dee2e6;border-radius:10px;box-shadow:0 8px 24px rgba(0,0,0,.18);padding:6px;z-index:120;min-width:210px}
+.site-menu.open{display:block}
+.site-menu a{display:flex;align-items:center;gap:8px;padding:9px 10px;border-radius:8px;text-decoration:none;white-space:nowrap}
+.site-menu a:hover{background:#f1f3f5}
 .site-link:active{transform:translateY(2px);box-shadow:0 1px 0 #4c1d95}
 .site-addr{display:inline-block;margin-top:5px;font-size:.85rem;font-weight:bold;color:#1c7ed6;text-decoration:underline;word-break:break-all}
 .src-open{font-size:.78rem;margin-left:6px;color:#6d28d9;font-weight:bold;text-decoration:none;white-space:nowrap}
@@ -243,7 +247,7 @@ body.role-view #viewNotice{display:block}
     <button type="submit" class="btn btn-submit" id="loginBtn">로그인</button>
     <button type="button" class="btn btn-reset" id="loginOther" style="width:100%;margin-top:12px;font-size:.9rem;padding:10px;">👥 다른 사람으로 로그인</button>
     <div id="loginMsg"></div>
-    <div style="text-align:center;font-size:.7rem;color:#adb5bd;margin-top:10px;">앱 버전 1123-9</div>
+    <div style="text-align:center;font-size:.7rem;color:#adb5bd;margin-top:10px;">앱 버전 1123-10</div>
   </form>
 </div>
 <div id="logModal" class="modal">
@@ -270,7 +274,7 @@ body.role-view #viewNotice{display:block}
     <div class="btn-row"><button type="submit" class="btn btn-submit">변경</button><button type="button" class="btn btn-reset" onclick="$('pwModal').classList.remove('show')">닫기</button></div>
   </form>
 </div>
-<div id="appVer" style="position:fixed;left:6px;bottom:4px;font-size:.65rem;color:#adb5bd;z-index:1;pointer-events:none;">앱 버전 1123-9</div>
+<div id="appVer" style="position:fixed;left:6px;bottom:4px;font-size:.65rem;color:#adb5bd;z-index:1;pointer-events:none;">앱 버전 1123-10</div>
 <div id="syncStatus">🔄 연동 중...</div>
 <div class="container">
   <h2>현장 방문 및 스케줄 관리</h2>
@@ -646,11 +650,22 @@ function sourceOpenLink(s, cls) {
   return a;
 }
 function renderSiteLinks() {
-  const box = $('siteLinks'); box.innerHTML = '';
+  // 위쪽 버튼 하나 → 누르면 수주처 목록이 펼쳐지고, 골라서 사이트를 엶
+  const box = $('siteLinks'); box.innerHTML = ''; box.style.position = 'relative'; box.style.display = 'inline-block';
+  const btn = document.createElement('button'); btn.type = 'button'; btn.className = 'site-link'; btn.textContent = '🌐 수주처 사이트 열기 ▾';
+  const menu = document.createElement('div'); menu.className = 'site-menu';
   Object.entries(SOURCE_LINKS).forEach(([name, url]) => {
-    const a = document.createElement('a'); a.className = 'site-link'; a.href = url; a.target = '_blank'; a.rel = 'noopener';
-    a.textContent = `🟣 ${name} 열기`; box.appendChild(a);
+    const a = document.createElement('a'); a.href = url; a.target = '_blank'; a.rel = 'noopener';
+    const nm = document.createElement('b'); nm.textContent = name;
+    nm.style.cssText = `background:${srcColor(name)};color:#fff;padding:2px 8px;border-radius:4px;font-size:.8rem;`;
+    const ad = document.createElement('span'); ad.textContent = url.replace(/^https?:\/\//, ''); ad.style.cssText = 'color:#1c7ed6;font-size:.78rem;';
+    a.append(nm, ad);
+    a.onclick = () => { menu.classList.remove('open'); };
+    menu.appendChild(a);
   });
+  btn.onclick = ev => { ev.stopPropagation(); menu.classList.toggle('open'); };
+  document.addEventListener('click', ev => { if (!box.contains(ev.target)) menu.classList.remove('open'); });
+  box.append(btn, menu);
 }
 function srcTag(v) {
   const t = document.createElement('span'); t.className = 'src-tag';
