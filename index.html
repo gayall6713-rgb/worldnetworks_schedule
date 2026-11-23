@@ -138,6 +138,8 @@ body.locked #loginScreen{display:flex}
 body:not(.role-admin) .btn-del:not(.keep),body:not(.role-admin) #clearAll,body:not(.role-admin) #empBox{display:none!important}
 body.role-view .upload-box,body.role-view #addScheduleFromDayBtn,body.role-view #addScheduleFromHistoryBtn,body.role-view .dp-add,body.role-view #draftBtn,body.role-view #resetForm,body.role-view .view-hide{display:none!important}
 body.role-view #tab-manage>#scheduleForm{display:none}
+body.role-partner #filterSource,body.role-partner #filterPay,body.role-partner .partner-hide{display:none!important}
+#logModal table{min-width:0;font-size:.8rem}#logModal td,#logModal th{padding:6px 5px}
 #viewNotice{display:none;background:#fff3bf;border:1px solid #fcc419;color:#7c5800;border-radius:8px;padding:10px 12px;font-size:.85rem;margin-bottom:12px}
 body.role-view #viewNotice{display:block}
 #syncStatus{position:fixed;left:50%;bottom:24px;transform:translateX(-50%);background:rgba(33,37,41,.92);color:#fff;padding:12px 22px;border-radius:24px;font-size:.95rem;z-index:400;font-weight:bold;display:none;box-shadow:0 6px 20px rgba(0,0,0,.3);max-width:90vw;text-align:center}
@@ -238,6 +240,21 @@ body.role-view #viewNotice{display:block}
     <button type="submit" class="btn btn-submit" id="loginBtn">로그인</button>
     <div id="loginMsg"></div>
   </form>
+</div>
+<div id="logModal" class="modal">
+  <div class="modal-box" style="max-width:640px;">
+    <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:10px;gap:8px;">
+      <h4 style="margin:0;font-size:1.15rem;color:var(--primary);">📜 접속 기록 <span style="font-weight:normal;font-size:.8rem;color:#888;">(최근 300건)</span></h4>
+      <button type="button" onclick="$('logModal').classList.remove('show')" style="background:none;border:none;font-size:1.2rem;cursor:pointer;">✖</button>
+    </div>
+    <div class="filter-bar" style="margin-bottom:8px;">
+      <select id="logWho" class="filter-sel"><option value="">전체 사용자</option></select>
+      <select id="logKind" class="filter-sel"><option value="">전체 결과</option><option value="ok">✅ 로그인·접속</option><option value="bad">❌ 실패·잠김</option><option value="out">👋 로그아웃</option></select>
+      <button type="button" class="btn btn-mini btn-reset" id="logReload">🔄 새로고침</button>
+    </div>
+    <div id="logInfo" class="hint" style="margin:0 0 6px;"></div>
+    <div class="table-responsive" style="max-height:60vh;overflow:auto;"><table><thead><tr><th>시각</th><th>이름</th><th>권한</th><th>결과</th><th>기기</th></tr></thead><tbody id="logBody"></tbody></table></div>
+  </div>
 </div>
 <div id="pwModal" class="modal">
   <form class="modal-box" id="pwForm" style="max-width:360px;">
@@ -359,6 +376,7 @@ body.role-view #viewNotice{display:block}
           <input type="text" id="engineer" placeholder="기사 이름 직접 입력" style="display:none;margin-top:6px;">
         </div>
         <div class="form-group"><label>기사 연락처</label><input type="text" id="engPhone" placeholder="예: 010-8866-6944"></div>
+        <div class="form-group full partner-hide"><label>🤝 협력업체 <span style="font-weight:normal;color:#888;font-size:.8rem;">(배정하면 그 업체가 로그인했을 때 이 일정만 보입니다 · 금액은 안 보임)</span></label><select id="partner"></select></div>
         <div class="form-group full"><label>방문 주소</label><input type="text" id="note" placeholder="예: 대략적인 주소 또는 상세 주소"></div>
 
         <!-- 방문 후 기록 및 현장 사진 첨부 영역 (구글 드라이브 자동 연동) -->
@@ -394,6 +412,7 @@ body.role-view #viewNotice{display:block}
             <option value="직원">직원 — 등록·수정 가능, 삭제 불가</option>
             <option value="보기">보기 — 보기 + 방문 후 기록·사진만</option>
             <option value="관리자">관리자 — 모두 가능 + 직원 관리</option>
+            <option value="협력업체">협력업체 — 배정된 일정만 보기 + 기록·사진 (금액 안 보임)</option>
             <option value="접속안함">접속 안 함 — 기사 목록에만 표시</option>
           </select></div>
           <div class="form-group"><label>비밀번호 <span id="empPwHint" style="font-weight:normal;color:#888;font-size:.78rem;">(4자 이상)</span></label><input type="text" id="empPw" placeholder="새로 정하거나 바꿀 때만 입력" autocomplete="off"></div>
@@ -405,7 +424,7 @@ body.role-view #viewNotice{display:block}
       </form>
       <div class="table-responsive" style="margin-top:12px;">
         <table class="schedule-table" style="min-width:360px;">
-          <thead><tr><th>이름</th><th>연락처</th><th>권한</th><th>비밀번호</th><th>관리</th></tr></thead>
+          <thead><tr><th>이름</th><th>연락처</th><th>권한</th><th>비밀번호</th><th>마지막 접속</th><th>관리</th></tr></thead>
           <tbody id="empBody"></tbody>
         </table>
       </div>
@@ -694,15 +713,23 @@ const TOKEN_KEY = 'siteToken_v1', ME_KEY = 'siteMe_v1';
 let authToken = localStorage.getItem(TOKEN_KEY) || sessionStorage.getItem(TOKEN_KEY) || '';
 let me = null;
 try { me = JSON.parse(localStorage.getItem(ME_KEY) || sessionStorage.getItem(ME_KEY) || 'null'); } catch (e) { me = null; }
-const ROLE_COLORS = { '관리자':'#e03131', '직원':'#1c7ed6', '보기':'#868e96', '접속안함':'#adb5bd' };
+const ROLE_COLORS = { '관리자':'#e03131', '직원':'#1c7ed6', '보기':'#868e96', '협력업체':'#f08c00', '접속안함':'#adb5bd' };
 const isAdmin = () => !!me && me.role === '관리자';
 const canEdit = () => !!me && (me.role === '관리자' || me.role === '직원');
-const viewOnly = () => !!me && me.role === '보기';
+const isPartner = () => !!me && me.role === '협력업체';
+const viewOnly = () => !!me && (me.role === '보기' || me.role === '협력업체');
+/* 접속 기록용 기기 이름 */
+function deviceName() {
+  const ua = navigator.userAgent || '';
+  const os = /iPhone/.test(ua) ? '아이폰' : /iPad/.test(ua) ? '아이패드' : /Android/.test(ua) ? (/Mobile/.test(ua) ? '안드로이드 폰' : '안드로이드 태블릿') : /Windows/.test(ua) ? '윈도우 PC' : /Mac/.test(ua) ? '맥' : '기타';
+  const app = (window.matchMedia && window.matchMedia('(display-mode: standalone)').matches) || navigator.standalone ? '설치 앱' : (/SamsungBrowser/.test(ua) ? '삼성인터넷' : /Edg\//.test(ua) ? '엣지' : /Chrome/.test(ua) ? '크롬' : /Safari/.test(ua) ? '사파리' : '브라우저');
+  return `${os} · ${app}`;
+}
 let setupMode = false;
 
 /* 서버에 요청 (로그인 표 자동 첨부) */
 async function api(action, data) {
-  const res = await fetch(SCRIPT_URL, { method:'POST', body: JSON.stringify(Object.assign({ action, token: authToken }, data || {})) });
+  const res = await fetch(SCRIPT_URL, { method:'POST', body: JSON.stringify(Object.assign({ action, token: authToken, device: deviceName() }, data || {})) });
   const j = await res.json();
   if (j && j.ok === false && j.error === 'AUTH') { forceLogout('로그인이 만료되었거나 권한이 바뀌었습니다.\n다시 로그인해 주세요.'); throw new Error('AUTH'); }
   if (j && j.ok === false && j.error === 'FORBIDDEN') { alert('이 작업을 할 권한이 없습니다.'); throw new Error('FORBIDDEN'); }
@@ -718,6 +745,10 @@ function applyRole() {
   document.body.classList.toggle('role-admin', isAdmin());
   document.body.classList.toggle('role-staff', !!me && me.role === '직원');
   document.body.classList.toggle('role-view', viewOnly());
+  document.body.classList.toggle('role-partner', isPartner());
+  $('viewNotice').innerHTML = isPartner()
+    ? '🤝 <b>협력업체 권한</b>입니다. 배정된 일정만 보이며, <b>방문 후 기록·현장 사진</b>을 남길 수 있습니다. 일정의 [수정]을 눌러 기록해 주세요.'
+    : '👀 <b>보기 권한</b>입니다. 일정을 보고, <b>방문 후 기록·현장 사진</b>만 남길 수 있습니다. 일정의 [수정]을 눌러 기록을 남겨 주세요.';
   const box = $('userBox'); box.innerHTML = '';
   if (!me) return;
   const nm = document.createElement('b'); nm.textContent = '👤 ' + me.name;
@@ -730,7 +761,12 @@ function applyRole() {
     try { await api('logout'); } catch (e) {}
     forceLogout('로그아웃했습니다.');
   };
-  box.append(nm, rb, pw, lo);
+  box.append(nm, rb);
+  if (isAdmin()) {
+    const lg = document.createElement('button'); lg.type = 'button'; lg.className = 'ub-btn'; lg.textContent = '📜 접속 기록';
+    lg.onclick = openLoginLog; box.appendChild(lg);
+  }
+  box.append(pw, lo);
   lockView(document);
   if (!isAdmin() && $('empBox')) $('empBox').open = false;
 }
@@ -789,8 +825,8 @@ $('loginForm').addEventListener('submit', async ev => {
   $('loginBtn').disabled = true; $('loginMsg').textContent = '확인 중...';
   try {
     const res = await fetch(SCRIPT_URL, { method:'POST', body: JSON.stringify(setupMode
-      ? { action:'setup', name, password: pw, phone: normPhone($('loginPhone').value.trim()) }
-      : { action:'login', name, password: pw }) });
+      ? { action:'setup', name, password: pw, phone: normPhone($('loginPhone').value.trim()), device: deviceName() }
+      : { action:'login', name, password: pw, device: deviceName() }) });
     const j = await res.json();
     if (!j || !j.ok) { $('loginMsg').textContent = (j && j.error) || '로그인하지 못했습니다.'; return; }
     storeLogin(j.token, j.user, $('loginKeep').checked);
@@ -814,6 +850,41 @@ $('pwForm').addEventListener('submit', async ev => {
     showSync('✅ 비밀번호를 바꿨습니다');
   } catch (e) { if (e.message !== 'AUTH') alert('서버에 연결하지 못했습니다.'); }
 });
+/* ===== 관리자: 접속 기록 보기 ===== */
+let loginLog = [];
+async function openLoginLog() {
+  $('logModal').classList.add('show');
+  $('logInfo').textContent = '불러오는 중...'; $('logBody').innerHTML = '';
+  try {
+    const j = await api('loginLog', { limit: 300 });
+    if (!j || !j.ok) { $('logInfo').textContent = (j && j.error) || '불러오지 못했습니다.'; return; }
+    loginLog = j.log || [];
+    const who = $('logWho'), cur = who.value;
+    who.innerHTML = '<option value="">전체 사용자</option>';
+    [...new Set(loginLog.map(x => x.name).filter(Boolean))].sort().forEach(n => { const o = document.createElement('option'); o.value = n; o.textContent = n; who.appendChild(o); });
+    who.value = cur;
+    renderLoginLog();
+  } catch (e) { if (e.message !== 'AUTH') $('logInfo').textContent = '서버에 연결하지 못했습니다.'; }
+}
+function renderLoginLog() {
+  const who = $('logWho').value, kind = $('logKind').value;
+  const rows = loginLog.filter(x => (!who || x.name === who) &&
+    (!kind || (kind === 'ok' && /^✅|^🔄/.test(x.result)) || (kind === 'bad' && /^❌|^🔒|^⛔/.test(x.result)) || (kind === 'out' && /^👋/.test(x.result))));
+  const body = $('logBody'); body.innerHTML = '';
+  if (!rows.length) { const tr = document.createElement('tr'), td = document.createElement('td'); td.colSpan = 5; td.className = 'empty'; td.textContent = '기록이 없습니다.'; tr.appendChild(td); body.appendChild(tr); }
+  rows.forEach(x => {
+    const tr = document.createElement('tr');
+    if (/^❌|^🔒|^⛔/.test(x.result)) tr.style.background = '#fff5f5';
+    [x.at, x.name, x.role, x.result, x.device].forEach(t => { const td = document.createElement('td'); td.textContent = t || ''; tr.appendChild(td); });
+    body.appendChild(tr);
+  });
+  const bad = loginLog.filter(x => /^❌|^🔒/.test(x.result)).length;
+  $('logInfo').textContent = `${rows.length}건 표시` + (bad ? ` · 최근 실패 ${bad}건 (빨간 줄)` : '');
+}
+$('logWho').addEventListener('change', renderLoginLog);
+$('logKind').addEventListener('change', renderLoginLog);
+$('logReload').onclick = openLoginLog;
+
 /* 앱 시작: 로그인 확인 */
 async function boot() {
   if (me && me.name) $('loginName').value = me.name;
@@ -1234,6 +1305,7 @@ function buildEditCard(item, ctx) {
     else if (!engSel.value) f.engPhone.value = '';
   });
   const engWrap = document.createElement('div'); engWrap.append(engSel, engTxt);
+  f.partner = document.createElement('select'); fillPartnerSelect(f.partner, item.partner);
 
   // 현장 사진 첨부 (HEIC는 자동으로 JPG 변환)
   let newImage = item.reportImage || '', newLink = item.reportImageLink || '', photoChanged = false, photoCleared = false;
@@ -1288,6 +1360,7 @@ function buildEditCard(item, ctx) {
     ...(item.installFor ? [] : [fld('🔨 시공 예정일 (입력하면 시공 일정 자동 생성)', f.installDate, true)]),
     fld('요청 사항', f.request, true),
     fld('담당 기사', engWrap), fld('기사 연락처', f.engPhone),
+    ...(isPartner() ? [] : [fld('🤝 협력업체', f.partner, true)]),
     fld('방문 주소', f.note, true),
     fld('방문 후 기록', f.report, true),
     fld('현장 사진 첨부', photoWrap, true)
@@ -1312,6 +1385,7 @@ function buildEditCard(item, ctx) {
     live.note = f.note.value.trim();
     live.engineer = engSel.value === '__custom__' ? engTxt.value.trim() : engSel.value;
     live.engPhone = normPhone(f.engPhone.value.trim());
+    if (!isPartner()) live.partner = f.partner.value;
     live.status = f.status.value;
     live.source = sourceValue(srcSel, srcTxt);
     live.sourceUrl = f.sourceUrl.value.trim();
@@ -1343,7 +1417,7 @@ let employees = [];
 try { employees = JSON.parse(localStorage.getItem(EMP_KEY) || '[]'); } catch (e) { employees = []; }
 let empServerOk = false;   // 구글 서버가 직원 저장을 지원하는지 (지원 확인 전에는 절대 전송하지 않음)
 let empSyncing = false, empResync = false;
-const empPublic = list => list.map(e => ({ id: e.id, name: e.name, phone: e.phone || '', role: e.role || '접속안함', hasPw: !!e.hasPw }));
+const empPublic = list => list.map(e => ({ id: e.id, name: e.name, phone: e.phone || '', role: e.role || '접속안함', hasPw: !!e.hasPw, lastLogin: e.lastLogin || '' }));
 function saveEmp() {
   try { localStorage.setItem(EMP_KEY, JSON.stringify(empPublic(employees))); } catch (e) {}
   pushEmployees();
@@ -1386,7 +1460,19 @@ function syncEngSelect() {
   if (emp) { sel.value = emp.id; $('engineer').style.display = 'none'; }
   else { sel.value = '__custom__'; $('engineer').style.display = 'block'; }
 }
+/* 협력업체 선택 상자 (권한이 '협력업체'인 사람) */
+function partnerNames() { return employees.filter(e => e.role === '협력업체').map(e => e.name); }
+function fillPartnerSelect(sel, val) {
+  sel.innerHTML = '';
+  const add = (v, t) => { const o = document.createElement('option'); o.value = v; o.textContent = t; sel.appendChild(o); };
+  const names = partnerNames();
+  add('', names.length ? '배정 안 함' : "배정 안 함 (직원 관리에서 권한 '협력업체'로 먼저 등록)");
+  names.forEach(n => add(n, '🤝 ' + n));
+  if (val && !names.includes(val)) add(val, '🤝 ' + val);
+  sel.value = val || '';
+}
 function renderEmpOptions() {
+  fillPartnerSelect($('partner'), $('partner').value);
   const sel = $('engSelect'); sel.innerHTML = '';
   const add = (v, t) => { const o = document.createElement('option'); o.value = v; o.textContent = t; sel.appendChild(o); };
   add('', employees.length ? '직원 선택' : "직원 선택 (아래 '직원 관리'에서 먼저 등록)");
@@ -1416,7 +1502,7 @@ function renderEmp() {
   const body = $('empBody'); body.innerHTML = '';
   if (!employees.length) {
     const tr = document.createElement('tr'), td = document.createElement('td');
-    td.colSpan = 5; td.className = 'empty'; td.textContent = '등록된 직원이 없습니다.';
+    td.colSpan = 6; td.className = 'empty'; td.textContent = '등록된 직원이 없습니다.';
     tr.appendChild(td); body.appendChild(tr);
   }
   employees.forEach(emp => {
@@ -1426,6 +1512,7 @@ function renderEmp() {
     const rtd = document.createElement('td'); const rb = document.createElement('span'); rb.className = 'role-badge';
     rb.textContent = emp.role || '접속안함'; rb.style.background = ROLE_COLORS[emp.role] || '#adb5bd'; rtd.appendChild(rb); tr.appendChild(rtd);
     const ptd = document.createElement('td'); ptd.textContent = (emp.role || '접속안함') === '접속안함' ? '-' : (emp.hasPw ? '✅ 설정됨' : '⚠️ 없음 (로그인 불가)'); tr.appendChild(ptd);
+    const ltd = document.createElement('td'); ltd.textContent = emp.lastLogin || '-'; ltd.style.whiteSpace = 'nowrap'; ltd.style.fontSize = '.78rem'; tr.appendChild(ltd);
     const td = document.createElement('td'); td.className = 'act';
     const eb = document.createElement('button');
     eb.type = 'button'; eb.className = 'btn btn-edit'; eb.textContent = '수정';
@@ -1639,6 +1726,7 @@ function setForm(o) {
   });
   fillStageOptions($('stage'), o.status || STAGES[0], false);
   fillSourceSelect($('sourceSel'), $('source'), o.source);
+  fillPartnerSelect($('partner'), o.partner);
   togglePay();
   syncEngSelect();
 }
@@ -1845,7 +1933,7 @@ function render() {
 
     ['request', 'cost'].forEach(k => { const td = document.createElement('td'); td.textContent = item[k] || ''; tr.appendChild(td); });
     tr.appendChild(payCell(item));
-    ['engineer', 'engPhone', 'note'].forEach(k => { const td = document.createElement('td'); td.textContent = item[k] || ''; tr.appendChild(td); });
+    ['engineer', 'engPhone', 'note'].forEach(k => { const td = document.createElement('td'); td.textContent = item[k] || ''; if (k === 'engineer' && item.partner) { const p = document.createElement('div'); p.textContent = '🤝 ' + item.partner; p.style.cssText = 'font-size:.75rem;color:#e67700;font-weight:bold;'; td.appendChild(p); } tr.appendChild(td); });
 
     const rc = document.createElement('td'); rc.className = 'rec';
     if (item.report) {
@@ -2568,7 +2656,7 @@ function agendaItem(s) {
   const nm = document.createElement('div'); nm.className = 'ag-name'; nm.textContent = s.customer || '이름 없음';
   if (s.source) nm.appendChild(srcTag(s.source));
   const sub = document.createElement('div'); sub.className = 'ag-sub';
-  sub.textContent = [s.request, s.note, s.engineer ? '👷 ' + s.engineer : ''].filter(Boolean).join(' · ') || '-';
+  sub.textContent = [s.request, s.note, s.engineer ? '👷 ' + s.engineer : '', s.partner ? '🤝 ' + s.partner : ''].filter(Boolean).join(' · ') || '-';
   main.append(nm, sub);
   const st = document.createElement('span'); st.className = 'ag-stage';
   st.textContent = s.status || '미지정'; st.style.background = STAGE_COLORS[s.status] || '#f1f3f5';
@@ -2887,7 +2975,7 @@ function renderDetail() {
     const lk = schedules.find(x => x.id === s.installId);
     row('🔨 시공 예정일', `${dateLabel(s.installDate.slice(0, 10))}${s.installDate.length >= 16 ? ' ' + ampm(s.installDate.slice(11, 16)) : ''}`, lk ? [jump(lk.id, '🔨 시공 일정 보기')] : null);
   }
-  {
+  if (!isPartner()) {
     // 수주처: 상세 화면에서 바로 선택 (바꾸면 즉시 저장)
     const v = row('수주처', ''); v.textContent = '';
     const sel = document.createElement('select'), txt = document.createElement('input');
@@ -2917,8 +3005,8 @@ function renderDetail() {
   row('요청 사항', s.request);
   const addr = (s.note || '').trim(), q = encodeURIComponent(addr);
   row('방문 주소', addr, addr ? [qa('naver', 'https://map.naver.com/p/search/' + q, '🗺 네이버지도', true), qa('kakao', 'https://map.kakao.com/link/search/' + q, '🗺 카카오맵', true)] : null);
-  row('처리 비용', s.cost);
-  if (s.total || s.deposit || s.balance || s.receiptType) {
+  if (!isPartner()) row('처리 비용', s.cost);
+  if (!isPartner() && (s.total || s.deposit || s.balance || s.receiptType)) {
     const lines = [];
     if (s.total) lines.push('최종 ' + won(s.total));
     if (s.deposit) lines.push(`계약금 ${won(s.deposit)} ${s.depositPaid ? '✅ 입금' + (s.depositPaidAt ? ' (' + s.depositPaidAt + ')' : '') : '⬜ 미입금'}`);
@@ -2932,6 +3020,7 @@ function renderDetail() {
     row('입금 현황', lines.join('\n'));
   }
   row('담당 기사', [s.engineer || '미배정', s.engPhone].filter(Boolean).join('  '), tel(s.engPhone) ? [qa('call', 'tel:' + tel(s.engPhone), '📞 기사 전화')] : null);
+  if (s.partner) { const pe = employees.find(e => e.name === s.partner); row('🤝 협력업체', [s.partner, pe && pe.phone].filter(Boolean).join('  '), pe && tel(pe.phone) ? [qa('call', 'tel:' + tel(pe.phone), '📞 업체 전화')] : null); }
   if (s.updatedBy) row('최종 수정', `${s.updatedBy} · ${s.updatedAt || ''}`);
   row('방문 후 기록', s.report ? s.report + (s.reportAt ? `\n(${s.reportAt} 기록)` : '') : '');
   lockView(body);
