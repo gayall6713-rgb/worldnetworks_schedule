@@ -134,6 +134,8 @@ body.locked #loginScreen{display:flex}
 #userBox b{white-space:nowrap}
 .role-badge{font-size:.72rem;font-weight:bold;padding:2px 8px;border-radius:10px;color:#fff;white-space:nowrap}
 .ub-btn{border:1px solid #ced4da;background:#fff;border-radius:14px;padding:4px 10px;font-size:.75rem;font-weight:bold;cursor:pointer;white-space:nowrap}
+.ub-btn.switch{background:#fff3bf;border-color:#fcc419;color:#7c5800}
+.ub-btn.out{background:#ffe3e3;border-color:#ffa8a8;color:#c92a2a}
 /* 권한별 화면 제한 */
 body:not(.role-admin) .btn-del:not(.keep),body:not(.role-admin) #clearAll,body:not(.role-admin) #empBox{display:none!important}
 body.role-view .upload-box,body.role-view #addScheduleFromDayBtn,body.role-view #addScheduleFromHistoryBtn,body.role-view .dp-add,body.role-view #draftBtn,body.role-view #resetForm,body.role-view .view-hide{display:none!important}
@@ -755,18 +757,28 @@ function applyRole() {
   const rb = document.createElement('span'); rb.className = 'role-badge'; rb.textContent = me.role; rb.style.background = ROLE_COLORS[me.role] || '#868e96';
   const pw = document.createElement('button'); pw.type = 'button'; pw.className = 'ub-btn'; pw.textContent = '🔑 비번 변경';
   pw.onclick = () => { $('pwForm').reset(); $('pwModal').classList.add('show'); $('pwOld').focus(); };
-  const lo = document.createElement('button'); lo.type = 'button'; lo.className = 'ub-btn'; lo.textContent = '로그아웃';
+  const lo = document.createElement('button'); lo.type = 'button'; lo.className = 'ub-btn out'; lo.textContent = '로그아웃';
   lo.onclick = async () => {
     if (!confirm('로그아웃할까요?')) return;
     try { await api('logout'); } catch (e) {}
     forceLogout('로그아웃했습니다.');
+  };
+  // 다른 사람으로 바꾸기: 로그아웃하고 이름 칸을 비운 로그인 화면으로
+  const sw = document.createElement('button'); sw.type = 'button'; sw.className = 'ub-btn switch'; sw.textContent = '👥 사용자 바꾸기';
+  sw.onclick = async () => {
+    if (!confirm(`${me.name}님을 로그아웃하고 다른 사람으로 로그인할까요?`)) return;
+    try { await api('logout'); } catch (e) {}
+    $('loginName').value = '';
+    forceLogout('다른 사람의 이름과 비밀번호를 입력하세요.');
+    $('loginName').value = '';
+    setTimeout(() => $('loginName').focus(), 60);
   };
   box.append(nm, rb);
   if (isAdmin()) {
     const lg = document.createElement('button'); lg.type = 'button'; lg.className = 'ub-btn'; lg.textContent = '📜 접속 기록';
     lg.onclick = openLoginLog; box.appendChild(lg);
   }
-  box.append(pw, lo);
+  box.append(sw, pw, lo);
   lockView(document);
   if (!isAdmin() && $('empBox')) $('empBox').open = false;
 }
