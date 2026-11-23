@@ -141,6 +141,9 @@ body:not(.role-admin) .btn-del:not(.keep),body:not(.role-admin) #clearAll,body:n
 body.role-view .upload-box,body.role-view #addScheduleFromDayBtn,body.role-view #addScheduleFromHistoryBtn,body.role-view .dp-add,body.role-view #draftBtn,body.role-view #resetForm,body.role-view .view-hide{display:none!important}
 body.role-view #tab-manage>#scheduleForm{display:none}
 body.role-partner #filterSource,body.role-partner #filterPay,body.role-partner .partner-hide{display:none!important}
+.exp-tbl input,.exp-tbl select{padding:5px 6px;font-size:.82rem;min-width:0}.exp-tbl td{white-space:normal}
+.exp-btn{display:inline-block;margin-top:5px;padding:3px 8px;font-size:.74rem;border:1px solid #f59f00;background:#fff9db;color:#a15c00;border-radius:5px;cursor:pointer;font-weight:bold}
+body:not(.role-admin) .exp-btn{display:none!important}
 .stat-tbl{min-width:0;font-size:.8rem;width:100%}.stat-tbl td,.stat-tbl th{padding:6px 6px;white-space:nowrap}
 .stat-tbl td.n{text-align:right;font-variant-numeric:tabular-nums}.stat-tbl tr.sum td{font-weight:bold;background:#f1f3f5}
 .stat-tbl td.zero{color:#ced4da}.stat-h{margin:14px 0 6px;font-size:.95rem;color:#343a40}.stat-h span{font-weight:normal;color:#868e96;font-size:.8rem}
@@ -268,9 +271,30 @@ body.locked #notifyBar{display:none!important}
     <button type="submit" class="btn btn-submit" id="loginBtn">로그인</button>
     <button type="button" class="btn btn-reset" id="loginOther" style="width:100%;margin-top:12px;font-size:.9rem;padding:10px;">👥 다른 사람으로 로그인</button>
     <div id="loginMsg"></div>
-    <div style="text-align:center;font-size:.7rem;color:#adb5bd;margin-top:10px;">앱 버전 1123-14</div>
+    <div style="text-align:center;font-size:.7rem;color:#adb5bd;margin-top:10px;">앱 버전 1123-15</div>
   </form>
 </div>
+<div id="expModal" class="modal" style="z-index:70;">
+  <div class="modal-box" style="max-width:860px;width:100%;">
+    <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:6px;gap:8px;">
+      <h4 style="margin:0;font-size:1.15rem;color:var(--primary);">💸 지출·외주비 입력 <span style="font-weight:normal;font-size:.8rem;color:#888;">(관리자 전용)</span></h4>
+      <button type="button" id="expClose" style="background:none;border:none;font-size:1.2rem;cursor:pointer;">✖</button>
+    </div>
+    <div id="expWho" style="font-weight:bold;margin-bottom:8px;"></div>
+    <div class="stat-cards" id="expSum" style="margin-bottom:10px;"></div>
+    <div style="display:flex;gap:6px;flex-wrap:wrap;margin-bottom:8px;">
+      <button type="button" class="btn btn-mini btn-excel" id="expAddPartner" style="background:linear-gradient(#f08c00,#e67700);">🤝 협력업체 결제 추가</button>
+      <button type="button" class="btn btn-mini btn-reset" id="expAdd">＋ 다른 지출 추가 (자재비·인건비 등)</button>
+    </div>
+    <div class="table-responsive"><table class="stat-tbl exp-tbl"><thead><tr><th>구분</th><th>업체·내용</th><th>금액 (원)</th><th>지급일</th><th>지급</th><th>메모</th><th></th></tr></thead><tbody id="expBody"></tbody></table></div>
+    <div class="hint" style="margin:6px 0 10px;">순이익 = 최종 계약금액 − 지출 합계 · 협력업체 이름은 직원 관리에서 권한을 '협력업체'로 등록하면 목록에서 고를 수 있어요</div>
+    <div style="display:flex;justify-content:flex-end;gap:8px;">
+      <button type="button" class="btn btn-reset" id="expCancel">취소</button>
+      <button type="button" class="btn btn-excel" id="expSave">💾 저장</button>
+    </div>
+  </div>
+</div>
+<datalist id="expVendors"></datalist>
 <div id="statModal" class="modal">
   <div class="modal-box" style="max-width:1100px;width:100%;">
     <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:10px;gap:8px;">
@@ -289,6 +313,8 @@ body.locked #notifyBar{display:none!important}
     <div class="table-responsive"><table class="stat-tbl" id="statStage"></table></div>
     <h5 class="stat-h">② 기간별 현황</h5>
     <div class="table-responsive"><table class="stat-tbl" id="statPeriod"></table></div>
+    <h5 class="stat-h">③ 협력업체·지출처별 결제 현황 <span id="statVendLbl"></span></h5>
+    <div class="table-responsive"><table class="stat-tbl" id="statVendor"></table></div>
   </div>
 </div>
 <div id="logModal" class="modal">
@@ -315,7 +341,7 @@ body.locked #notifyBar{display:none!important}
     <div class="btn-row"><button type="submit" class="btn btn-submit">변경</button><button type="button" class="btn btn-reset" onclick="$('pwModal').classList.remove('show')">닫기</button></div>
   </form>
 </div>
-<div id="appVer" style="position:fixed;left:6px;bottom:4px;font-size:.65rem;color:#adb5bd;z-index:1;pointer-events:none;">앱 버전 1123-14</div>
+<div id="appVer" style="position:fixed;left:6px;bottom:4px;font-size:.65rem;color:#adb5bd;z-index:1;pointer-events:none;">앱 버전 1123-15</div>
 <div id="syncStatus">🔄 연동 중...</div>
 <div class="container">
   <h2>현장 방문 및 스케줄 관리</h2>
@@ -943,19 +969,99 @@ $('pwForm').addEventListener('submit', async ev => {
     showSync('✅ 비밀번호를 바꿨습니다');
   } catch (e) { if (e.message !== 'AUTH') alert('서버에 연결하지 못했습니다.'); }
 });
+/* ===== 관리자: 지출·외주비 (일정마다 여러 건, 협력업체 결제 포함) ===== */
+const EXP_TYPES = ['외주비(협력업체)', '자재비', '인건비', '장비·운반', '기타'];
+const isOutsource = e => /외주|협력/.test(e.type || '');
+const expList = s => Array.isArray(s && s.expenses) ? s.expenses : [];
+const expSum = s => expList(s).reduce((a, e) => a + toNum(e.amount), 0);
+const expOut = s => expList(s).filter(isOutsource).reduce((a, e) => a + toNum(e.amount), 0);
+const profitOf = s => toNum(s.total) - expSum(s);
+let expItemId = null, expDraft = [];
+function openExpense(id) {
+  if (!isAdmin()) return;
+  const it = schedules.find(x => x.id === id); if (!it) return;
+  expItemId = id; expDraft = expList(it).map(e => Object.assign({}, e));
+  $('expWho').textContent = `👤 ${it.customer || '이름 없음'} · ${it.request || ''} · ${visitDay(it) ? dateLabel(visitDay(it)) : '방문일 미정'}`;
+  $('expVendors').innerHTML = [...new Set([...partnerNames(), ...schedules.flatMap(x => expList(x).map(e => e.vendor)).filter(Boolean)])].map(n => `<option value="${escAttr(n)}">`).join('');
+  if (!expDraft.length && it.partner) expDraft.push({ id: uid(), type: EXP_TYPES[0], vendor: it.partner, amount: '', date: '', paid: false, memo: '' });
+  renderExpense();
+  $('expModal').classList.add('show');
+}
+function expSummary() {
+  const it = schedules.find(x => x.id === expItemId) || {};
+  const tmp = { total: it.total, expenses: expDraft };
+  const sales = toNum(it.total), cost = expSum(tmp), out = expOut(tmp), pf = sales - cost;
+  const paidOut = expDraft.filter(e => e.paid).reduce((a, e) => a + toNum(e.amount), 0);
+  const card = (t, v, c, sub) => `<div class="stat-card" style="border-left-color:${c}"><small>${t}</small><b>${v}</b>${sub ? `<small>${sub}</small>` : ''}</div>`;
+  $('expSum').innerHTML = card('매출 (최종 계약금액)', sales ? statWon(sales) + '원' : '미입력', '#1c7ed6') +
+    card('지출 합계', statWon(cost) + '원', '#f08c00', `외주비 ${statWon(out)}원`) +
+    card('미지급', statWon(cost - paidOut) + '원', '#e03131') +
+    card('순이익', statWon(pf) + '원', pf >= 0 ? '#2f9e44' : '#e03131', sales ? `이익률 ${Math.round(pf / sales * 1000) / 10}%` : '');
+}
+function renderExpense() {
+  const body = $('expBody'); body.innerHTML = '';
+  if (!expDraft.length) { body.innerHTML = '<tr><td colspan="7" class="empty" style="text-align:center;color:#868e96;">아직 입력한 지출이 없습니다. 위 버튼으로 추가하세요.</td></tr>'; }
+  expDraft.forEach((e, i) => {
+    const tr = document.createElement('tr');
+    const td = el => { const c = document.createElement('td'); c.appendChild(el); tr.appendChild(c); return el; };
+    const ty = document.createElement('select'); [...new Set([...EXP_TYPES, e.type].filter(Boolean))].forEach(t => { const o = document.createElement('option'); o.value = o.textContent = t; ty.appendChild(o); }); ty.value = e.type || EXP_TYPES[0];
+    ty.onchange = () => { e.type = ty.value; expSummary(); }; td(ty); ty.style.width = '120px';
+    const vd = document.createElement('input'); vd.type = 'text'; vd.value = e.vendor || ''; vd.placeholder = '업체명·내용'; vd.setAttribute('list', 'expVendors'); vd.oninput = () => { e.vendor = vd.value; }; td(vd);
+    const am = document.createElement('input'); am.type = 'text'; am.inputMode = 'numeric'; am.value = e.amount || ''; am.placeholder = '예: 1,500,000'; am.style.width = '110px'; am.style.textAlign = 'right';
+    am.oninput = () => { e.amount = am.value; expSummary(); }; am.onblur = () => { const n = toNum(am.value); am.value = e.amount = n ? n.toLocaleString('ko-KR') : ''; expSummary(); }; td(am);
+    const dt = document.createElement('input'); dt.type = 'date'; dt.value = e.date || ''; dt.style.width = '128px';
+    dt.onchange = () => { e.date = dt.value; if (dt.value && !e.paid) { e.paid = true; pd.checked = true; expSummary(); } }; td(dt);
+    const pd = document.createElement('input'); pd.type = 'checkbox'; pd.checked = !!e.paid; pd.style.width = 'auto'; pd.title = '지급 완료';
+    pd.onchange = () => { e.paid = pd.checked; if (pd.checked && !e.date) { e.date = dt.value = todayStr(); } expSummary(); };
+    const pl = document.createElement('label'); pl.style.cssText = 'display:flex;align-items:center;gap:3px;font-weight:normal;font-size:.78rem;white-space:nowrap;'; pl.append(pd, '완료'); td(pl);
+    const mm = document.createElement('input'); mm.type = 'text'; mm.value = e.memo || ''; mm.placeholder = '메모'; mm.oninput = () => { e.memo = mm.value; }; td(mm);
+    const del = document.createElement('button'); del.type = 'button'; del.textContent = '🗑'; del.title = '이 줄 삭제'; del.style.cssText = 'background:none;border:none;cursor:pointer;font-size:1rem;';
+    del.onclick = () => { expDraft.splice(i, 1); renderExpense(); }; td(del);
+    body.appendChild(tr);
+  });
+  expSummary();
+}
+$('expAddPartner').onclick = () => {
+  const it = schedules.find(x => x.id === expItemId) || {};
+  expDraft.push({ id: uid(), type: EXP_TYPES[0], vendor: it.partner || '', amount: '', date: '', paid: false, memo: '' }); renderExpense();
+  const ins = $('expBody').querySelectorAll('tr:last-child input'); if (ins[0] && !ins[0].value) ins[0].focus(); else if (ins[1]) ins[1].focus();
+};
+$('expAdd').onclick = () => { expDraft.push({ id: uid(), type: '자재비', vendor: '', amount: '', date: '', paid: false, memo: '' }); renderExpense(); const ins = $('expBody').querySelectorAll('tr:last-child input'); if (ins[0]) ins[0].focus(); };
+const closeExpense = () => { $('expModal').classList.remove('show'); expItemId = null; expDraft = []; };
+$('expClose').onclick = closeExpense; $('expCancel').onclick = closeExpense;
+$('expSave').onclick = () => {
+  if (!isAdmin()) return;
+  const live = schedules.find(x => x.id === expItemId); if (!live) { closeExpense(); return; }
+  live.expenses = expDraft.filter(e => toNum(e.amount) || (e.vendor || '').trim() || (e.memo || '').trim())
+    .map(e => ({ id: e.id || uid(), type: e.type || '기타', vendor: (e.vendor || '').trim(), amount: toNum(e.amount) ? toNum(e.amount).toLocaleString('ko-KR') : '', date: e.date || '', paid: !!e.paid, memo: (e.memo || '').trim() }));
+  const n = live.expenses.length, id = live.id;
+  closeExpense(); save(); refreshPopups();
+  if (detailId === id) renderDetail();
+  showSync(`✅ 지출 ${n}건을 저장했습니다`);
+};
+function expButton(item) {
+  const b = document.createElement('button'); b.type = 'button'; b.className = 'exp-btn';
+  const c = expSum(item);
+  b.textContent = c ? `💸 지출 ${statWon(c)}원 · 이익 ${statWon(profitOf(item))}원` : '💸 지출·외주비 입력';
+  b.onclick = ev => { ev.stopPropagation(); openExpense(item.id); };
+  return b;
+}
+
 /* ===== 관리자: 진행 현황표 ===== */
 // 기준: 방문 일시의 날짜. 미수금은 방문시공·계약·공사진행·처리완료 건만 셈. 시공 예정일로 자동 생성된 [시공] 일정은 원래 일정과 같은 공사라서 빼고 셉니다.
 const statJobs = () => schedules.filter(x => !x.installFor);
 const statMoney = list => {
-  const m = { total:0, deposit:0, middle:0, balance:0, paid:0, unpaid:0 };
+  const m = { total:0, deposit:0, middle:0, balance:0, paid:0, unpaid:0, out:0, other:0, cost:0, profit:0 };
   list.forEach(x => {
-    const t = toNum(x.total), pd = paidSum(x);
+    const t = toNum(x.total), pd = paidSum(x), c = expSum(x), o = expOut(x);
+    m.cost += c; m.out += o; m.other += c - o; m.profit += t - c;
     m.total += t; m.deposit += toNum(x.deposit); m.middle += toNum(x.middle); m.balance += toNum(x.balance); m.paid += pd;
     if (PAY_STAGES.includes(x.status)) m.unpaid += Math.max(0, t - pd);   // 미수금은 계약 이후 단계만 (견적 금액은 빼고)
   });
   return m;
 };
 const statWon = n => n ? n.toLocaleString('ko-KR') : '0';
+const pct = r => r.total ? (Math.round(r.profit / r.total * 1000) / 10) + '%' : '-';
 function statPeriods(mode, year) {
   if (mode === 'month') return Array.from({ length: 12 }, (_, i) => ({ label: `${year}년 ${i + 1}월`, test: d => d.slice(0, 7) === `${year}-${String(i + 1).padStart(2, '0')}` }));
   if (mode === 'quarter') return [1, 2, 3, 4].map(q => ({ label: `${year}년 ${q}분기 (${q * 3 - 2}~${q * 3}월)`, test: d => d.slice(0, 4) === String(year) && Math.ceil(+d.slice(5, 7) / 3) === q }));
@@ -990,14 +1096,20 @@ function statData() {
     const cnt = {}; stages.forEach(st => { cnt[st] = l.filter(x => (x.status || '') === st).length; });
     return { label: p.label, n: l.length, cnt, ...statMoney(l) };
   });
-  return { mode, year, src, stages, stageRows, periodRows, inRange, all: { n: inRange.length, ...statMoney(inRange) },
+  const vm = {};
+  inRange.forEach(x => expList(x).forEach(e => {
+    const k = (e.vendor || '').trim() || '(업체 미입력)', v = vm[k] || (vm[k] = { name: k, types: new Set(), jobs: new Set(), amt: 0, paid: 0 });
+    v.types.add(e.type || '기타'); v.jobs.add(x.id); v.amt += toNum(e.amount); if (e.paid) v.paid += toNum(e.amount);
+  }));
+  const vendorRows = Object.values(vm).sort((a, b) => b.amt - a.amt).map(v => ({ name: v.name, types: [...v.types].join(', '), jobs: v.jobs.size, amt: v.amt, paid: v.paid, unpaid: v.amt - v.paid }));
+  return { mode, year, src, stages, stageRows, periodRows, inRange, vendorRows, all: { n: inRange.length, ...statMoney(inRange) },
     rangeLbl: mode === 'month' || mode === 'quarter' ? `${year}년` : '전체 기간' };
 }
 function renderStats() {
   const D = statData();
   const stName = st => st || '상태 미지정';
   $('statRangeLbl').textContent = `(${D.rangeLbl}${D.src ? ' · ' + (D.src === '__none__' ? '수주처 미지정' : D.src) : ''})`;
-  $('statInfo').textContent = `방문 일시 기준으로 셉니다 · 금액 단위: 원 · 미수금은 방문시공·계약·공사진행·처리완료 건만 · 시공 예정일로 자동 생성된 [시공] 일정은 원래 일정과 같은 공사라 빼고 셉니다`;
+  $('statInfo').textContent = `방문 일시 기준으로 셉니다 · 금액 단위: 원 · 순이익 = 최종 계약금액 − 지출(외주비 포함) · 미수금은 방문시공·계약·공사진행·처리완료 건만 · 시공 예정일로 자동 생성된 [시공] 일정은 원래 일정과 같은 공사라 빼고 셉니다`;
   const card = (t, v, c, sub) => `<div class="stat-card" style="border-left-color:${c}"><small>${t}</small><b>${v}</b>${sub ? `<small>${sub}</small>` : ''}</div>`;
   const cntOf = st => (D.stageRows.find(r => r.st === st) || { n: 0 }).n;
   $('statCards').innerHTML =
@@ -1007,11 +1119,14 @@ function renderStats() {
     card('처리완료', cntOf('처리완료') + '건', STAGE_ACCENT['처리완료']) +
     card('공사 총금액', statWon(D.all.total) + '원', '#1c7ed6') +
     card('입금 완료', statWon(D.all.paid) + '원', '#2f9e44') +
-    card('미수금', statWon(D.all.unpaid) + '원', '#e03131');
+    card('미수금', statWon(D.all.unpaid) + '원', '#e03131') +
+    card('지출 합계', statWon(D.all.cost) + '원', '#f08c00', `외주비 ${statWon(D.all.out)}원`) +
+    card('순이익', statWon(D.all.profit) + '원', D.all.profit < 0 ? '#e03131' : '#2f9e44', `이익률 ${pct(D.all)}`);
   const num = v => `<td class="n${v ? '' : ' zero'}">${statWon(v)}</td>`;
   const cnum = v => `<td class="n${v ? '' : ' zero'}">${v}</td>`;
-  const moneyHead = '<th>공사 총금액</th><th>계약금</th><th>중도금</th><th>잔금</th><th>입금 완료</th><th>미수금</th>';
-  const moneyCells = r => num(r.total) + num(r.deposit) + num(r.middle) + num(r.balance) + num(r.paid) + num(r.unpaid);
+  const moneyHead = '<th>공사 총금액</th><th>계약금</th><th>중도금</th><th>잔금</th><th>입금 완료</th><th>미수금</th><th>외주비</th><th>기타 지출</th><th>순이익</th><th>이익률</th>';
+  const moneyCells = r => num(r.total) + num(r.deposit) + num(r.middle) + num(r.balance) + num(r.paid) + num(r.unpaid) + num(r.out) + num(r.other) +
+    `<td class="n${r.profit ? '' : ' zero'}" style="font-weight:bold;color:${r.profit < 0 ? '#e03131' : '#2f9e44'}">${statWon(r.profit)}</td>` + `<td class="n${r.total ? '' : ' zero'}">${pct(r)}</td>`;
   $('statStage').innerHTML = `<thead><tr><th>진행 상태</th><th>건수</th>${moneyHead}</tr></thead><tbody>` +
     D.stageRows.map(r => `<tr><td><span style="display:inline-block;width:10px;height:10px;border-radius:2px;background:${STAGE_ACCENT[r.st] || '#adb5bd'};margin-right:6px;"></span>${escAttr(stName(r.st))}</td>${cnum(r.n)}${moneyCells(r)}</tr>`).join('') +
     `<tr class="sum"><td>합계</td>${cnum(D.all.n)}${moneyCells(D.all)}</tr></tbody>`;
@@ -1020,6 +1135,16 @@ function renderStats() {
   $('statPeriod').innerHTML = `<thead><tr><th>기간</th>${D.stages.map(st => `<th>${escAttr(stName(st))}</th>`).join('')}<th>합계</th>${moneyHead}</tr></thead><tbody>` +
     ps.map(r => `<tr><td>${r.label}</td>${D.stages.map(st => cnum(r.cnt[st])).join('')}${cnum(r.n)}${moneyCells(r)}</tr>`).join('') +
     (ps.length > 1 ? `<tr class="sum"><td>합계</td>${D.stages.map(st => cnum(tot.cnt[st] || 0)).join('')}${cnum(tot.n)}${moneyCells(tot)}</tr>` : '') + '</tbody>';
+  renderVendorStats(D);
+}
+function renderVendorStats(D) {
+  $('statVendLbl').textContent = `(${D.rangeLbl})`;
+  const num = v => `<td class="n${v ? '' : ' zero'}">${statWon(v)}</td>`;
+  const V = D.vendorRows, tot = V.reduce((a, v) => ({ amt: a.amt + v.amt, paid: a.paid + v.paid, unpaid: a.unpaid + v.unpaid }), { amt: 0, paid: 0, unpaid: 0 });
+  $('statVendor').innerHTML = '<thead><tr><th>업체·지출처</th><th>구분</th><th>현장 수</th><th>결제 금액</th><th>지급 완료</th><th>미지급</th></tr></thead><tbody>' +
+    (V.length ? V.map(v => `<tr><td>${escAttr(v.name)}</td><td>${escAttr(v.types)}</td><td class="n">${v.jobs}</td>${num(v.amt)}${num(v.paid)}<td class="n${v.unpaid ? '' : ' zero'}" style="${v.unpaid ? 'color:#e03131;font-weight:bold' : ''}">${statWon(v.unpaid)}</td></tr>`).join('') +
+      `<tr class="sum"><td colspan="3">합계</td>${num(tot.amt)}${num(tot.paid)}${num(tot.unpaid)}</tr>`
+      : '<tr><td colspan="6" style="text-align:center;color:#868e96;">입력된 지출이 없습니다. 목록의 [💸 지출·외주비 입력] 버튼으로 넣어 주세요.</td></tr>') + '</tbody>';
 }
 ['statMode', 'statYear', 'statSrc'].forEach(id => $(id).addEventListener('change', () => {
   $('statYear').style.display = /month|quarter/.test($('statMode').value) ? '' : 'none'; renderStats();
@@ -1028,12 +1153,15 @@ $('statExcel').onclick = () => {
   if (!isAdmin()) return;
   if (typeof XLSX === 'undefined') { alert('엑셀 기능을 불러오지 못했습니다. 인터넷 연결을 확인해 주세요.'); return; }
   const D = statData(), stName = st => st || '상태 미지정';
-  const mh = ['공사 총금액', '계약금', '중도금', '잔금', '입금 완료', '미수금'], mv = r => [r.total, r.deposit, r.middle, r.balance, r.paid, r.unpaid];
+  const mh = ['공사 총금액', '계약금', '중도금', '잔금', '입금 완료', '미수금', '외주비', '기타 지출', '순이익', '이익률'], mv = r => [r.total, r.deposit, r.middle, r.balance, r.paid, r.unpaid, r.out, r.other, r.profit, pct(r)];
   const a = [['진행 상태', '건수', ...mh], ...D.stageRows.map(r => [stName(r.st), r.n, ...mv(r)]), ['합계', D.all.n, ...mv(D.all)]];
   const b = [['기간', ...D.stages.map(stName), '합계', ...mh], ...D.periodRows.map(r => [r.label, ...D.stages.map(st => r.cnt[st]), r.n, ...mv(r)])];
   const wb = XLSX.utils.book_new();
   XLSX.utils.book_append_sheet(wb, XLSX.utils.aoa_to_sheet(a), '상태별');
   XLSX.utils.book_append_sheet(wb, XLSX.utils.aoa_to_sheet(b), '기간별');
+  XLSX.utils.book_append_sheet(wb, XLSX.utils.aoa_to_sheet([['업체·지출처', '구분', '현장 수', '결제 금액', '지급 완료', '미지급'], ...D.vendorRows.map(v => [v.name, v.types, v.jobs, v.amt, v.paid, v.unpaid])]), '업체별 지출');
+  const det = []; D.inRange.forEach(x => expList(x).forEach(e => det.push([visitDay(x), x.customer || '', x.request || '', e.type, e.vendor, toNum(e.amount), e.paid ? '지급완료' : '미지급', e.date, e.memo])));
+  XLSX.utils.book_append_sheet(wb, XLSX.utils.aoa_to_sheet([['방문일', '고객명', '요청 사항', '구분', '업체·내용', '금액', '지급', '지급일', '메모'], ...det]), '지출 내역');
   const modeLbl = { month: '월별', quarter: '분기별', year: '년도별', all: '전체' }[D.mode];
   XLSX.writeFile(wb, `진행현황표_${modeLbl}${/month|quarter/.test(D.mode) ? '_' + D.year : ''}_${todayStr()}.xlsx`);
 };
@@ -1895,6 +2023,7 @@ function payCell(item) {
     if (remain <= 0) line('완납 ✅', 'color:#2f9e44;font-weight:bold;');
     else line('미수금 ' + remain.toLocaleString('ko-KR') + '원', 'color:#e03131;font-weight:bold;');
   }
+  if (isAdmin()) td.appendChild(expButton(item));
   return td;
 }
 
@@ -2804,15 +2933,15 @@ function downloadBlob(blob, name) {
 }
 function exportExcel() {
   if (!schedules.length) { alert('저장할 스케줄이 없습니다.'); return; }
-  const head = ['진행 상태','수주처','수주처 주소','고객명','연락처','방문 일시','시공 예정일','요청 사항','처리 비용','최종 계약금액','계약금','계약금 입금','중도금','중도금 입금','잔금','잔금 입금','증빙 종류','증빙 발급','담당 기사','기사 연락처','방문 주소','방문 후 기록','기록 일시','현장 사진 링크'];
+  const head = ['진행 상태','수주처','수주처 주소','고객명','연락처','방문 일시','시공 예정일','요청 사항','처리 비용','최종 계약금액','계약금','계약금 입금','중도금','중도금 입금','잔금','잔금 입금','지출 합계','순이익','증빙 종류','증빙 발급','담당 기사','기사 연락처','방문 주소','방문 후 기록','기록 일시','현장 사진 링크'];
   const payTxt = (s, k) => s[k + 'Paid'] ? '입금완료' + ([s[k + 'PaidAt'], s[k + 'Method']].filter(Boolean).length ? ' (' + [s[k + 'PaidAt'], s[k + 'Method']].filter(Boolean).join(' · ') + ')' : '') : (s[k] ? '미입금' : '');
   const rows = [...schedules].sort((a, b) => (a.visit || '9999').localeCompare(b.visit || '9999'))
-    .map(s => [s.status, s.source, s.sourceUrl, s.customer, s.phone, fmtDate(s.visit), fmtDate(s.installDate), s.request, s.cost, s.total, s.deposit, payTxt(s,'deposit'), s.middle, payTxt(s,'middle'), s.balance, payTxt(s,'balance'), s.receiptType, s.receiptType ? (s.receiptIssued ? '발급완료' + (s.receiptDate ? ' (' + s.receiptDate + ')' : '') : '미발급') : '', s.engineer, s.engPhone, s.note, s.report, s.reportAt, s.reportImageLink || ''].map(v => v || ''));
+    .map(s => [s.status, s.source, s.sourceUrl, s.customer, s.phone, fmtDate(s.visit), fmtDate(s.installDate), s.request, s.cost, s.total, s.deposit, payTxt(s,'deposit'), s.middle, payTxt(s,'middle'), s.balance, payTxt(s,'balance'), expSum(s) ? expSum(s).toLocaleString('ko-KR') : '', expSum(s) ? profitOf(s).toLocaleString('ko-KR') : '', s.receiptType, s.receiptType ? (s.receiptIssued ? '발급완료' + (s.receiptDate ? ' (' + s.receiptDate + ')' : '') : '미발급') : '', s.engineer, s.engPhone, s.note, s.report, s.reportAt, s.reportImageLink || ''].map(v => v || ''));
   const name = '현장스케줄_' + todayStr();
   if (typeof XLSX !== 'undefined') {
     const wb = XLSX.utils.book_new();
     const ws = XLSX.utils.aoa_to_sheet([head, ...rows]);
-    ws['!cols'] = [12,10,24,10,15,17,17,36,22,14,12,18,12,18,12,18,12,18,10,15,36,50,17,30].map(w => ({ wch: w }));
+    ws['!cols'] = [12,10,24,10,15,17,17,36,22,14,12,18,12,18,12,18,12,12,12,18,10,15,36,50,17,30].map(w => ({ wch: w }));
     XLSX.utils.book_append_sheet(wb, ws, '스케줄');
     if (employees.length) {
       const we = XLSX.utils.aoa_to_sheet([['이름','연락처'], ...employees.map(e => [e.name, e.phone || ''])]);
@@ -3256,6 +3385,13 @@ function renderDetail() {
     }
     if (s.receiptType) lines.push('🧾 ' + receiptText(s));
     row('입금 현황', lines.join('\n'));
+  }
+  if (isAdmin()) {
+    const ex = expList(s), t = toNum(s.total), c = expSum(s);
+    const lines = ex.map(e => `${e.type} · ${e.vendor || '-'} ${won(e.amount) || '0원'} ${e.paid ? '✅ 지급' + (e.date ? ' (' + e.date + ')' : '') : '⬜ 미지급'}`);
+    if (ex.length) lines.push(`지출 합계 ${statWon(c)}원 · 순이익 ${statWon(t - c)}원${t ? ' (이익률 ' + Math.round((t - c) / t * 1000) / 10 + '%)' : ''}`);
+    const b = document.createElement('button'); b.type = 'button'; b.className = 'qbtn'; b.style.cssText = 'background:#fff9db;border:1px solid #f59f00;color:#a15c00;cursor:pointer;'; b.textContent = ex.length ? '💸 지출 수정' : '💸 지출·외주비 입력'; b.onclick = () => openExpense(s.id);
+    row('💸 지출·손익', ex.length ? lines.join('\n') : '입력된 지출 없음', [b]);
   }
   row('담당 기사', [s.engineer || '미배정', s.engPhone].filter(Boolean).join('  '), tel(s.engPhone) ? [qa('call', 'tel:' + tel(s.engPhone), '📞 기사 전화')] : null);
   if (s.partner) { const pe = employees.find(e => e.name === s.partner); row('🤝 협력업체', [s.partner, pe && pe.phone].filter(Boolean).join('  '), pe && tel(pe.phone) ? [qa('call', 'tel:' + tel(pe.phone), '📞 업체 전화')] : null); }
