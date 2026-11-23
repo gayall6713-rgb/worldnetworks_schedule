@@ -137,11 +137,15 @@ body.locked #loginScreen{display:flex}
 .ub-btn.switch{background:#fff3bf;border-color:#fcc419;color:#7c5800}
 .ub-btn.out{background:#ffe3e3;border-color:#ffa8a8;color:#c92a2a}
 /* 권한별 화면 제한 */
-body:not(.role-admin) .btn-del:not(.keep),body:not(.role-admin) #clearAll,body:not(.role-admin) #fillSoomgo,body:not(.role-admin) #empBox{display:none!important}
+body:not(.role-admin) .btn-del:not(.keep),body:not(.role-admin) #clearAll,body:not(.role-admin) #empBox{display:none!important}
 body.role-view .upload-box,body.role-view #addScheduleFromDayBtn,body.role-view #addScheduleFromHistoryBtn,body.role-view .dp-add,body.role-view #draftBtn,body.role-view #resetForm,body.role-view .view-hide{display:none!important}
 body.role-view #tab-manage>#scheduleForm{display:none}
 body.role-partner #filterSource,body.role-partner #filterPay,body.role-partner .partner-hide{display:none!important}
 #expModal .btn{width:auto;flex:0 0 auto;margin:0}
+.tag-pick{display:flex;gap:6px;margin:4px 0 6px}.tag-pick button{flex:1;padding:8px 6px;border:2px solid #dee2e6;background:#fff;border-radius:8px;font-weight:bold;font-size:.85rem;cursor:pointer;color:#868e96}
+.tag-pick button.on[data-t="전"]{border-color:#f08c00;background:#fff4e6;color:#d9480f}.tag-pick button.on[data-t="후"]{border-color:#2f9e44;background:#ebfbee;color:#2b8a3e}
+.ph-group{margin-bottom:8px}.ph-group .ph-h{font-size:.8rem;font-weight:bold;margin:2px 0 4px}.ph-group .ph-h.t전{color:#d9480f}.ph-group .ph-h.t후{color:#2b8a3e}.ph-group .ph-h.t{color:#868e96}
+img.thumb.t전{outline:3px solid #ffa94d;outline-offset:-3px}img.thumb.t후{outline:3px solid #69db7c;outline-offset:-3px}
 .exp-tbl input,.exp-tbl select{padding:5px 6px;font-size:.82rem;min-width:0}.exp-tbl td{white-space:normal}
 .exp-btn{display:inline-block;margin-top:5px;padding:3px 8px;font-size:.74rem;border:1px solid #f59f00;background:#fff9db;color:#a15c00;border-radius:5px;cursor:pointer;font-weight:bold}
 body:not(.role-admin) .exp-btn{display:none!important}
@@ -272,7 +276,7 @@ body.locked #notifyBar{display:none!important}
     <button type="submit" class="btn btn-submit" id="loginBtn">로그인</button>
     <button type="button" class="btn btn-reset" id="loginOther" style="width:100%;margin-top:12px;font-size:.9rem;padding:10px;">👥 다른 사람으로 로그인</button>
     <div id="loginMsg"></div>
-    <div style="text-align:center;font-size:.7rem;color:#adb5bd;margin-top:10px;">앱 버전 1123-16</div>
+    <div style="text-align:center;font-size:.7rem;color:#adb5bd;margin-top:10px;">앱 버전 1123-17</div>
   </form>
 </div>
 <div id="expModal" class="modal" style="z-index:70;">
@@ -342,7 +346,7 @@ body.locked #notifyBar{display:none!important}
     <div class="btn-row"><button type="submit" class="btn btn-submit">변경</button><button type="button" class="btn btn-reset" onclick="$('pwModal').classList.remove('show')">닫기</button></div>
   </form>
 </div>
-<div id="appVer" style="position:fixed;left:6px;bottom:4px;font-size:.65rem;color:#adb5bd;z-index:1;pointer-events:none;">앱 버전 1123-16</div>
+<div id="appVer" style="position:fixed;left:6px;bottom:4px;font-size:.65rem;color:#adb5bd;z-index:1;pointer-events:none;">앱 버전 1123-17</div>
 <div id="syncStatus">🔄 연동 중...</div>
 <div class="container">
   <h2>현장 방문 및 스케줄 관리</h2>
@@ -465,7 +469,8 @@ body.locked #notifyBar{display:none!important}
           <label style="color:#007bff; margin-bottom:6px;">📝 방문 후 기록 및 현장 사진 (입력/수정 시 즉시 저장 및 드라이브 백업)</label>
           <textarea id="report" data-role-ok class="field" rows="3" placeholder="실측 사이즈, 작업 내용, 특이사항 등을 기재"></textarea>
           <div style="margin-top:8px;">
-            <label style="font-size:0.85rem; font-weight:normal; margin-bottom:4px;">현장 사진 첨부</label>
+            <label style="font-size:0.85rem; font-weight:normal; margin-bottom:4px;">현장 사진 첨부 — 먼저 시공 전/후를 고르세요</label>
+            <div id="formTagPick"></div>
             <input type="file" id="formReportImage" data-role-ok accept="image/*,.heic,.heif" style="font-size:0.85rem; margin-bottom:6px;">
             <div>
               <img id="formReportImgPreview" src="" alt="미리보기" style="max-width:100%; max-height:160px; border-radius:4px; display:none; border:1px solid #ddd;">
@@ -516,7 +521,6 @@ body.locked #notifyBar{display:none!important}
       <div class="list-tools">
         <select id="filterStage" class="filter-sel" title="상태별 보기"></select>
         <button type="button" class="btn btn-excel" id="exportExcel">📥 엑셀로 저장</button>
-        <button type="button" class="btn btn-excel" id="fillSoomgo" style="display:none;background:linear-gradient(#9c36b5,#862e9c);">🟣 수주처 빈칸 → 숨고</button>
         <button type="button" class="btn btn-clear" id="clearAll">전체 삭제</button>
       </div>
     </div>
@@ -799,6 +803,12 @@ let isSyncing = false;
 let resync = false;
 let currentFormReportImage = '';
 let currentFormReportImageLink = '';
+/* 현장 사진 시공 전·후 구분 */
+const PHOTO_TAGS = { '전': '🔨 시공 전', '후': '✅ 시공 후' };
+const tagLabel = t => PHOTO_TAGS[t] || '📁 구분 안 됨';
+const defaultTag = status => /공사진행|처리완료/.test(status || '') ? '후' : '전';
+let currentFormTag = '전';
+let formTagBox = null;
 
 function showSync(msg) {
   const el = $('syncStatus');
@@ -1259,9 +1269,20 @@ async function save() {
   setSaveState('ing');
   isSyncing = true;
   try {
+    // 새 사진의 시공 전/후 구분: 저장 뒤 새로 생긴 드라이브 사진 ID에 붙임
+    const pendTags = schedules.filter(x => localPhoto(x) && x.reportImageTag).map(x => ({ id: x.id, tag: x.reportImageTag, old: (x.reportImageIds || []).slice() }));
     const saved = await api('save', { schedules });
     if (!Array.isArray(saved)) throw new Error((saved && saved.error) || '저장 응답 형식 오류');
     if (!resync) {
+      let tagged = false;
+      pendTags.forEach(pt => {
+        const it = saved.find(x => x.id === pt.id); if (!it || localPhoto(it)) return;
+        const fresh = (it.reportImageIds || []).filter(id => !pt.old.includes(id));
+        if (!fresh.length) return;
+        it.photoTags = Object.assign({}, it.photoTags || {}); fresh.forEach(id => { it.photoTags[id] = pt.tag; });
+        it.reportImageTag = ''; tagged = true;
+      });
+      if (tagged) resync = true;   // 구분 정보를 한 번 더 저장
       schedules = saved; ensureIds(); takeNotifySnap();
       try { localStorage.setItem(STORE_KEY, JSON.stringify(schedules)); } catch (e) {}
       renderCalendar(); render(); refreshPopups();
@@ -1654,7 +1675,8 @@ function buildEditCard(item, ctx) {
   f.partner = document.createElement('select'); fillPartnerSelect(f.partner, item.partner);
 
   // 현장 사진 첨부 (HEIC는 자동으로 JPG 변환)
-  let newImage = item.reportImage || '', newLink = item.reportImageLink || '', photoChanged = false, photoCleared = false;
+  let newImage = item.reportImage || '', newLink = item.reportImageLink || '', photoChanged = false, photoCleared = false, newTag = item.reportImageTag || defaultTag(item.status);
+  const tagBox = tagPicker(newTag, t => { newTag = t; if (newImage) photoChanged = true; });
   const photoInp = document.createElement('input'); photoInp.dataset.roleOk = ''; photoInp.type = 'file'; photoInp.accept = 'image/*,.heic,.heif';
   photoInp.style.cssText = 'font-size:.85rem;padding:0;border:none;';
   const photoPrev = document.createElement('img');
@@ -1694,7 +1716,7 @@ function buildEditCard(item, ctx) {
     newImage = ''; newLink = ''; photoChanged = true; photoCleared = true; photoInp.value = ''; showPhoto();
   };
   const photoWrap = document.createElement('div');
-  photoWrap.append(photoInp, photoPrev, photoLink, photoDel);
+  photoWrap.append(tagBox, photoInp, photoPrev, photoLink, photoDel);
   showPhoto();
 
   const g = document.createElement('div'); g.className = 'grid';
@@ -1709,7 +1731,7 @@ function buildEditCard(item, ctx) {
     ...(isPartner() ? [] : [fld('🤝 협력업체', f.partner, true)]),
     fld('방문 주소', f.note, true),
     fld('방문 후 기록', f.report, true),
-    fld('현장 사진 첨부', photoWrap, true)
+    fld('현장 사진 첨부 (시공 전/후를 고른 뒤 사진 선택)', photoWrap, true)
   );
   card.appendChild(g);
 
@@ -1735,7 +1757,7 @@ function buildEditCard(item, ctx) {
     live.status = f.status.value;
     live.source = sourceValue(srcSel, srcTxt);
     live.sourceUrl = f.sourceUrl.value.trim();
-    if (photoChanged) { live.reportImage = newImage; live.reportImageLink = newLink; if (photoCleared) live.reportImageIds = []; }
+    if (photoChanged) { live.reportImage = newImage; live.reportImageLink = newLink; live.reportImageTag = newImage ? newTag : ''; if (photoCleared) { live.reportImageIds = []; live.photoTags = {}; } }
     if (newReport !== (live.report || '')) { live.report = newReport; live.reportAt = newReport ? nowStr() : ''; }
     const ir = syncInstall(live);
     ctx.setEdit(null);
@@ -2040,6 +2062,7 @@ function getForm() {
   o.receiptIssued = $('receiptIssued').checked;
   o['reportImage'] = currentFormReportImage;
   o['reportImageLink'] = currentFormReportImageLink;
+  o.reportImageTag = currentFormReportImage ? currentFormTag : '';
   PAY_PARTS.forEach(k => {
     const cb = $(k + 'Paid');
     o[k + 'Paid'] = cb ? cb.checked : false;
@@ -2064,6 +2087,7 @@ function setForm(o) {
   $('receiptIssued').checked = !!o.receiptIssued;
   currentFormReportImage = o.reportImage || '';
   currentFormReportImageLink = o.reportImageLink || '';
+  currentFormTag = o.reportImageTag || defaultTag(o.status); if (formTagBox) formTagBox.set(currentFormTag);
   const imgPrev = $('formReportImgPreview');
   if (currentFormReportImage) {
     imgPrev.src = currentFormReportImage;
@@ -2113,6 +2137,9 @@ async function normalizeImage(file) {
   return new File([out], name, { type: 'image/jpeg' });
 }
 
+formTagBox = tagPicker(currentFormTag, t => { currentFormTag = t; });
+$('formTagPick').appendChild(formTagBox);
+$('stage').addEventListener('change', () => { if (!currentFormReportImage) { currentFormTag = defaultTag($('stage').value); formTagBox.set(currentFormTag); } });
 $('formReportImage').addEventListener('change', async e => {
   let file = e.target.files && e.target.files[0];
   if (!file) return;
@@ -2172,8 +2199,6 @@ function renderFilter() {
   addS('', '수주처 전체');
   [...new Set([...SOURCES, ...schedules.map(x => x.source).filter(Boolean)])].forEach(n => addS(n, `${n} (${schedules.filter(x => x.source === n).length})`));
   if (schedules.some(x => !x.source)) addS('__none__', `수주처 미지정 (${schedules.filter(x => !x.source).length})`);
-  { const nb = schedules.filter(x => !(x.source || '').trim()).length, fb = $('fillSoomgo');
-    if (fb) { fb.style.display = nb ? '' : 'none'; fb.textContent = `🟣 수주처 빈칸 ${nb}건 → 숨고`; } }
   ss.value = fSrc;
   if (ss.value !== fSrc) { fSrc = ''; ss.value = ''; }
   const es = $('filterEng'); es.innerHTML = '';
@@ -2516,15 +2541,6 @@ $('scheduleForm').addEventListener('submit', e => {
 });
 $('resetForm').onclick = () => { if (editingId) closeEditAsk(); else clearForm(); };
 $('saveState').onclick = () => { if ($('saveState').classList.contains('err')) save(); };
-/* 수주처가 비어 있는 일정만 한 번에 '숨고'로 지정 (홈씨씨·오늘의집 등 이미 입력된 건 그대로) */
-$('fillSoomgo').onclick = () => {
-  if (!isAdmin()) return;
-  const blank = schedules.filter(x => !(x.source || '').trim());
-  if (!blank.length) { showSync('수주처가 빈 일정이 없습니다'); return; }
-  if (!confirm(`수주처가 비어 있는 일정 ${blank.length}건을 모두 '숨고'로 바꿀까요?\n(이미 수주처가 입력된 일정은 바뀌지 않습니다)`)) return;
-  blank.forEach(x => { x.source = '숨고'; });
-  save(); showSync(`✅ ${blank.length}건의 수주처를 '숨고'로 바꿨습니다`);
-};
 $('clearAll').onclick = () => {
   if (!isAdmin()) return;
   if (schedules.length && confirm('등록된 스케줄을 모두 삭제할까요?')) { schedules = []; save(); clearForm(); }
@@ -3140,14 +3156,34 @@ function driveId(u) {
   return m ? m[1] : '';
 }
 /* 사진 목록: 아직 올리지 않은 이 기기 사진 + 드라이브 사진 (최신 순) */
+/* 시공 전·후 구분: photoTags = { 드라이브사진ID: '전' | '후' }, 저장 전 새 사진은 reportImageTag */
 function photoList(s) {
-  const out = [], data = localPhoto(s);
+  const out = [], data = localPhoto(s), tags = (s.photoTags && typeof s.photoTags === 'object') ? s.photoTags : {};
   const ids = Array.isArray(s.reportImageIds) ? s.reportImageIds.filter(Boolean) : [];
   const one = driveId(s.reportImageLink);
   if (!ids.length && one) ids.push(one);
-  ids.forEach(id => out.push({ id, src: `https://drive.google.com/thumbnail?id=${id}&sz=w1600` }));   // 올린 순서대로
-  if (data) out.push({ data, src: data });   // 아직 저장 전인 새 사진은 맨 뒤
-  return out;
+  ids.forEach(id => out.push({ id, src: `https://drive.google.com/thumbnail?id=${id}&sz=w1600`, tag: tags[id] || '' }));   // 올린 순서대로
+  if (data) out.push({ data, src: data, tag: s.reportImageTag || '' });   // 아직 저장 전인 새 사진은 맨 뒤
+  const rank = t => t === '전' ? 0 : t === '후' ? 1 : 2;
+  return out.map((p, i) => [p, i]).sort((a, b) => rank(a[0].tag) - rank(b[0].tag) || a[1] - b[1]).map(x => x[0]);   // 시공 전 → 시공 후 → 구분 안 됨
+}
+/* 사진 구분 바꾸기 (크게 보기 화면에서) */
+function setPhotoTag(s, p, tag) {
+  const live = schedules.find(x => x.id === s.id); if (!live || !p) return;
+  if (p.data) live.reportImageTag = tag;
+  else { live.photoTags = Object.assign({}, live.photoTags || {}); if (tag) live.photoTags[p.id] = tag; else delete live.photoTags[p.id]; }
+  save(); refreshPopups(); if (detailId === live.id) renderDetail();
+  showSync(`✅ 이 사진을 '${tagLabel(tag)}'(으)로 바꿨습니다`);
+}
+/* 시공 전/후 고르는 버튼 두 개 */
+function tagPicker(initial, onPick) {
+  const box = document.createElement('div'); box.className = 'tag-pick'; let cur = initial;
+  const paint = () => box.querySelectorAll('button').forEach(b => b.classList.toggle('on', b.dataset.t === cur));
+  Object.entries(PHOTO_TAGS).forEach(([t, lab]) => {
+    const b = document.createElement('button'); b.type = 'button'; b.dataset.t = t; b.textContent = lab; b.dataset.roleOk = '';
+    b.onclick = () => { cur = t; paint(); onPick(t); }; box.appendChild(b);
+  });
+  paint(); box.set = t => { cur = t; paint(); }; return box;
 }
 /* 드라이브 폴더 주소만 있는 예전 일정: 폴더 안 사진 목록을 서버에서 받아 옴 */
 const folderLoading = {};
@@ -3207,7 +3243,7 @@ function photoThumb(s) {
   const list = photoList(s); if (!list.length) return null;
   const wrap = document.createElement('div'); wrap.style.cssText = 'display:flex;gap:4px;flex-wrap:wrap;align-items:center;';
   list.slice(0, 3).forEach((p, i) => {
-    const im = document.createElement('img'); im.className = 'thumb'; im.src = p.src; im.alt = '현장 사진'; im.title = '눌러서 크게 보기';
+    const im = document.createElement('img'); im.className = 'thumb t' + (p.tag || ''); im.src = p.src; im.alt = tagLabel(p.tag) + ' 사진'; im.title = tagLabel(p.tag) + ' · 눌러서 크게 보기';
     im.onerror = () => im.remove();
     im.onclick = ev => { ev.stopPropagation(); openPhoto(s.id, i); };
     wrap.appendChild(im);
@@ -3233,8 +3269,8 @@ function showPhotoAt() {
   const list = photoList(s);
   if (pmIdx >= list.length) pmIdx = Math.max(0, list.length - 1);
   const cnt = list.length > 1 ? ` (${pmIdx + 1}/${list.length})` : '';
-  $('pmTitle').textContent = `📷 ${s.customer || '고객'} 현장 사진${visitDay(s) ? ' · ' + dateLabel(visitDay(s)) : ''}${cnt}`;
   const im = $('pmImg'), msg = $('pmMsg'), p = list[pmIdx];
+  $('pmTitle').textContent = `📷 ${s.customer || '고객'} ${p ? tagLabel(p.tag) : '현장 사진'}${visitDay(s) ? ' · ' + dateLabel(visitDay(s)) : ''}${cnt}`;
   msg.style.display = 'none'; im.style.display = '';
   im.onerror = () => { im.style.display = 'none'; msg.style.display = 'block'; };
   if (p) im.src = p.src; else im.onerror();
@@ -3247,6 +3283,15 @@ function showPhotoAt() {
     const a = document.createElement('a'); a.className = 'btn btn-card btn-sm'; a.style.textDecoration = 'none'; a.style.padding = '7px 14px';
     a.href = safeUrl(s.reportImageLink); a.target = '_blank'; a.rel = 'noopener'; a.textContent = '🔗 드라이브 폴더';
     btns.appendChild(a);
+  }
+  if (p && me) {   // 이 사진의 구분 바꾸기
+    const tb = document.createElement('div'); tb.style.cssText = 'width:100%;display:flex;gap:6px;justify-content:center;align-items:center;flex-wrap:wrap;font-size:.8rem;color:#ced4da;';
+    tb.append('이 사진 구분:');
+    Object.entries(PHOTO_TAGS).forEach(([t, lab]) => {
+      const b = document.createElement('button'); b.type = 'button'; b.className = 'btn btn-sm ' + (p.tag === t ? 'btn-save' : 'btn-reset'); b.textContent = (p.tag === t ? '● ' : '') + lab;
+      b.onclick = () => { if (p.tag !== t) setPhotoTag(s, p, t); }; tb.appendChild(b);
+    });
+    btns.appendChild(tb);
   }
   mk('btn-reset', '닫기', closePhoto);
   // 아래쪽 작은 사진 줄 (누르면 그 사진으로 이동)
@@ -3313,15 +3358,21 @@ function renderDetail() {
     const v = row('현장 사진', ''); v.textContent = '';
     const list = photoList(s);
     if (list.length) {
-      const strip = document.createElement('div'); strip.style.cssText = 'display:flex;gap:6px;overflow-x:auto;padding-bottom:4px;';
-      list.forEach((p, i) => {
-        const im = document.createElement('img'); im.className = 'thumb'; im.src = p.src; im.alt = `현장 사진 ${i + 1}`;
-        im.style.cssText = 'width:84px;height:84px;flex:0 0 auto;margin:0;';
-        im.title = '눌러서 크게 보기'; im.onclick = () => openPhoto(s.id, i);
-        im.onerror = () => { im.style.opacity = '.3'; };
-        strip.appendChild(im);
+      ['전', '후', ''].forEach(tg => {
+        const grp = list.filter(p => (p.tag || '') === tg); if (!grp.length) return;
+        const g = document.createElement('div'); g.className = 'ph-group';
+        const h = document.createElement('div'); h.className = 'ph-h t' + tg; h.textContent = `${tagLabel(tg)} (${grp.length}장)`;
+        const strip = document.createElement('div'); strip.style.cssText = 'display:flex;gap:6px;overflow-x:auto;padding-bottom:4px;';
+        grp.forEach(p => {
+          const i = list.indexOf(p);
+          const im = document.createElement('img'); im.className = 'thumb t' + tg; im.src = p.src; im.alt = `${tagLabel(tg)} 사진 ${i + 1}`;
+          im.style.cssText = 'width:84px;height:84px;flex:0 0 auto;margin:0;';
+          im.title = '눌러서 크게 보기'; im.onclick = () => openPhoto(s.id, i);
+          im.onerror = () => { im.style.opacity = '.3'; };
+          strip.appendChild(im);
+        });
+        g.append(h, strip); v.appendChild(g);
       });
-      v.appendChild(strip);
       const q2 = document.createElement('div'); q2.className = 'quick-btns';
       const vb = Object.assign(document.createElement('button'), { type:'button', className:'qbtn call', textContent:`📷 사진 보기 (${list.length}장)`, onclick: () => openPhoto(s.id, 0) });
       const dl = photoDlButton(s, 0); dl.className = 'qbtn'; dl.textContent = '📥 다운로드';
