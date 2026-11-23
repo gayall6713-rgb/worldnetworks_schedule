@@ -141,6 +141,12 @@ body:not(.role-admin) .btn-del:not(.keep),body:not(.role-admin) #clearAll,body:n
 body.role-view .upload-box,body.role-view #addScheduleFromDayBtn,body.role-view #addScheduleFromHistoryBtn,body.role-view .dp-add,body.role-view #draftBtn,body.role-view #resetForm,body.role-view .view-hide{display:none!important}
 body.role-view #tab-manage>#scheduleForm{display:none}
 body.role-partner #filterSource,body.role-partner #filterPay,body.role-partner .partner-hide{display:none!important}
+.stat-tbl{min-width:0;font-size:.8rem;width:100%}.stat-tbl td,.stat-tbl th{padding:6px 6px;white-space:nowrap}
+.stat-tbl td.n{text-align:right;font-variant-numeric:tabular-nums}.stat-tbl tr.sum td{font-weight:bold;background:#f1f3f5}
+.stat-tbl td.zero{color:#ced4da}.stat-h{margin:14px 0 6px;font-size:.95rem;color:#343a40}.stat-h span{font-weight:normal;color:#868e96;font-size:.8rem}
+.stat-cards{display:grid;grid-template-columns:repeat(auto-fit,minmax(130px,1fr));gap:8px}
+.stat-card{background:#f8f9fa;border:1px solid #e9ecef;border-left:4px solid #adb5bd;border-radius:8px;padding:8px 10px}
+.stat-card b{display:block;font-size:1.05rem;margin-top:2px}.stat-card small{color:#868e96;font-size:.72rem}
 #logModal table{min-width:0;font-size:.8rem}#logModal td,#logModal th{padding:6px 5px}
 #viewNotice{display:none;background:#fff3bf;border:1px solid #fcc419;color:#7c5800;border-radius:8px;padding:10px 12px;font-size:.85rem;margin-bottom:12px}
 body.role-view #viewNotice{display:block}
@@ -262,8 +268,28 @@ body.locked #notifyBar{display:none!important}
     <button type="submit" class="btn btn-submit" id="loginBtn">로그인</button>
     <button type="button" class="btn btn-reset" id="loginOther" style="width:100%;margin-top:12px;font-size:.9rem;padding:10px;">👥 다른 사람으로 로그인</button>
     <div id="loginMsg"></div>
-    <div style="text-align:center;font-size:.7rem;color:#adb5bd;margin-top:10px;">앱 버전 1123-12</div>
+    <div style="text-align:center;font-size:.7rem;color:#adb5bd;margin-top:10px;">앱 버전 1123-13</div>
   </form>
+</div>
+<div id="statModal" class="modal">
+  <div class="modal-box" style="max-width:1100px;width:100%;">
+    <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:10px;gap:8px;">
+      <h4 style="margin:0;font-size:1.15rem;color:var(--primary);">📊 진행 현황표 <span style="font-weight:normal;font-size:.8rem;color:#888;">(관리자 전용)</span></h4>
+      <button type="button" onclick="$('statModal').classList.remove('show')" style="background:none;border:none;font-size:1.2rem;cursor:pointer;">✖</button>
+    </div>
+    <div class="filter-bar" style="margin-bottom:8px;">
+      <select id="statMode" class="filter-sel"><option value="month">월별</option><option value="quarter">분기별</option><option value="year">년도별</option><option value="all">전체</option></select>
+      <select id="statYear" class="filter-sel"></select>
+      <select id="statSrc" class="filter-sel"></select>
+      <button type="button" class="btn btn-mini btn-excel" id="statExcel">📥 현황표 엑셀 저장</button>
+    </div>
+    <div id="statInfo" class="hint" style="margin:0 0 8px;"></div>
+    <div class="stat-cards" id="statCards"></div>
+    <h5 class="stat-h">① 진행 상태별 현황 <span id="statRangeLbl"></span></h5>
+    <div class="table-responsive"><table class="stat-tbl" id="statStage"></table></div>
+    <h5 class="stat-h">② 기간별 현황</h5>
+    <div class="table-responsive"><table class="stat-tbl" id="statPeriod"></table></div>
+  </div>
 </div>
 <div id="logModal" class="modal">
   <div class="modal-box" style="max-width:640px;">
@@ -289,7 +315,7 @@ body.locked #notifyBar{display:none!important}
     <div class="btn-row"><button type="submit" class="btn btn-submit">변경</button><button type="button" class="btn btn-reset" onclick="$('pwModal').classList.remove('show')">닫기</button></div>
   </form>
 </div>
-<div id="appVer" style="position:fixed;left:6px;bottom:4px;font-size:.65rem;color:#adb5bd;z-index:1;pointer-events:none;">앱 버전 1123-12</div>
+<div id="appVer" style="position:fixed;left:6px;bottom:4px;font-size:.65rem;color:#adb5bd;z-index:1;pointer-events:none;">앱 버전 1123-13</div>
 <div id="syncStatus">🔄 연동 중...</div>
 <div class="container">
   <h2>현장 방문 및 스케줄 관리</h2>
@@ -827,6 +853,8 @@ function applyRole() {
   if (isAdmin()) {
     const lg = document.createElement('button'); lg.type = 'button'; lg.className = 'ub-btn'; lg.textContent = '📜 접속 기록';
     lg.onclick = openLoginLog; box.appendChild(lg);
+    const st = document.createElement('button'); st.type = 'button'; st.className = 'ub-btn'; st.textContent = '📊 현황표';
+    st.onclick = openStats; box.appendChild(st);
   }
   box.append(sw, pw, lo);
   lockView(document);
@@ -913,6 +941,101 @@ $('pwForm').addEventListener('submit', async ev => {
     showSync('✅ 비밀번호를 바꿨습니다');
   } catch (e) { if (e.message !== 'AUTH') alert('서버에 연결하지 못했습니다.'); }
 });
+/* ===== 관리자: 진행 현황표 ===== */
+// 기준: 방문 일시의 날짜. 미수금은 방문시공·계약·공사진행·처리완료 건만 셈. 시공 예정일로 자동 생성된 [시공] 일정은 원래 일정과 같은 공사라서 빼고 셉니다.
+const statJobs = () => schedules.filter(x => !x.installFor);
+const statMoney = list => {
+  const m = { total:0, deposit:0, balance:0, paid:0, unpaid:0 };
+  list.forEach(x => {
+    const t = toNum(x.total), dp = toNum(x.deposit), bl = toNum(x.balance), pd = (x.depositPaid ? dp : 0) + (x.balancePaid ? bl : 0);
+    m.total += t; m.deposit += dp; m.balance += bl; m.paid += pd;
+    if (PAY_STAGES.includes(x.status)) m.unpaid += Math.max(0, t - pd);   // 미수금은 계약 이후 단계만 (견적 금액은 빼고)
+  });
+  return m;
+};
+const statWon = n => n ? n.toLocaleString('ko-KR') : '0';
+function statPeriods(mode, year) {
+  if (mode === 'month') return Array.from({ length: 12 }, (_, i) => ({ label: `${year}년 ${i + 1}월`, test: d => d.slice(0, 7) === `${year}-${String(i + 1).padStart(2, '0')}` }));
+  if (mode === 'quarter') return [1, 2, 3, 4].map(q => ({ label: `${year}년 ${q}분기 (${q * 3 - 2}~${q * 3}월)`, test: d => d.slice(0, 4) === String(year) && Math.ceil(+d.slice(5, 7) / 3) === q }));
+  const ys = [...new Set(statJobs().map(visitDay).filter(Boolean).map(d => d.slice(0, 4)))].sort();
+  if (mode === 'year') { const r = ys.map(y => ({ label: `${y}년`, test: d => d.slice(0, 4) === y })); if (statJobs().some(x => !visitDay(x))) r.push({ label: '방문일 미정', test: d => !d }); return r; }
+  return [{ label: '전체 기간', test: () => true }];
+}
+function openStats() {
+  if (!isAdmin()) return;
+  const ys = [...new Set(statJobs().map(visitDay).filter(Boolean).map(d => d.slice(0, 4)))];
+  const cy = String(new Date().getFullYear()); if (!ys.includes(cy)) ys.push(cy); ys.sort().reverse();
+  const yv = $('statYear').value; $('statYear').innerHTML = ys.map(y => `<option value="${y}">${y}년</option>`).join('');
+  $('statYear').value = ys.includes(yv) ? yv : cy;
+  const sv = $('statSrc').value, srcs = [...new Set([...SOURCES, ...statJobs().map(x => x.source).filter(Boolean)])];
+  $('statSrc').innerHTML = '<option value="">수주처 전체</option>' + srcs.map(n => `<option value="${escAttr(n)}">${escAttr(n)}</option>`).join('') + '<option value="__none__">수주처 미지정</option>';
+  $('statSrc').value = sv;
+  $('statYear').style.display = /month|quarter/.test($('statMode').value) ? '' : 'none';
+  $('statModal').classList.add('show');
+  renderStats();
+}
+const escAttr = v => String(v).replace(/[&<>"]/g, c => ({ '&':'&amp;', '<':'&lt;', '>':'&gt;', '"':'&quot;' }[c]));
+function statData() {
+  const mode = $('statMode').value, year = $('statYear').value, src = $('statSrc').value;
+  let jobs = statJobs();
+  if (src) jobs = jobs.filter(x => src === '__none__' ? !x.source : x.source === src);
+  const periods = statPeriods(mode, year);
+  const inRange = mode === 'month' || mode === 'quarter' ? jobs.filter(x => visitDay(x).slice(0, 4) === year) : jobs;
+  const stages = [...STAGES]; if (inRange.some(x => !x.status) || jobs.some(x => !x.status)) stages.push('');
+  const stageRows = stages.map(st => { const l = inRange.filter(x => (x.status || '') === st); return { st, n: l.length, ...statMoney(l) }; });
+  const periodRows = periods.map(p => {
+    const l = jobs.filter(x => p.test(visitDay(x)));
+    const cnt = {}; stages.forEach(st => { cnt[st] = l.filter(x => (x.status || '') === st).length; });
+    return { label: p.label, n: l.length, cnt, ...statMoney(l) };
+  });
+  return { mode, year, src, stages, stageRows, periodRows, inRange, all: { n: inRange.length, ...statMoney(inRange) },
+    rangeLbl: mode === 'month' || mode === 'quarter' ? `${year}년` : '전체 기간' };
+}
+function renderStats() {
+  const D = statData();
+  const stName = st => st || '상태 미지정';
+  $('statRangeLbl').textContent = `(${D.rangeLbl}${D.src ? ' · ' + (D.src === '__none__' ? '수주처 미지정' : D.src) : ''})`;
+  $('statInfo').textContent = `방문 일시 기준으로 셉니다 · 금액 단위: 원 · 미수금은 방문시공·계약·공사진행·처리완료 건만 · 시공 예정일로 자동 생성된 [시공] 일정은 원래 일정과 같은 공사라 빼고 셉니다`;
+  const card = (t, v, c, sub) => `<div class="stat-card" style="border-left-color:${c}"><small>${t}</small><b>${v}</b>${sub ? `<small>${sub}</small>` : ''}</div>`;
+  const cntOf = st => (D.stageRows.find(r => r.st === st) || { n: 0 }).n;
+  $('statCards').innerHTML =
+    card('전체 건수', D.all.n + '건', '#495057') +
+    card('계약', cntOf('계약') + '건', STAGE_ACCENT['계약']) +
+    card('공사진행', cntOf('공사진행') + '건', STAGE_ACCENT['공사진행']) +
+    card('처리완료', cntOf('처리완료') + '건', STAGE_ACCENT['처리완료']) +
+    card('공사 총금액', statWon(D.all.total) + '원', '#1c7ed6') +
+    card('입금 완료', statWon(D.all.paid) + '원', '#2f9e44') +
+    card('미수금', statWon(D.all.unpaid) + '원', '#e03131');
+  const num = v => `<td class="n${v ? '' : ' zero'}">${statWon(v)}</td>`;
+  const cnum = v => `<td class="n${v ? '' : ' zero'}">${v}</td>`;
+  const moneyHead = '<th>공사 총금액</th><th>계약금</th><th>잔금</th><th>입금 완료</th><th>미수금</th>';
+  const moneyCells = r => num(r.total) + num(r.deposit) + num(r.balance) + num(r.paid) + num(r.unpaid);
+  $('statStage').innerHTML = `<thead><tr><th>진행 상태</th><th>건수</th>${moneyHead}</tr></thead><tbody>` +
+    D.stageRows.map(r => `<tr><td><span style="display:inline-block;width:10px;height:10px;border-radius:2px;background:${STAGE_ACCENT[r.st] || '#adb5bd'};margin-right:6px;"></span>${escAttr(stName(r.st))}</td>${cnum(r.n)}${moneyCells(r)}</tr>`).join('') +
+    `<tr class="sum"><td>합계</td>${cnum(D.all.n)}${moneyCells(D.all)}</tr></tbody>`;
+  const ps = D.periodRows, tot = { n: 0, cnt: {}, ...statMoney(D.mode === 'month' || D.mode === 'quarter' ? D.inRange : statJobs().filter(x => !D.src || (D.src === '__none__' ? !x.source : x.source === D.src))) };
+  ps.forEach(r => { tot.n += r.n; D.stages.forEach(st => { tot.cnt[st] = (tot.cnt[st] || 0) + r.cnt[st]; }); });
+  $('statPeriod').innerHTML = `<thead><tr><th>기간</th>${D.stages.map(st => `<th>${escAttr(stName(st))}</th>`).join('')}<th>합계</th>${moneyHead}</tr></thead><tbody>` +
+    ps.map(r => `<tr><td>${r.label}</td>${D.stages.map(st => cnum(r.cnt[st])).join('')}${cnum(r.n)}${moneyCells(r)}</tr>`).join('') +
+    (ps.length > 1 ? `<tr class="sum"><td>합계</td>${D.stages.map(st => cnum(tot.cnt[st] || 0)).join('')}${cnum(tot.n)}${moneyCells(tot)}</tr>` : '') + '</tbody>';
+}
+['statMode', 'statYear', 'statSrc'].forEach(id => $(id).addEventListener('change', () => {
+  $('statYear').style.display = /month|quarter/.test($('statMode').value) ? '' : 'none'; renderStats();
+}));
+$('statExcel').onclick = () => {
+  if (!isAdmin()) return;
+  if (typeof XLSX === 'undefined') { alert('엑셀 기능을 불러오지 못했습니다. 인터넷 연결을 확인해 주세요.'); return; }
+  const D = statData(), stName = st => st || '상태 미지정';
+  const mh = ['공사 총금액', '계약금', '잔금', '입금 완료', '미수금'], mv = r => [r.total, r.deposit, r.balance, r.paid, r.unpaid];
+  const a = [['진행 상태', '건수', ...mh], ...D.stageRows.map(r => [stName(r.st), r.n, ...mv(r)]), ['합계', D.all.n, ...mv(D.all)]];
+  const b = [['기간', ...D.stages.map(stName), '합계', ...mh], ...D.periodRows.map(r => [r.label, ...D.stages.map(st => r.cnt[st]), r.n, ...mv(r)])];
+  const wb = XLSX.utils.book_new();
+  XLSX.utils.book_append_sheet(wb, XLSX.utils.aoa_to_sheet(a), '상태별');
+  XLSX.utils.book_append_sheet(wb, XLSX.utils.aoa_to_sheet(b), '기간별');
+  const modeLbl = { month: '월별', quarter: '분기별', year: '년도별', all: '전체' }[D.mode];
+  XLSX.writeFile(wb, `진행현황표_${modeLbl}${/month|quarter/.test(D.mode) ? '_' + D.year : ''}_${todayStr()}.xlsx`);
+};
+
 /* ===== 관리자: 접속 기록 보기 ===== */
 let loginLog = [];
 async function openLoginLog() {
