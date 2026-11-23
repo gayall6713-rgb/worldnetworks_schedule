@@ -120,7 +120,12 @@ select{width:100%;padding:10px;border:1px solid #ddd;border-radius:4px;box-sizin
 .list-scroll.dragging{cursor:grabbing;user-select:none}
 .list-scroll thead th{position:sticky;top:0;z-index:2;box-shadow:inset 0 -1px 0 #ddd}
 .name-cell{cursor:pointer;color:var(--primary);font-weight:bold;text-decoration:underline;white-space:nowrap}
-#syncStatus{position:fixed;top:10px;right:10px;background:rgba(0,0,0,.7);color:#fff;padding:6px 12px;border-radius:20px;font-size:.8rem;z-index:100;font-weight:bold;display:none}
+#syncStatus{position:fixed;left:50%;bottom:24px;transform:translateX(-50%);background:rgba(33,37,41,.92);color:#fff;padding:12px 22px;border-radius:24px;font-size:.95rem;z-index:400;font-weight:bold;display:none;box-shadow:0 6px 20px rgba(0,0,0,.3);max-width:90vw;text-align:center}
+#syncStatus.ok{background:#2f9e44}#syncStatus.err{background:#e03131}
+#saveState{font-weight:bold;padding:5px 12px;border-radius:20px;font-size:.8rem;margin-right:auto;white-space:nowrap}
+#saveState.ok{background:#d3f9d8;color:#2b8a3e}#saveState.ing{background:#fff3bf;color:#a16207}#saveState.err{background:#ffe3e3;color:#c92a2a;cursor:pointer}
+#editModalBody .btn-row{position:sticky;bottom:-18px;background:#fff;padding:12px 0 14px;margin-top:12px;border-top:1px solid #e9ecef;z-index:5}
+#editModalBody .btn-submit{font-size:1.05rem}
 @media (max-width:560px){.grid{grid-template-columns:1fr}.guide-preview-card{padding:14px}}
 .site-link{border:none;border-radius:20px;padding:6px 14px;font-size:.82rem;font-weight:bold;color:#fff;background:linear-gradient(180deg,#8b5cf6,#6d28d9);box-shadow:0 3px 0 #4c1d95,0 4px 8px rgba(0,0,0,.2);cursor:pointer;white-space:nowrap;text-decoration:none;display:inline-block}
 .site-link:active{transform:translateY(2px);box-shadow:0 1px 0 #4c1d95}
@@ -205,6 +210,7 @@ select{width:100%;padding:10px;border:1px solid #ddd;border-radius:4px;box-sizin
 <div class="container">
   <h2>현장 방문 및 스케줄 관리</h2>
   <div id="serverBar">
+    <span id="saveState"></span>
     <span id="serverState"></span>
     <span id="siteLinks"></span>
     <button type="button" id="installBtn">📲 앱 설치</button>
@@ -279,6 +285,10 @@ select{width:100%;padding:10px;border:1px solid #ddd;border-radius:4px;box-sizin
         <div class="form-group"><label>고객명</label><input type="text" id="customer" placeholder="예: 김다윗" required></div>
         <div class="form-group"><label>연락처</label><input type="text" id="phone" placeholder="예: 010-0000-0000"></div>
         <div class="form-group"><label>방문 일시</label><input type="datetime-local" id="visitDate"></div>
+        <div class="form-group full" id="installGroup" style="background:#f3f0ff;border:1px solid #d0bfff;border-radius:8px;padding:10px;">
+          <label style="color:#5f3dc4;">🔨 시공 예정일 <span style="font-weight:normal;color:#777;font-size:.8rem;">(방문 후 시공 날짜가 정해지면 입력 → 저장하면 그 날짜에 '방문시공' 일정이 자동으로 생깁니다)</span></label>
+          <input type="datetime-local" id="installDate">
+        </div>
         <div class="form-group"><label>처리 비용</label><input type="text" id="cost" placeholder="예: 무료 방문실측"></div>
         <div class="form-group full"><label>요청 사항</label><input type="text" id="request" placeholder="예: 문틀 교체" required></div>
 
@@ -322,7 +332,7 @@ select{width:100%;padding:10px;border:1px solid #ddd;border-radius:4px;box-sizin
 
       </div>
       <div class="btn-row">
-        <button type="submit" class="btn btn-submit" id="submitBtn">스케줄 추가</button>
+        <button type="submit" class="btn btn-submit" id="submitBtn">💾 스케줄 추가</button>
         <button type="button" class="btn btn-del" id="formDeleteBtn" style="display:none;padding:12px;font-size:1rem;">🗑 삭제</button>
         <button type="button" class="btn btn-draft" id="draftBtn">💾 임시저장</button>
         <button type="button" class="btn btn-reset" id="resetForm">입력 지우기</button>
@@ -471,13 +481,68 @@ function nowStr() {
 const uid = () => Date.now() + Math.random().toString(36).slice(2, 6);
 
 const STORE_KEY = 'siteSchedules_v3';
-const FIELD_IDS = { receiptType:'receiptType', receiptDate:'receiptDate', status:'stage', source:'source', sourceUrl:'sourceUrl', customer:'customer', phone:'phone', visit:'visitDate', request:'request', cost:'cost', engineer:'engineer', engPhone:'engPhone', note:'note', report:'report', total:'contractTotal', deposit:'depositAmt', balance:'balanceAmt' };
+const FIELD_IDS = { installDate:'installDate', receiptType:'receiptType', receiptDate:'receiptDate', status:'stage', source:'source', sourceUrl:'sourceUrl', customer:'customer', phone:'phone', visit:'visitDate', request:'request', cost:'cost', engineer:'engineer', engPhone:'engPhone', note:'note', report:'report', total:'contractTotal', deposit:'depositAmt', balance:'balanceAmt' };
 const STAGES = ['방문실측','방문시공','견적제출','계약','공사진행','처리완료','보류 및 재방문'];
 const STAGE_COLORS = { '방문실측':'#d0ebff','방문시공':'#e5dbff','견적제출':'#fff3bf','계약':'#d3f9d8','공사진행':'#ffe8cc','처리완료':'#b2f2bb','보류 및 재방문':'#ffc9c9' };
 const STAGE_ACCENT = { '방문실측':'#339af0','방문시공':'#7950f2','견적제출':'#fab005','계약':'#40c057','공사진행':'#fd7e14','처리완료':'#2f9e44','보류 및 재방문':'#fa5252' };
 /* 예전 상태 이름 → 새 상태 이름 (기존 일정·엑셀 가져오기 자동 변환) */
 const OLD_STAGE = { '문의접수':'방문실측','방문 및 실측':'방문실측','견적':'견적제출','시공 중':'공사진행','보류/취소':'보류 및 재방문' };
 const normStage = v => OLD_STAGE[v] || v;
+/* ===== 시공 일정 자동 생성 =====
+   원래 일정에 '시공 예정일'을 넣으면, 그 날짜에 '방문시공' 일정을 따로 만들고 서로 연결합니다.
+   - 시공 예정일을 바꾸면 → 연결된 시공 일정의 날짜도 같이 바뀜
+   - 시공 일정의 날짜를 바꾸면 → 원래 일정의 시공 예정일도 같이 바뀜
+   - 시공 예정일을 지우면 → 연결된 시공 일정을 지울지 물어봄 */
+const INSTALL_STAGE = '방문시공';
+const INSTALL_COPY = ['customer', 'phone', 'source', 'sourceUrl', 'note', 'engineer', 'engPhone'];
+function syncInstall(item) {
+  if (!item) return '';
+  if (item.installFor) {   // 자동 생성된 시공 일정 → 원래 일정의 시공 예정일을 맞춰 줌
+    const parent = schedules.find(x => x.id === item.installFor);
+    if (parent && parent.installId === item.id && parent.installDate !== item.visit) {
+      parent.installDate = item.visit || ''; parent.installSyncedDate = parent.installDate;
+    }
+    return '';
+  }
+  const d = (item.installDate || '').trim();
+  let linked = item.installId ? schedules.find(x => x.id === item.installId) : null;
+  if (item.installId && !linked) {
+    // 시공 일정을 직접 지운 경우: 날짜를 새로 바꾼 게 아니면 다시 만들지 않음
+    if (!d || d === item.installSyncedDate) { item.installId = ''; item.installDate = ''; item.installSyncedDate = ''; return ''; }
+    item.installId = '';
+  }
+  if (d) {
+    if (linked) {
+      const moved = linked.visit !== d;
+      linked.visit = d;
+      INSTALL_COPY.forEach(k => { linked[k] = item[k] || ''; });
+      item.installSyncedDate = d;
+      return moved ? 'moved' : '';
+    }
+    const n = { id: uid(), installFor: item.id, status: INSTALL_STAGE, visit: d,
+      request: item.request ? `[시공] ${item.request}` : '[시공]', cost: '', report: '', reportAt: '' };
+    INSTALL_COPY.forEach(k => { n[k] = item[k] || ''; });
+    schedules.push(n);
+    item.installId = n.id; item.installSyncedDate = d;
+    return 'created';
+  }
+  if (linked) {
+    if (confirm(`시공 예정일을 지웠습니다.\n${dateLabel(visitDay(linked))}에 자동으로 만든 시공 일정도 삭제할까요?\n\n[확인] 시공 일정도 삭제\n[취소] 시공 일정은 남겨 둠`)) {
+      schedules = schedules.filter(x => x.id !== linked.id);
+    } else delete linked.installFor;
+    item.installId = ''; item.installSyncedDate = '';
+    return 'removed';
+  }
+  return '';
+}
+function installMsg(r, item) {
+  const d = item && item.installDate ? dateLabel(item.installDate.slice(0, 10)) : '';
+  if (r === 'created') return `🔨 ${d} 시공 일정이 달력에 자동으로 추가되었습니다`;
+  if (r === 'moved') return `🔨 시공 일정을 ${d}로 옮겼습니다`;
+  return '';
+}
+function installNotice(r, item) { const m = installMsg(r, item); if (m) setTimeout(() => showSync('✅ ' + m.slice(2)), 3200); }
+
 /* 수주처 */
 const SOURCES = ['숨고', '홈씨씨', '오늘의집', '개인'];
 const SOURCE_COLORS = { '숨고':'#7048e8', '홈씨씨':'#e8590c', '오늘의집':'#1c7ed6', '개인':'#495057' };
@@ -561,8 +626,16 @@ let currentFormReportImageLink = '';
 function showSync(msg) {
   const el = $('syncStatus');
   el.textContent = msg; el.style.display = 'block';
+  el.className = /^✅|🗑/.test(msg) ? 'ok' : /^⚠️/.test(msg) ? 'err' : '';
   clearTimeout(showSync.t);
-  showSync.t = setTimeout(() => { el.style.display = 'none'; }, 2000);
+  showSync.t = setTimeout(() => { el.style.display = 'none'; }, /^⚠️/.test(msg) ? 5000 : 3000);
+}
+/* 화면 위쪽 저장 상태 표시 (저장 중 · 저장 완료 시각 · 실패) */
+function setSaveState(st) {
+  const el = $('saveState'); if (!el) return;
+  el.className = st;
+  el.textContent = st === 'ing' ? '🔄 저장 중...' : st === 'ok' ? `✅ 저장됨 ${nowStr().slice(11)}` : st === 'err' ? '⚠️ 저장 실패 · 눌러서 다시 저장' : '';
+  el.title = st === 'err' ? '인터넷 연결을 확인한 뒤 누르면 다시 저장합니다' : '';
 }
 
 async function save() {
@@ -571,7 +644,8 @@ async function save() {
   render();
   if (!SCRIPT_URL) return;
   if (isSyncing) { resync = true; return; }   // 저장 중에 또 바뀌면 끝난 뒤 한 번 더 저장
-  showSync("🔄 구글 시트 및 드라이브 연동 중...");
+  showSync("🔄 구글 시트에 저장 중...");
+  setSaveState('ing');
   isSyncing = true;
   try {
     const res = await fetch(SCRIPT_URL, { method:'POST', body: JSON.stringify(schedules) });
@@ -582,9 +656,11 @@ async function save() {
       try { localStorage.setItem(STORE_KEY, JSON.stringify(schedules)); } catch (e) {}
       renderCalendar(); render(); refreshPopups();
     }
-    showSync("✅ 구글 시트 및 드라이브 저장 완료");
+    showSync("✅ 저장 완료! 구글 시트에 반영되었습니다");
+    setSaveState('ok');
   } catch (err) {
-    showSync("⚠️ 연동 실패 (이 기기에 임시 저장됨)");
+    showSync("⚠️ 저장 실패 — 인터넷 확인 후 위쪽 [저장 실패]를 눌러 다시 저장하세요 (이 기기에는 임시 보관됨)");
+    setSaveState('err');
   } finally {
     isSyncing = false;
     if (resync) { resync = false; save(); }
@@ -920,6 +996,7 @@ function buildEditCard(item, ctx) {
   f.customer = inp('text', item.customer);
   f.phone = inp('text', item.phone, '010-0000-0000');
   f.visit = inp('datetime-local', toLocalInput(item.visit));
+  f.installDate = inp('datetime-local', item.installDate || '');
   f.cost = inp('text', item.cost);
   f.request = inp('text', item.request);
   f.note = inp('text', item.note, '대략적인 주소 또는 상세 주소');
@@ -1008,6 +1085,7 @@ function buildEditCard(item, ctx) {
     fld('수주처 채팅·요청서 주소', f.sourceUrl, true),
     fld('고객명', f.customer), fld('연락처', f.phone),
     fld('방문 일시', f.visit), fld('처리 비용', f.cost),
+    ...(item.installFor ? [] : [fld('🔨 시공 예정일 (입력하면 시공 일정 자동 생성)', f.installDate, true)]),
     fld('요청 사항', f.request, true),
     fld('담당 기사', engWrap), fld('기사 연락처', f.engPhone),
     fld('방문 주소', f.note, true),
@@ -1028,6 +1106,7 @@ function buildEditCard(item, ctx) {
     live.customer = nm;
     live.phone = normPhone(f.phone.value.trim());
     live.visit = f.visit.value;
+    if (!live.installFor) live.installDate = f.installDate.value;
     live.request = f.request.value.trim();
     live.cost = f.cost.value.trim();
     live.note = f.note.value.trim();
@@ -1038,10 +1117,12 @@ function buildEditCard(item, ctx) {
     live.sourceUrl = f.sourceUrl.value.trim();
     if (photoChanged) { live.reportImage = newImage; live.reportImageLink = newLink; if (photoCleared) live.reportImageIds = []; }
     if (newReport !== (live.report || '')) { live.report = newReport; live.reportAt = newReport ? nowStr() : ''; }
+    const ir = syncInstall(live);
     ctx.setEdit(null);
     refreshPopups();
     await save();
     refreshPopups();
+    installNotice(ir, live);
     showSync(ctx.inScope(live) ? '✅ 수정 내용을 저장했습니다' : '✅ 저장했습니다 (조건이 바뀌어 이 목록에서는 사라집니다)');
   };
   const cancelBtn = document.createElement('button');
@@ -1405,8 +1486,9 @@ function clearForm() {
   $('formReportImgPreview').src = '';
   $('formReportImage').value = '';
   setForm({}); clearDraft(); editingId = null;
+  $('installGroup').style.display = '';
   $('formMode').textContent = '';
-  $('submitBtn').textContent = '스케줄 추가';
+  $('submitBtn').textContent = '💾 스케줄 추가';
   $('resetForm').textContent = '입력 지우기';
   updateDeleteBtn();
   render();
@@ -1544,7 +1626,7 @@ function render() {
     if (vDate.length === 10) vDate += 'T09:00';
     visitInput.value = vDate.replace(' ', 'T').substring(0, 16);
 
-    visitInput.onchange = () => { item.visit = visitInput.value; save(); };
+    visitInput.onchange = () => { item.visit = visitInput.value; syncInstall(item); save(); };
     visitTd.appendChild(visitInput); tr.appendChild(visitTd);
 
     ['request', 'cost'].forEach(k => { const td = document.createElement('td'); td.textContent = item[k] || ''; tr.appendChild(td); });
@@ -1605,8 +1687,9 @@ function openEditModal(id) {
   const item = schedules.find(x => x.id === id);
   if (!item) return;
   editingId = item.id; setForm(item);
+  $('installGroup').style.display = item.installFor ? 'none' : '';
   $('formMode').textContent = `✏️ '${item.customer}' 수정 중`;
-  $('submitBtn').textContent = '수정 저장';
+  $('submitBtn').textContent = '💾 수정 내용 저장';
   $('resetForm').textContent = '수정 취소';
   $('editModalTitle').textContent = `${item.customer} · 스케줄 수정`;
   updateDeleteBtn();
@@ -1614,6 +1697,7 @@ function openEditModal(id) {
   if (!formHome) formHome = { parent: f.parentNode, next: f.nextSibling };
   $('editModalBody').appendChild(f);
   $('editModal').classList.add('show');
+  editSnapshot = formSnap();
   render();
 }
 function closeEditModal() {
@@ -1622,9 +1706,18 @@ function closeEditModal() {
   m.classList.remove('show');
   if (formHome) { formHome.parent.insertBefore($('scheduleForm'), formHome.next); formHome = null; }
 }
-$('editModalClose').onclick = () => clearForm();
-$('editModal').addEventListener('mousedown', e => { if (e.target === $('editModal')) clearForm(); });
-document.addEventListener('keydown', e => { if (e.key === 'Escape' && $('editModal').classList.contains('show')) clearForm(); });
+let editSnapshot = '';
+const formSnap = () => JSON.stringify(getForm());
+/* 수정 창을 닫을 때 저장 안 한 내용이 있으면 물어봄 */
+function closeEditAsk() {
+  if (editingId && $('editModal').classList.contains('show') && editSnapshot && formSnap() !== editSnapshot) {
+    if (!confirm('수정한 내용이 아직 저장되지 않았습니다.\n\n[확인] 저장하지 않고 닫기\n[취소] 계속 수정하기 (아래 💾 수정 내용 저장 버튼을 눌러 주세요)')) return;
+  }
+  clearForm();
+}
+$('editModalClose').onclick = closeEditAsk;
+$('editModal').addEventListener('mousedown', e => { if (e.target === $('editModal')) closeEditAsk(); });
+document.addEventListener('keydown', e => { if (e.key === 'Escape' && $('editModal').classList.contains('show') && !$('photoModal').classList.contains('show')) closeEditAsk(); });
 
 /* ===== 목록 마우스 드래그 스크롤 ===== */
 (function () {
@@ -1718,7 +1811,7 @@ function restoreDraft() {
   if (it) {
     editingId = it.id;
     $('formMode').textContent = `'${it.customer}' 수정 중 (임시저장 불러옴)`;
-    $('submitBtn').textContent = '수정 저장';
+    $('submitBtn').textContent = '💾 수정 내용 저장';
     $('resetForm').textContent = '수정 취소';
     updateDeleteBtn();
   } else {
@@ -1740,17 +1833,25 @@ $('scheduleForm').addEventListener('submit', e => {
   if (data.report && !data.reportAt && (!editingId || schedules.find(s => s.id === editingId).report !== data.report)) {
     data.reportAt = nowStr();
   }
+  let savedId = editingId;
   if (editingId) {
     schedules = schedules.map(s => s.id === editingId ? { ...s, ...data, id: editingId, reportAt: data.report ? (s.report !== data.report ? nowStr() : s.reportAt) : '', reportImageLink: data.reportImageLink || s.reportImageLink } : s);
   } else {
     const dup = schedules.some(s => Object.keys(FIELD_IDS).every(k => s[k] === data[k]));
     if (dup && !confirm('똑같은 내용이 이미 등록되어 있습니다. 그래도 추가할까요?')) return;
     if (data.report) data.reportAt = nowStr();
-    schedules.push({ ...data, id: uid() });
+    savedId = uid();
+    schedules.push({ ...data, id: savedId });
   }
+  const savedItem = schedules.find(x => x.id === savedId);
+  installNotice(syncInstall(savedItem), savedItem);
+  const wasEdit = !!editingId;
+  editSnapshot = '';
   save(); clearForm();
+  if (!SCRIPT_URL) showSync(wasEdit ? '✅ 수정 내용을 저장했습니다' : '✅ 새 일정을 저장했습니다');
 });
-$('resetForm').onclick = clearForm;
+$('resetForm').onclick = () => { if (editingId) closeEditAsk(); else clearForm(); };
+$('saveState').onclick = () => { if ($('saveState').classList.contains('err')) save(); };
 $('clearAll').onclick = () => {
   if (schedules.length && confirm('등록된 스케줄을 모두 삭제할까요?')) { schedules = []; save(); clearForm(); }
 };
@@ -2145,7 +2246,7 @@ $('pasteBtn').onclick = async () => {
 
 function applyParsed(p) {
   setForm(p);
-  if (editingId) { editingId = null; $('formMode').textContent = ''; $('submitBtn').textContent = '스케줄 추가'; $('resetForm').textContent = '입력 지우기'; updateDeleteBtn(); render(); }
+  if (editingId) { editingId = null; $('formMode').textContent = ''; $('submitBtn').textContent = '💾 스케줄 추가'; $('resetForm').textContent = '입력 지우기'; updateDeleteBtn(); render(); }
   const labels = { customer:'고객명', phone:'연락처', visit:'방문 일시', request:'요청 사항', cost:'처리 비용', engineer:'담당 기사', engPhone:'기사 연락처' };
   const missing = Object.keys(labels).filter(k => !p[k]).map(k => labels[k]);
   $('status').textContent = missing.length ? `자동 입력 완료 · 이미지에서 찾지 못한 항목: ${missing.join(', ')} → 직접 입력 후 [스케줄 추가]를 눌러 주세요.` : '자동 입력 완료! 내용 확인 후 [스케줄 추가]를 눌러 주세요.';
@@ -2160,15 +2261,15 @@ function downloadBlob(blob, name) {
 }
 function exportExcel() {
   if (!schedules.length) { alert('저장할 스케줄이 없습니다.'); return; }
-  const head = ['진행 상태','수주처','수주처 주소','고객명','연락처','방문 일시','요청 사항','처리 비용','최종 계약금액','계약금','계약금 입금','잔금','잔금 입금','증빙 종류','증빙 발급','담당 기사','기사 연락처','방문 주소','방문 후 기록','기록 일시','현장 사진 링크'];
+  const head = ['진행 상태','수주처','수주처 주소','고객명','연락처','방문 일시','시공 예정일','요청 사항','처리 비용','최종 계약금액','계약금','계약금 입금','잔금','잔금 입금','증빙 종류','증빙 발급','담당 기사','기사 연락처','방문 주소','방문 후 기록','기록 일시','현장 사진 링크'];
   const payTxt = (s, k) => s[k + 'Paid'] ? '입금완료' + ([s[k + 'PaidAt'], s[k + 'Method']].filter(Boolean).length ? ' (' + [s[k + 'PaidAt'], s[k + 'Method']].filter(Boolean).join(' · ') + ')' : '') : (s[k] ? '미입금' : '');
   const rows = [...schedules].sort((a, b) => (a.visit || '9999').localeCompare(b.visit || '9999'))
-    .map(s => [s.status, s.source, s.sourceUrl, s.customer, s.phone, fmtDate(s.visit), s.request, s.cost, s.total, s.deposit, payTxt(s,'deposit'), s.balance, payTxt(s,'balance'), s.receiptType, s.receiptType ? (s.receiptIssued ? '발급완료' + (s.receiptDate ? ' (' + s.receiptDate + ')' : '') : '미발급') : '', s.engineer, s.engPhone, s.note, s.report, s.reportAt, s.reportImageLink || ''].map(v => v || ''));
+    .map(s => [s.status, s.source, s.sourceUrl, s.customer, s.phone, fmtDate(s.visit), fmtDate(s.installDate), s.request, s.cost, s.total, s.deposit, payTxt(s,'deposit'), s.balance, payTxt(s,'balance'), s.receiptType, s.receiptType ? (s.receiptIssued ? '발급완료' + (s.receiptDate ? ' (' + s.receiptDate + ')' : '') : '미발급') : '', s.engineer, s.engPhone, s.note, s.report, s.reportAt, s.reportImageLink || ''].map(v => v || ''));
   const name = '현장스케줄_' + todayStr();
   if (typeof XLSX !== 'undefined') {
     const wb = XLSX.utils.book_new();
     const ws = XLSX.utils.aoa_to_sheet([head, ...rows]);
-    ws['!cols'] = [12,10,24,10,15,17,36,22,14,12,18,12,18,12,18,10,15,36,50,17,30].map(w => ({ wch: w }));
+    ws['!cols'] = [12,10,24,10,15,17,17,36,22,14,12,18,12,18,12,18,10,15,36,50,17,30].map(w => ({ wch: w }));
     XLSX.utils.book_append_sheet(wb, ws, '스케줄');
     if (employees.length) {
       const we = XLSX.utils.aoa_to_sheet([['이름','연락처'], ...employees.map(e => [e.name, e.phone || ''])]);
@@ -2522,7 +2623,15 @@ function renderDetail() {
     if (safeUrl(s.reportImageLink)) q2.appendChild(qa('', safeUrl(s.reportImageLink), '🔗 드라이브에서 보기', true));
     v.appendChild(q2);
   }
-  row('방문 일시', visitDay(s) ? `${dateLabel(visitDay(s))}${visitTime(s) ? ' ' + ampm(visitTime(s)) : ' (시간 미정)'}` : '방문일 미정');
+  row(s.installFor ? '시공 일시' : '방문 일시', visitDay(s) ? `${dateLabel(visitDay(s))}${visitTime(s) ? ' ' + ampm(visitTime(s)) : ' (시간 미정)'}` : '방문일 미정');
+  const jump = (id, text) => Object.assign(document.createElement('button'), { type:'button', className:'qbtn sms', textContent:text, onclick: () => openDetail(id) });
+  if (s.installFor) {
+    const par = schedules.find(x => x.id === s.installFor);
+    if (par) row('원래 일정', `${par.status || ''} · ${visitDay(par) ? dateLabel(visitDay(par)) : '방문일 미정'}`, [jump(par.id, '📎 원래 일정 보기')]);
+  } else if (s.installDate) {
+    const lk = schedules.find(x => x.id === s.installId);
+    row('🔨 시공 예정일', `${dateLabel(s.installDate.slice(0, 10))}${s.installDate.length >= 16 ? ' ' + ampm(s.installDate.slice(11, 16)) : ''}`, lk ? [jump(lk.id, '🔨 시공 일정 보기')] : null);
+  }
   { const so = sourceOpenLink(s, 'qbtn'); if (so) so.style.cssText = 'background:#f3f0ff;border-color:#b197fc;color:#5f3dc4;'; row('수주처', s.source || '미지정', so ? [so] : null); }
   row('고객 연락처', s.phone, tel(s.phone) ? [qa('call', 'tel:' + tel(s.phone), '📞 전화'), qa('sms', 'sms:' + tel(s.phone), '💬 문자')] : null);
   row('요청 사항', s.request);
