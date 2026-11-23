@@ -282,7 +282,7 @@ body.locked #notifyBar{display:none!important}
     <button type="submit" class="btn btn-submit" id="loginBtn">로그인</button>
     <button type="button" class="btn btn-reset" id="loginOther" style="width:100%;margin-top:12px;font-size:.9rem;padding:10px;">👥 다른 사람으로 로그인</button>
     <div id="loginMsg"></div>
-    <div style="text-align:center;font-size:.7rem;color:#adb5bd;margin-top:10px;">앱 버전 1123-20</div>
+    <div style="text-align:center;font-size:.7rem;color:#adb5bd;margin-top:10px;">앱 버전 1123-21</div>
   </form>
 </div>
 <div id="expModal" class="modal" style="z-index:70;">
@@ -395,7 +395,7 @@ body.locked #notifyBar{display:none!important}
     <div class="btn-row"><button type="submit" class="btn btn-submit">변경</button><button type="button" class="btn btn-reset" onclick="$('pwModal').classList.remove('show')">닫기</button></div>
   </form>
 </div>
-<div id="appVer" style="position:fixed;left:6px;bottom:4px;font-size:.65rem;color:#adb5bd;z-index:1;pointer-events:none;">앱 버전 1123-20</div>
+<div id="appVer" style="position:fixed;left:6px;bottom:4px;font-size:.65rem;color:#adb5bd;z-index:1;pointer-events:none;">앱 버전 1123-21</div>
 <div id="syncStatus">🔄 연동 중...</div>
 <div class="container">
   <h2>현장 방문 및 스케줄 관리</h2>
@@ -1308,7 +1308,7 @@ $('slExcel').onclick = () => {
 };
 
 /* ===== 사진대지(시공 사진대지) 엑셀 만들기 — 올려 주신 양식(photo_report_template.xlsx)에 그대로 채움 ===== */
-async function buildPhotoReport(ExcelJS, templateBuf, info, photos) {
+async function buildPhotoReport(ExcelJS, templateBuf, info, photos, fit) {
   const wb = new ExcelJS.Workbook();
   await wb.xlsx.load(templateBuf);
   const ws = wb.worksheets[0];
@@ -1336,17 +1336,16 @@ async function buildPhotoReport(ExcelJS, templateBuf, info, photos) {
   const paint = (r, shape) => { ws.getRow(r).height = shape.h; C.forEach((c, i) => { ws.getCell(c + r).style = JSON.parse(JSON.stringify(shape.st[i])); }); };
   // 열 너비(px) — 사진 위치 계산용
   const colPx = ci => { const w = ws.getColumn(ci).width || ws.properties.defaultColWidth || 8.43; return Math.floor(w * 7 + 5); };
-  const place = (img, r, c1, c2) => {   // c1~c2(1부터) 칸, r행 안에 비율 유지해서 가운데
+  // 사진을 칸에 꽉 차게: 칸 비율에 맞춰 가운데를 잘라(fit) 칸 테두리 안에 딱 맞게 붙임
+  const place = async (img, r, c1, c2) => {
     if (!img) return;
     const areaW = Array.from({ length: c2 - c1 + 1 }, (_, i) => colPx(c1 + i)).reduce((a, b) => a + b, 0);
     const areaH = (ws.getRow(r).height || 15) * 4 / 3;
-    const pad = 6, sc = Math.min((areaW - pad * 2) / img.w, (areaH - pad * 2) / img.h);
-    const w = Math.round(img.w * sc), h = Math.round(img.h * sc);
-    let x = (areaW - w) / 2, col = c1 - 1;
-    while (col < c2 - 1 && x >= colPx(col + 1)) { x -= colPx(col + 1); col++; }
-    const id = wb.addImage({ base64: img.base64, extension: img.ext });
-    const EMU = 9525;   // 1px
-    ws.addImage(id, { tl: { nativeCol: col, nativeColOff: Math.round(x * EMU), nativeRow: r - 1, nativeRowOff: Math.round((areaH - h) / 2 * EMU) }, ext: { width: w, height: h }, editAs: 'oneCell' });
+    const pic = fit ? (await fit(img, areaW / areaH)) || img : img;
+    const id = wb.addImage({ base64: pic.base64, extension: pic.ext });
+    const EMU = 9525, inset = 3;   // 1px = 9525
+    ws.addImage(id, { tl: { nativeCol: c1 - 1, nativeColOff: inset * EMU, nativeRow: r - 1, nativeRowOff: inset * EMU },
+      br: { nativeCol: c2 === 8 ? 7 : c2, nativeColOff: 0, nativeRow: r, nativeRowOff: 0 }, editAs: 'twoCell' });
   };
   const n = Math.max(1, photos.before.length, photos.after.length);
   let r = 12;
@@ -1356,7 +1355,7 @@ async function buildPhotoReport(ExcelJS, templateBuf, info, photos) {
     paint(r + 1, S.photo); ws.mergeCells(`B${r + 1}:D${r + 1}`); ws.mergeCells(`E${r + 1}:H${r + 1}`);
     if (!photos.before[k]) ws.getCell('B' + (r + 1)).value = '[ 시공 전 사진 없음 ]';
     if (!photos.after[k]) ws.getCell('E' + (r + 1)).value = '[ 시공 후 사진 없음 ]';
-    place(photos.before[k], r + 1, 2, 4); place(photos.after[k], r + 1, 5, 8);
+    await place(photos.before[k], r + 1, 2, 4); await place(photos.after[k], r + 1, 5, 8);
     paint(r + 2, S.note); ws.mergeCells(`C${r + 2}:D${r + 2}`); ws.mergeCells(`F${r + 2}:H${r + 2}`);
     ws.getCell('B' + (r + 2)).value = txt.note[0]; ws.getCell('E' + (r + 2)).value = txt.note[1];
     ws.getCell('C' + (r + 2)).value = info.check || ''; ws.getCell('F' + (r + 2)).value = info.action || '';
@@ -1368,7 +1367,7 @@ async function buildPhotoReport(ExcelJS, templateBuf, info, photos) {
     r += 1;
     for (let k = 0; k < photos.etc.length; k += 2) {
       paint(r, S.photo); ws.mergeCells(`B${r}:D${r}`); ws.mergeCells(`E${r}:H${r}`);
-      place(photos.etc[k], r, 2, 4); place(photos.etc[k + 1], r, 5, 8);
+      await place(photos.etc[k], r, 2, 4); await place(photos.etc[k + 1], r, 5, 8);
       r += 1;
     }
   }
@@ -1399,6 +1398,22 @@ function toReportImg(src) {
     };
     im.onerror = () => ok(null);
     im.src = src;
+  });
+}
+/* 칸 비율(가로/세로)에 맞게 사진 가운데를 잘라 냄 → 칸에 꽉 차도 사진이 찌그러지지 않음 */
+function fitReportImg(img, ratio) {
+  return new Promise(ok => {
+    const im = new Image();
+    im.onload = () => {
+      let sw = im.naturalWidth, sh = im.naturalHeight, sx = 0, sy = 0;
+      if (sw / sh > ratio) { const nw = sh * ratio; sx = (sw - nw) / 2; sw = nw; } else { const nh = sw / ratio; sy = (sh - nh) / 2; sh = nh; }
+      const W = Math.min(1400, Math.round(sw)), H = Math.round(W / ratio);
+      const cv = document.createElement('canvas'); cv.width = W; cv.height = H;
+      cv.getContext('2d').drawImage(im, sx, sy, sw, sh, 0, 0, W, H);
+      ok({ base64: cv.toDataURL('image/jpeg', 0.85).split(',')[1], ext: 'jpeg', w: W, h: H });
+    };
+    im.onerror = () => ok(null);
+    im.src = 'data:image/jpeg;base64,' + img.base64;
   });
 }
 const reportDateText = d => { const m = String(d || '').match(/^(\d{4})-(\d{2})-(\d{2})/); return m ? `${m[1]}년 ${+m[2]} 월 ${+m[3]} 일` : ''; };
@@ -1449,7 +1464,7 @@ $('rpMake').onclick = async () => {
     step('🔄 엑셀 만드는 중...');
     const info = { sheetName: s.customer || '사진대지', title: $('rpTitle').value.trim(), dateText: reportDateText($('rpDate').value), address: $('rpAddr').value.trim(),
       customer: s.customer || '', location: $('rpLoc').value.trim(), cost: $('rpCost').value.trim(), check: $('rpCheck').value.trim(), action: $('rpAction').value.trim() };
-    const buf = await buildPhotoReport(window.ExcelJS, tpl, info, photos);
+    const buf = await buildPhotoReport(window.ExcelJS, tpl, info, photos, fitReportImg);
     const fname = `사진대지_${(s.customer || '고객').replace(/[\\/:*?"<>|\s]+/g, '')}_${$('rpDate').value || todayStr()}`;
     const blob = new Blob([buf], { type: 'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet' });
     downloadBlob(blob, fname + '.xlsx');
