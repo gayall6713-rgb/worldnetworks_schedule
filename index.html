@@ -19,7 +19,7 @@
 body{font-family:'Malgun Gothic',sans-serif;background:var(--bg-color);margin:0;padding:15px;color:var(--text-main)}
 .container{max-width:1000px;margin:0 auto;background:var(--card-bg);padding:20px;border-radius:12px;box-shadow:0 4px 12px rgba(0,0,0,.08)}
 h2{text-align:center;font-size:1.4rem;margin-bottom:20px}
-#serverBar{display:flex;align-items:center;justify-content:flex-end;gap:8px;margin-bottom:10px;font-size:.82rem}
+#serverBar{display:flex;flex-wrap:wrap;align-items:center;justify-content:flex-end;gap:8px;margin-bottom:10px;font-size:.82rem}
 #serverState{display:none}
 .btn-dl{background:linear-gradient(#ffa94d,#f76707);--edge:#a84300;color:#fff}
 .tab-menu{display:flex;background:#e9ecef;border-radius:10px;padding:4px;margin-bottom:20px}
@@ -122,6 +122,9 @@ select{width:100%;padding:10px;border:1px solid #ddd;border-radius:4px;box-sizin
 .name-cell{cursor:pointer;color:var(--primary);font-weight:bold;text-decoration:underline;white-space:nowrap}
 #syncStatus{position:fixed;top:10px;right:10px;background:rgba(0,0,0,.7);color:#fff;padding:6px 12px;border-radius:20px;font-size:.8rem;z-index:100;font-weight:bold;display:none}
 @media (max-width:560px){.grid{grid-template-columns:1fr}.guide-preview-card{padding:14px}}
+.site-link{border:none;border-radius:20px;padding:6px 14px;font-size:.82rem;font-weight:bold;color:#fff;background:linear-gradient(180deg,#8b5cf6,#6d28d9);box-shadow:0 3px 0 #4c1d95,0 4px 8px rgba(0,0,0,.2);cursor:pointer;white-space:nowrap;text-decoration:none;display:inline-block}
+.site-link:active{transform:translateY(2px);box-shadow:0 1px 0 #4c1d95}
+.src-open{font-size:.78rem;margin-left:6px;color:#6d28d9;font-weight:bold;text-decoration:none;white-space:nowrap}
 #installBtn{display:none;border:none;border-radius:20px;padding:6px 14px;font-size:.82rem;font-weight:bold;color:#fff;background:linear-gradient(180deg,#3b82f6,#1d4ed8);box-shadow:0 3px 0 #1e3a8a,0 4px 8px rgba(0,0,0,.2);cursor:pointer;white-space:nowrap}
 #installBtn:active{transform:translateY(2px);box-shadow:0 1px 0 #1e3a8a}
 #iosGuide{display:none;position:fixed;left:10px;right:10px;bottom:16px;background:#1f2937;color:#fff;padding:14px 16px;border-radius:12px;font-size:.88rem;line-height:1.5;z-index:300;box-shadow:0 6px 20px rgba(0,0,0,.35)}
@@ -154,6 +157,7 @@ select{width:100%;padding:10px;border:1px solid #ddd;border-radius:4px;box-sizin
 .ag-main{flex:1;min-width:0}
 .ag-name{font-weight:bold}
 .ag-sub{font-size:.8rem;color:#666;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;margin-top:2px}
+.src-tag{display:inline-block;font-size:.7rem;font-weight:bold;padding:1px 6px;border-radius:4px;margin-left:6px;vertical-align:middle;color:#fff;white-space:nowrap}
 .ag-stage{font-size:.72rem;padding:3px 8px;border-radius:10px;white-space:nowrap;font-weight:bold;color:#222}
 .ag-item.cancel .ag-name{text-decoration:line-through;opacity:.6}
 .ag-empty{text-align:center;color:#999;padding:20px;font-size:.9rem}
@@ -161,6 +165,15 @@ select{width:100%;padding:10px;border:1px solid #ddd;border-radius:4px;box-sizin
 .dp-head{display:flex;justify-content:space-between;align-items:center;margin-bottom:8px;gap:8px}
 .dp-head b{font-size:1rem}
 #detailModal{z-index:55}
+#photoModal{z-index:70;background:rgba(0,0,0,.85)}
+#photoModal .pm-box{width:100%;max-width:900px;text-align:center}
+#photoModal img{max-width:100%;max-height:78vh;border-radius:6px;background:#fff;box-shadow:0 8px 30px rgba(0,0,0,.5)}
+#photoModal .pm-title{color:#fff;font-weight:bold;margin-bottom:10px;font-size:1rem}
+#photoModal .pm-btns{display:flex;gap:8px;justify-content:center;flex-wrap:wrap;margin-top:12px}
+#photoModal .pm-msg{color:#ddd;font-size:.9rem;padding:30px 10px;display:none}
+.thumb{width:64px;height:64px;object-fit:cover;border-radius:6px;border:1px solid #ccc;cursor:zoom-in;display:block;margin-top:4px}
+.detail-photo{cursor:zoom-in}
+.photo-hint{font-size:.75rem;color:#868e96;margin-top:2px}
 #editModal,#cardModal{z-index:60}
 .detail-row{display:flex;gap:10px;padding:10px 0;border-bottom:1px solid #f1f3f5;font-size:.95rem;align-items:flex-start}
 .detail-row .dl{min-width:78px;color:#868e96;font-weight:bold;font-size:.82rem;padding-top:2px}
@@ -193,6 +206,7 @@ select{width:100%;padding:10px;border:1px solid #ddd;border-radius:4px;box-sizin
   <h2>현장 방문 및 스케줄 관리</h2>
   <div id="serverBar">
     <span id="serverState"></span>
+    <span id="siteLinks"></span>
     <button type="button" id="installBtn">📲 앱 설치</button>
   </div>
 <div id="iosGuide"><button type="button" onclick="this.parentNode.style.display='none'">✖</button>
@@ -255,7 +269,13 @@ select{width:100%;padding:10px;border:1px solid #ddd;border-radius:4px;box-sizin
     <form id="scheduleForm">
       <div id="formMode"></div>
       <div class="grid">
-        <div class="form-group full"><label>진행 상태</label><select id="stage"></select></div>
+        <div class="form-group"><label>진행 상태</label><select id="stage"></select></div>
+        <div class="form-group"><label>수주처</label>
+          <select id="sourceSel"></select>
+          <input type="text" id="source" placeholder="수주처 직접 입력" style="display:none;margin-top:6px;">
+        </div>
+        <div class="form-group full"><label>수주처 채팅·요청서 주소 <span style="font-weight:normal;color:#888;font-size:.8rem;">(선택 · 숨고 채팅방 주소를 붙여 넣으면 앱에서 바로 열 수 있어요)</span></label>
+          <input type="text" id="sourceUrl" placeholder="예: https://soomgo.com/..." inputmode="url" autocomplete="off"></div>
         <div class="form-group"><label>고객명</label><input type="text" id="customer" placeholder="예: 김다윗" required></div>
         <div class="form-group"><label>연락처</label><input type="text" id="phone" placeholder="예: 010-0000-0000"></div>
         <div class="form-group"><label>방문 일시</label><input type="datetime-local" id="visitDate"></div>
@@ -270,6 +290,13 @@ select{width:100%;padding:10px;border:1px solid #ddd;border-radius:4px;box-sizin
 <div class="pay-detail"><input type="date" id="depositDate" title="입금 날짜"><select id="depositMethod" title="결제수단"><option value="">결제수단</option><option value="현금">현금</option><option value="카드">카드</option><option value="계좌입금">계좌입금</option></select></div></div>
             <div class="form-group"><label>잔금 (원) · 자동 계산</label><input type="text" id="balanceAmt" inputmode="numeric" placeholder="최종금액 - 계약금"><label class="chk"><input type="checkbox" id="balancePaid"> 잔금 입금 완료</label>
 <div class="pay-detail"><input type="date" id="balanceDate" title="입금 날짜"><select id="balanceMethod" title="결제수단"><option value="">결제수단</option><option value="현금">현금</option><option value="카드">카드</option><option value="계좌입금">계좌입금</option></select></div></div>
+            <div class="form-group full" style="border-top:1px dashed #bfdbfe;padding-top:10px;margin-bottom:0;"><label>🧾 증빙 발급 (현금영수증 · 세금계산서)</label>
+              <div class="pay-detail" style="margin-top:0;">
+                <select id="receiptType" title="증빙 종류"><option value="">발급 안 함 / 미정</option><option value="현금영수증">현금영수증</option><option value="세금계산서">세금계산서</option></select>
+                <input type="date" id="receiptDate" title="발급 날짜">
+              </div>
+              <label class="chk"><input type="checkbox" id="receiptIssued"> 발급 완료</label>
+            </div>
           </div>
         </div>
 
@@ -333,10 +360,12 @@ select{width:100%;padding:10px;border:1px solid #ddd;border-radius:4px;box-sizin
     </div>
     <div class="filter-bar">
       <input type="text" id="filterQ" placeholder="🔍 이름·연락처·요청·주소 검색">
+      <select id="filterSource" class="filter-sel" title="수주처"></select>
       <select id="filterEng" class="filter-sel" title="담당 기사"></select>
       <select id="filterPay" class="filter-sel" title="입금 상태">
         <option value="">입금 전체</option><option value="unpaid">미수금 있음</option><option value="done">완납</option>
         <option value="depositNo">계약금 미입금</option><option value="balanceNo">잔금 미입금</option>
+        <option value="receiptNo">증빙 미발급</option><option value="cashReceipt">현금영수증 건</option><option value="taxInvoice">세금계산서 건</option>
       </select>
       <span class="filter-date">방문일 <input type="date" id="filterFrom"> ~ <input type="date" id="filterTo"></span>
       <button type="button" class="btn btn-clear" id="filterReset">필터 초기화</button>
@@ -344,7 +373,7 @@ select{width:100%;padding:10px;border:1px solid #ddd;border-radius:4px;box-sizin
     <div class="table-responsive list-scroll" id="listScroll">
       <table>
         <thead><tr>
-          <th>진행 상태</th><th>고객명</th><th>연락처</th><th>방문 일시</th><th>요청 사항</th>
+          <th>진행 상태</th><th>수주처</th><th>고객명</th><th>연락처</th><th>방문 일시</th><th>요청 사항</th>
           <th>처리 비용</th><th>입금 현황</th><th>담당 기사</th><th>기사 연락처</th><th>방문 주소</th><th>방문 후 기록</th><th>관리</th>
         </tr></thead>
         <tbody id="scheduleTableBody"></tbody>
@@ -395,7 +424,7 @@ select{width:100%;padding:10px;border:1px solid #ddd;border-radius:4px;box-sizin
     <h4 id="cardModalTitle" style="margin-bottom:12px;">🖼️ 안내장</h4>
     <div style="background:#e5e7eb;padding:15px;border-radius:8px;margin-bottom:15px;">
       <div id="captureArea" class="guide-preview-card">
-        <h3 id="cardTitle">■ 방문 및 실측 안내</h3>
+        <h3 id="cardTitle">■ 방문 실측 안내</h3>
         <table class="guide-table"><tbody id="cardRows"></tbody></table>
         <div class="guide-footer" id="cardFooter"></div>
       </div>
@@ -418,6 +447,15 @@ select{width:100%;padding:10px;border:1px solid #ddd;border-radius:4px;box-sizin
   </div>
 </div>
 
+<div id="photoModal" class="modal">
+  <div class="pm-box">
+    <div class="pm-title" id="pmTitle">현장 사진</div>
+    <img id="pmImg" alt="현장 사진 크게 보기">
+    <div class="pm-msg" id="pmMsg">사진 미리보기를 불러오지 못했습니다.<br>아래 [드라이브에서 보기]로 열어 주세요.</div>
+    <div class="pm-btns" id="pmBtns"></div>
+  </div>
+</div>
+
 <script src="https://cdn.jsdelivr.net/npm/tesseract.js@5.1.1/dist/tesseract.min.js"></script>
 <script src="https://cdn.jsdelivr.net/npm/xlsx@0.18.5/dist/xlsx.full.min.js"></script>
 <script src="https://cdn.jsdelivr.net/npm/html2canvas@1.4.1/dist/html2canvas.min.js"></script>
@@ -433,10 +471,53 @@ function nowStr() {
 const uid = () => Date.now() + Math.random().toString(36).slice(2, 6);
 
 const STORE_KEY = 'siteSchedules_v3';
-const FIELD_IDS = { status:'stage', customer:'customer', phone:'phone', visit:'visitDate', request:'request', cost:'cost', engineer:'engineer', engPhone:'engPhone', note:'note', report:'report', total:'contractTotal', deposit:'depositAmt', balance:'balanceAmt' };
-const STAGES = ['문의접수','견적','방문 및 실측','계약','시공 중','처리완료','보류/취소'];
-const STAGE_COLORS = { '문의접수':'#e9ecef','견적':'#fff3bf','방문 및 실측':'#d0ebff','계약':'#d3f9d8','시공 중':'#ffe8cc','처리완료':'#b2f2bb','보류/취소':'#ffc9c9' };
-const STAGE_ACCENT = { '문의접수':'#868e96','견적':'#fab005','방문 및 실측':'#339af0','계약':'#40c057','시공 중':'#fd7e14','처리완료':'#2f9e44','보류/취소':'#fa5252' };
+const FIELD_IDS = { receiptType:'receiptType', receiptDate:'receiptDate', status:'stage', source:'source', sourceUrl:'sourceUrl', customer:'customer', phone:'phone', visit:'visitDate', request:'request', cost:'cost', engineer:'engineer', engPhone:'engPhone', note:'note', report:'report', total:'contractTotal', deposit:'depositAmt', balance:'balanceAmt' };
+const STAGES = ['방문실측','방문시공','견적제출','계약','공사진행','처리완료','보류 및 재방문'];
+const STAGE_COLORS = { '방문실측':'#d0ebff','방문시공':'#e5dbff','견적제출':'#fff3bf','계약':'#d3f9d8','공사진행':'#ffe8cc','처리완료':'#b2f2bb','보류 및 재방문':'#ffc9c9' };
+const STAGE_ACCENT = { '방문실측':'#339af0','방문시공':'#7950f2','견적제출':'#fab005','계약':'#40c057','공사진행':'#fd7e14','처리완료':'#2f9e44','보류 및 재방문':'#fa5252' };
+/* 예전 상태 이름 → 새 상태 이름 (기존 일정·엑셀 가져오기 자동 변환) */
+const OLD_STAGE = { '문의접수':'방문실측','방문 및 실측':'방문실측','견적':'견적제출','시공 중':'공사진행','보류/취소':'보류 및 재방문' };
+const normStage = v => OLD_STAGE[v] || v;
+/* 수주처 */
+const SOURCES = ['숨고', '홈씨씨', '오늘의집', '개인'];
+const SOURCE_COLORS = { '숨고':'#7048e8', '홈씨씨':'#e8590c', '오늘의집':'#1c7ed6', '개인':'#495057' };
+const srcColor = v => SOURCE_COLORS[v] || '#868e96';
+/* 수주처 사이트 바로가기 (다른 곳을 추가하려면 '이름':'주소' 형식으로 넣으면 됩니다) */
+const SOURCE_LINKS = { '숨고':'https://soomgo.com/' };
+/* 이 일정에서 열 주소: 직접 넣은 채팅방 주소 → 없으면 수주처 사이트 */
+const sourceLinkOf = s => safeUrl((s.sourceUrl || '').trim()) || SOURCE_LINKS[s.source] || '';
+function sourceOpenLink(s, cls) {
+  const u = sourceLinkOf(s); if (!u) return null;
+  const a = document.createElement('a'); a.href = u; a.target = '_blank'; a.rel = 'noopener';
+  a.className = cls || 'src-open';
+  a.textContent = s.sourceUrl ? `💬 ${s.source || '수주처'} 채팅방 열기` : `🔗 ${s.source} 열기`;
+  a.onclick = ev => ev.stopPropagation();
+  return a;
+}
+function renderSiteLinks() {
+  const box = $('siteLinks'); box.innerHTML = '';
+  Object.entries(SOURCE_LINKS).forEach(([name, url]) => {
+    const a = document.createElement('a'); a.className = 'site-link'; a.href = url; a.target = '_blank'; a.rel = 'noopener';
+    a.textContent = `🟣 ${name} 열기`; box.appendChild(a);
+  });
+}
+function srcTag(v) {
+  const t = document.createElement('span'); t.className = 'src-tag';
+  t.textContent = v; t.style.background = srcColor(v); return t;
+}
+/* 수주처 선택 상자 채우기 (목록에 없는 값은 '직접 입력'으로) */
+function fillSourceSelect(sel, txt, val) {
+  sel.innerHTML = '';
+  const add = (v, t) => { const o = document.createElement('option'); o.value = v; o.textContent = t; sel.appendChild(o); };
+  add('', '수주처 선택');
+  SOURCES.forEach(x => add(x, x));
+  add('__custom__', '기타 (직접 입력)');
+  val = (val || '').trim();
+  if (!val) { sel.value = ''; txt.style.display = 'none'; txt.value = ''; }
+  else if (SOURCES.includes(val)) { sel.value = val; txt.style.display = 'none'; txt.value = val; }
+  else { sel.value = '__custom__'; txt.style.display = 'block'; txt.value = val; }
+}
+function sourceValue(sel, txt) { return sel.value === '__custom__' ? txt.value.trim() : sel.value; }
 
 function fillStageOptions(sel, val, allowEmpty) {
   sel.innerHTML = '';
@@ -469,7 +550,7 @@ function normVisit(v) {
   // 한국 시간 자정(00:00)은 날짜만 입력된 일정 → '시간 미정'으로 표시
   return local.endsWith('T00:00') ? local.slice(0, 10) : local;
 }
-function ensureIds() { schedules.forEach(s => { if (!s.id) s.id = uid(); if (s.visit) s.visit = normVisit(s.visit); }); }
+function ensureIds() { schedules.forEach(s => { if (!s.id) s.id = uid(); if (s.visit) s.visit = normVisit(s.visit); if (s.status) s.status = normStage(s.status); }); }
 ensureIds();
 
 let isSyncing = false;
@@ -584,7 +665,7 @@ function renderCalendar() {
       const bg = STAGE_COLORS[s.status] || '#f1f3f5', ac = STAGE_ACCENT[s.status] || '#adb5bd';
       const cancel = /취소/.test(s.status || '');
       b.style.cssText = `background:${bg}; color:#222; border-left:4px solid ${ac};${cancel ? ' text-decoration:line-through; opacity:.7;' : ''}`;
-      b.title = `${s.customer || ''} · ${s.status || '상태 미지정'}: ${s.request || ''}`;
+      b.title = `${s.customer || ''}${s.source ? ' [' + s.source + ']' : ''} · ${s.status || '상태 미지정'}: ${s.request || ''}`;
       const tm = ampm(s.visit.slice(11, 16));
       b.textContent = `${tm ? tm.replace(' ', '') + ' ' : ''}${s.customer || ''}`;
       b.addEventListener('click', ev => { ev.stopPropagation(); openDetail(s.id); });
@@ -778,8 +859,9 @@ function buildScheduleCard(item, isDup, ctx) {
 
   const detail = document.createElement('div'); detail.className = 'h-detail';
   const time = item.visit && item.visit.length >= 16 ? item.visit.slice(11, 16) : '시간 미지정';
-  detail.textContent = `${ctx.showDate ? '' : `방문 시간: ${time} · `}요청사항: ${item.request || '-'} · 비용/주소: ${item.cost || '-'} / ${item.note || '-'} · 담당기사: ${item.engineer || '미배정'}${item.engPhone ? ' (' + item.engPhone + ')' : ''}`;
+  detail.textContent = `${ctx.showDate ? '' : `방문 시간: ${time} · `}${item.source ? `수주처: ${item.source} · ` : ''}요청사항: ${item.request || '-'} · 비용/주소: ${item.cost || '-'} / ${item.note || '-'} · 담당기사: ${item.engineer || '미배정'}${item.engPhone ? ' (' + item.engPhone + ')' : ''}`;
   card.append(title, detail);
+  { const so = sourceOpenLink(item); if (so) { so.style.marginLeft = '0'; so.style.display = 'inline-block'; so.style.marginTop = '4px'; card.appendChild(so); } }
   if (item.report) {
     const report = document.createElement('div'); report.className = 'h-report';
     report.textContent = `✔️ 방문 후 기록: ${item.report}`;
@@ -793,7 +875,7 @@ function buildScheduleCard(item, isDup, ctx) {
     a.textContent = '🔗 드라이브 저장된 현장 사진 보기';
     linkDiv.appendChild(a); card.appendChild(linkDiv);
   }
-  if (hasPhoto(item)) { const d = photoDlButton(item); d.style.marginTop = '6px'; card.appendChild(d); }
+  if (hasPhoto(item)) { const th = photoThumb(item); if (th) card.appendChild(th); const d = photoDlButton(item); d.style.marginTop = '6px'; card.appendChild(d); }
 
   const btns = document.createElement('div'); btns.className = 'day-btns';
   const eb = document.createElement('button');
@@ -843,6 +925,15 @@ function buildEditCard(item, ctx) {
   f.note = inp('text', item.note, '대략적인 주소 또는 상세 주소');
   f.engPhone = inp('text', item.engPhone, '010-0000-0000');
   f.status = document.createElement('select'); fillStageOptions(f.status, item.status || STAGES[0], false);
+  const srcSel = document.createElement('select'), srcTxt = inp('text', '', '수주처 직접 입력');
+  srcTxt.style.marginTop = '6px';
+  fillSourceSelect(srcSel, srcTxt, item.source);
+  srcSel.addEventListener('change', () => {
+    if (srcSel.value === '__custom__') { srcTxt.value = ''; srcTxt.style.display = 'block'; srcTxt.focus(); }
+    else { srcTxt.value = srcSel.value; srcTxt.style.display = 'none'; }
+  });
+  const srcWrap = document.createElement('div'); srcWrap.append(srcSel, srcTxt);
+  f.sourceUrl = inp('text', item.sourceUrl, '숨고 채팅방 주소 붙여넣기 (선택)');
   f.status.addEventListener('change', () => { f.status.style.background = STAGE_COLORS[f.status.value] || '#fff'; });
   f.report = document.createElement('textarea'); f.report.className = 'field'; f.report.rows = 3; f.report.value = item.report || '';
   f.report.placeholder = '실측 사이즈, 작업 내용, 특이사항 등을 기재';
@@ -868,7 +959,7 @@ function buildEditCard(item, ctx) {
   const engWrap = document.createElement('div'); engWrap.append(engSel, engTxt);
 
   // 현장 사진 첨부 (HEIC는 자동으로 JPG 변환)
-  let newImage = item.reportImage || '', newLink = item.reportImageLink || '', photoChanged = false;
+  let newImage = item.reportImage || '', newLink = item.reportImageLink || '', photoChanged = false, photoCleared = false;
   const photoInp = document.createElement('input'); photoInp.type = 'file'; photoInp.accept = 'image/*,.heic,.heif';
   photoInp.style.cssText = 'font-size:.85rem;padding:0;border:none;';
   const photoPrev = document.createElement('img');
@@ -879,12 +970,15 @@ function buildEditCard(item, ctx) {
   const showPhoto = () => {
     if (newImage) { photoPrev.src = newImage; photoPrev.style.display = 'block'; } else { photoPrev.removeAttribute('src'); photoPrev.style.display = 'none'; }
     photoLink.innerHTML = '';
-    if (!newImage && safeUrl(newLink)) {
-      const a = document.createElement('a'); a.href = safeUrl(newLink); a.target = '_blank'; a.rel = 'noopener';
-      a.style.cssText = 'color:#2563eb;font-weight:bold;font-size:.8rem;'; a.textContent = '🔗 드라이브에 저장된 현장 사진 보기';
-      photoLink.appendChild(a);
+    const driveCnt = photoCleared ? 0 : photoList({ reportImageIds: item.reportImageIds, reportImageLink: item.reportImageLink }).length;
+    if (driveCnt) {
+      const t = document.createElement('div'); t.style.cssText = 'font-size:.8rem;color:#495057;margin-bottom:4px;';
+      t.textContent = `☁️ 드라이브에 저장된 사진 ${driveCnt}장${newImage ? ' + 새 사진 1장 (저장하면 추가됩니다)' : ' · 새 사진을 고르면 추가됩니다'}`;
+      photoLink.appendChild(t);
+      const b = document.createElement('button'); b.type = 'button'; b.className = 'btn btn-mini btn-reset'; b.textContent = '🔍 저장된 사진 보기';
+      b.onclick = () => openPhoto(item.id, localPhoto(item) ? 1 : 0); photoLink.appendChild(b);
     }
-    photoDel.style.display = (newImage || newLink) ? '' : 'none';
+    photoDel.style.display = (newImage || driveCnt || (!photoCleared && newLink)) ? '' : 'none';
   };
   photoInp.addEventListener('change', async () => {
     let file = photoInp.files && photoInp.files[0];
@@ -892,7 +986,7 @@ function buildEditCard(item, ctx) {
     try {
       if (isHeic(file)) file = await normalizeImage(file);
       newImage = await photoToDataUrl(file);
-      newLink = ''; photoChanged = true;
+      photoChanged = true;
       showPhoto();
     } catch (err) {
       console.error(err);
@@ -900,14 +994,18 @@ function buildEditCard(item, ctx) {
       photoInp.value = '';
     }
   });
-  photoDel.onclick = () => { newImage = ''; newLink = ''; photoChanged = true; photoInp.value = ''; showPhoto(); };
+  photoDel.onclick = () => {
+    if (!confirm('이 일정에서 사진을 모두 뺄까요?\n(구글 드라이브의 원본 파일은 지워지지 않습니다)')) return;
+    newImage = ''; newLink = ''; photoChanged = true; photoCleared = true; photoInp.value = ''; showPhoto();
+  };
   const photoWrap = document.createElement('div');
   photoWrap.append(photoInp, photoPrev, photoLink, photoDel);
   showPhoto();
 
   const g = document.createElement('div'); g.className = 'grid';
   g.append(
-    fld('진행 상태', f.status, true),
+    fld('진행 상태', f.status), fld('수주처', srcWrap),
+    fld('수주처 채팅·요청서 주소', f.sourceUrl, true),
     fld('고객명', f.customer), fld('연락처', f.phone),
     fld('방문 일시', f.visit), fld('처리 비용', f.cost),
     fld('요청 사항', f.request, true),
@@ -936,7 +1034,9 @@ function buildEditCard(item, ctx) {
     live.engineer = engSel.value === '__custom__' ? engTxt.value.trim() : engSel.value;
     live.engPhone = normPhone(f.engPhone.value.trim());
     live.status = f.status.value;
-    if (photoChanged) { live.reportImage = newImage; live.reportImageLink = newLink; }
+    live.source = sourceValue(srcSel, srcTxt);
+    live.sourceUrl = f.sourceUrl.value.trim();
+    if (photoChanged) { live.reportImage = newImage; live.reportImageLink = newLink; if (photoCleared) live.reportImageIds = []; }
     if (newReport !== (live.report || '')) { live.report = newReport; live.reportAt = newReport ? nowStr() : ''; }
     ctx.setEdit(null);
     refreshPopups();
@@ -1075,7 +1175,7 @@ $('empForm').addEventListener('submit', ev => {
 $('empCancel').onclick = () => { resetEmpForm(); renderEmp(); };
 
 /* ===== 계약금 / 잔금 관리 ===== */
-const PAY_STAGES = ['계약', '시공 중', '처리완료'];
+const PAY_STAGES = ['계약', '공사진행', '처리완료'];
 const toNum = v => parseInt(String(v || '').replace(/[^\d]/g, ''), 10) || 0;
 const won = v => { const n = toNum(v); return n ? n.toLocaleString('ko-KR') + '원' : ''; };
 const todayStr = () => nowStr().slice(0, 10);
@@ -1099,12 +1199,29 @@ $('depositAmt').addEventListener('input', autoBalance);
   $(k + 'Date').addEventListener('change', () => { if ($(k + 'Date').value) $(k + 'Paid').checked = true; });
 });
 const PAY_METHODS = ['현금', '카드', '계좌입금'];
+const RECEIPT_TYPES = ['현금영수증', '세금계산서'];
+$('receiptIssued').addEventListener('change', () => {
+  if ($('receiptIssued').checked) { if (!$('receiptDate').value) $('receiptDate').value = todayStr(); }
+  else $('receiptDate').value = '';
+});
+$('receiptDate').addEventListener('change', () => { if ($('receiptDate').value) $('receiptIssued').checked = true; });
+/* 증빙 글자: '세금계산서 ✅ 발급 (2026-11-23)' */
+function receiptText(s) {
+  if (!s.receiptType) return '';
+  return `${s.receiptType} ${s.receiptIssued ? '✅ 발급' + (s.receiptDate ? ' (' + s.receiptDate + ')' : '') : '⬜ 미발급'}`;
+}
 $('stage').addEventListener('change', togglePay);
+$('sourceSel').addEventListener('change', () => {
+  const v = $('sourceSel').value;
+  if (v === '__custom__') { $('source').value = ''; $('source').style.display = 'block'; $('source').focus(); }
+  else { $('source').value = v; $('source').style.display = 'none'; }
+  scheduleDraft();
+});
 
 function payCell(item) {
   const td = document.createElement('td');
   td.style.minWidth = '170px';
-  if (!PAY_STAGES.includes(item.status) && !item.total && !item.deposit && !item.balance) { td.textContent = '-'; return td; }
+  if (!PAY_STAGES.includes(item.status) && !item.total && !item.deposit && !item.balance && !item.receiptType) { td.textContent = '-'; return td; }
   const line = (t, css) => { const d = document.createElement('div'); d.textContent = t; d.style.cssText = 'font-size:.78rem;' + (css || ''); td.appendChild(d); };
   if (item.total) line('최종 ' + won(item.total), 'font-weight:bold;');
   [['deposit', '계약금'], ['balance', '잔금']].forEach(([k, lab]) => {
@@ -1138,6 +1255,33 @@ function payCell(item) {
     }
     td.appendChild(row);
   });
+  // 증빙 (현금영수증 · 세금계산서)
+  {
+    const row = document.createElement('div');
+    row.style.cssText = 'margin:5px 0 3px;padding-top:4px;border-top:1px dashed #ccc;font-size:.78rem;';
+    const ts = document.createElement('select');
+    ts.style.cssText = 'width:auto;padding:2px;font-size:.72rem;min-width:0;';
+    [['', '🧾 증빙 없음'], ...RECEIPT_TYPES.map(m => [m, '🧾 ' + m])].forEach(([v, t]) => { const o = document.createElement('option'); o.value = v; o.textContent = t; ts.appendChild(o); });
+    ts.value = item.receiptType || '';
+    ts.onchange = () => { item.receiptType = ts.value; if (!ts.value) { item.receiptIssued = false; item.receiptDate = ''; } save(); };
+    row.appendChild(ts);
+    if (item.receiptType) {
+      const lb = document.createElement('label');
+      lb.style.cssText = 'display:flex;align-items:center;gap:4px;font-weight:normal;font-size:.78rem;cursor:pointer;margin-top:3px;';
+      const cb = document.createElement('input'); cb.type = 'checkbox'; cb.style.width = 'auto'; cb.checked = !!item.receiptIssued;
+      cb.onchange = () => { item.receiptIssued = cb.checked; item.receiptDate = cb.checked ? (item.receiptDate || todayStr()) : ''; save(); };
+      const sp = document.createElement('span'); sp.textContent = item.receiptIssued ? '✅ 발급 완료' : '⬜ 미발급';
+      if (!item.receiptIssued) sp.style.color = '#e03131';
+      lb.append(cb, sp); row.appendChild(lb);
+      if (item.receiptIssued) {
+        const dt = document.createElement('input'); dt.type = 'date'; dt.value = item.receiptDate || '';
+        dt.style.cssText = 'width:122px;padding:2px;font-size:.72rem;margin:2px 0 0 20px;';
+        dt.onchange = () => { item.receiptDate = dt.value; save(); };
+        row.appendChild(dt);
+      }
+    }
+    td.appendChild(row);
+  }
   const t = toNum(item.total);
   if (t) {
     const paid = (item.depositPaid ? toNum(item.deposit) : 0) + (item.balancePaid ? toNum(item.balance) : 0);
@@ -1157,6 +1301,7 @@ function getForm() {
       o[k] = $(FIELD_IDS[k]) ? $(FIELD_IDS[k]).value.trim() : '';
     }
   }
+  o.receiptIssued = $('receiptIssued').checked;
   o['reportImage'] = currentFormReportImage;
   o['reportImageLink'] = currentFormReportImageLink;
   ['deposit', 'balance'].forEach(k => {
@@ -1180,6 +1325,7 @@ function setForm(o) {
       $(FIELD_IDS[k]).value = val;
     }
   }
+  $('receiptIssued').checked = !!o.receiptIssued;
   currentFormReportImage = o.reportImage || '';
   currentFormReportImageLink = o.reportImageLink || '';
   const imgPrev = $('formReportImgPreview');
@@ -1198,6 +1344,7 @@ function setForm(o) {
     if ($(k + 'Method')) $(k + 'Method').value = o[k + 'Method'] || '';
   });
   fillStageOptions($('stage'), o.status || STAGES[0], false);
+  fillSourceSelect($('sourceSel'), $('source'), o.source);
   togglePay();
   syncEngSelect();
 }
@@ -1270,7 +1417,7 @@ function clearForm() {
   }
 }
 
-let fQ = '', fEng = '', fPay = '', fFrom = '', fTo = '';
+let fSrc = '', fQ = '', fEng = '', fPay = '', fFrom = '', fTo = '';
 function renderFilter() {
   const sel = $('filterStage'); sel.innerHTML = '';
   const add = (v, t) => { const o = document.createElement('option'); o.value = v; o.textContent = t; sel.appendChild(o); };
@@ -1280,6 +1427,13 @@ function renderFilter() {
   if (none) add('__none__', `상태 미지정 (${none})`);
   sel.value = filterStage;
   if (sel.value !== filterStage) { filterStage = ''; sel.value = ''; }
+  const ss = $('filterSource'); ss.innerHTML = '';
+  const addS = (v, t) => { const o = document.createElement('option'); o.value = v; o.textContent = t; ss.appendChild(o); };
+  addS('', '수주처 전체');
+  [...new Set([...SOURCES, ...schedules.map(x => x.source).filter(Boolean)])].forEach(n => addS(n, `${n} (${schedules.filter(x => x.source === n).length})`));
+  if (schedules.some(x => !x.source)) addS('__none__', `수주처 미지정 (${schedules.filter(x => !x.source).length})`);
+  ss.value = fSrc;
+  if (ss.value !== fSrc) { fSrc = ''; ss.value = ''; }
   const es = $('filterEng'); es.innerHTML = '';
   const addE = (v, t) => { const o = document.createElement('option'); o.value = v; o.textContent = t; es.appendChild(o); };
   addE('', '담당 기사 전체');
@@ -1288,13 +1442,15 @@ function renderFilter() {
   es.value = fEng;
   if (es.value !== fEng) { fEng = ''; es.value = ''; }
 }
-function isFiltered() { return !!(filterStage || fQ || fEng || fPay || fFrom || fTo); }
+function isFiltered() { return !!(fSrc || filterStage || fQ || fEng || fPay || fFrom || fTo); }
 function payState(s) {
   const t = toNum(s.total), paid = (s.depositPaid ? toNum(s.deposit) : 0) + (s.balancePaid ? toNum(s.balance) : 0);
-  return { unpaid: t > 0 && t - paid > 0, done: t > 0 && t - paid <= 0, depositNo: toNum(s.deposit) > 0 && !s.depositPaid, balanceNo: toNum(s.balance) > 0 && !s.balancePaid };
+  return { unpaid: t > 0 && t - paid > 0, done: t > 0 && t - paid <= 0, depositNo: toNum(s.deposit) > 0 && !s.depositPaid, balanceNo: toNum(s.balance) > 0 && !s.balancePaid,
+    receiptNo: !!s.receiptType && !s.receiptIssued, cashReceipt: s.receiptType === '현금영수증', taxInvoice: s.receiptType === '세금계산서' };
 }
 function matchRow(s) {
   if (filterStage && (filterStage === '__none__' ? s.status : s.status !== filterStage)) return false;
+  if (fSrc && (fSrc === '__none__' ? s.source : s.source !== fSrc)) return false;
   if (fEng && (fEng === '__none__' ? s.engineer : s.engineer !== fEng)) return false;
   if (fPay && !payState(s)[fPay]) return false;
   const d = (s.visit || '').slice(0, 10);
@@ -1302,19 +1458,20 @@ function matchRow(s) {
   if (fFrom && d < fFrom) return false;
   if (fTo && d > fTo) return false;
   if (fQ) {
-    const hay = [s.customer, s.phone, (s.phone || '').replace(/\D/g, ''), s.request, s.note, s.engineer, s.cost, s.report].join(' ').toLowerCase();
+    const hay = [s.customer, s.phone, (s.phone || '').replace(/\D/g, ''), s.request, s.note, s.engineer, s.cost, s.report, s.source].join(' ').toLowerCase();
     if (!fQ.toLowerCase().split(/\s+/).filter(Boolean).every(w => hay.includes(w))) return false;
   }
   return true;
 }
 $('filterStage').addEventListener('change', () => { filterStage = $('filterStage').value; render(); });
 $('filterQ').addEventListener('input', () => { fQ = $('filterQ').value.trim(); render(); });
+$('filterSource').addEventListener('change', () => { fSrc = $('filterSource').value; render(); });
 $('filterEng').addEventListener('change', () => { fEng = $('filterEng').value; render(); });
 $('filterPay').addEventListener('change', () => { fPay = $('filterPay').value; render(); });
 $('filterFrom').addEventListener('change', () => { fFrom = $('filterFrom').value; render(); });
 $('filterTo').addEventListener('change', () => { fTo = $('filterTo').value; render(); });
 $('filterReset').onclick = () => {
-  filterStage = fQ = fEng = fPay = fFrom = fTo = '';
+  filterStage = fSrc = fQ = fEng = fPay = fFrom = fTo = '';
   ['filterQ', 'filterPay', 'filterFrom', 'filterTo'].forEach(id => { $(id).value = ''; });
   render();
 };
@@ -1342,7 +1499,7 @@ function render() {
   $('count').textContent = schedules.length ? (isFiltered() ? `(${rows.length}/${schedules.length}건)` : `(${schedules.length}건)`) : '';
   if (!rows.length) {
     const tr = document.createElement('tr'), td = document.createElement('td');
-    td.colSpan = 12; td.className = 'empty';
+    td.colSpan = 13; td.className = 'empty';
     td.textContent = schedules.length ? '조건에 맞는 스케줄이 없습니다.' : '등록된 스케줄이 없습니다.';
     tr.appendChild(td); body.appendChild(tr);
     return;
@@ -1367,10 +1524,15 @@ function render() {
       stTd.appendChild(cb);
     }
     tr.appendChild(stTd);
+    const srcTd = document.createElement('td'); srcTd.style.whiteSpace = 'nowrap';
+    if (item.source) { const tg = srcTag(item.source); tg.style.marginLeft = '0'; tg.style.fontSize = '.78rem'; tg.style.padding = '3px 8px'; srcTd.appendChild(tg); }
+    else srcTd.textContent = '-';
+    { const so = sourceOpenLink(item); if (so) { so.style.marginLeft = '0'; so.style.display = 'block'; so.style.marginTop = '4px'; so.textContent = item.sourceUrl ? '💬 채팅방' : '🔗 열기'; srcTd.appendChild(so); } }
+    tr.appendChild(srcTd);
 
     ['customer', 'phone'].forEach(k => {
       const td = document.createElement('td'); td.textContent = item[k] || '';
-      if (k === 'customer') { td.className = 'name-cell'; td.title = '눌러서 수정'; td.onclick = () => openEditModal(item.id); }
+      if (k === 'customer') { td.className = 'name-cell'; td.title = '눌러서 상세 내용·현장 사진 보기'; td.onclick = () => openDetail(item.id); if (hasPhoto(item)) td.textContent += ' 📷'; }
       tr.appendChild(td);
     });
 
@@ -1404,7 +1566,7 @@ function render() {
       linkDiv.appendChild(a);
       rc.appendChild(linkDiv);
     }
-    if (hasPhoto(item)) { const d = photoDlButton(item); d.style.cssText += 'margin:4px 4px 0 0;padding:4px 9px;font-size:.78rem;'; rc.appendChild(d); }
+    if (hasPhoto(item)) { const th = photoThumb(item); if (th) rc.appendChild(th); const d = photoDlButton(item); d.style.cssText += 'margin:4px 4px 0 0;padding:4px 9px;font-size:.78rem;'; rc.appendChild(d); }
     const rb = document.createElement('button');
     rb.type = 'button'; rb.className = 'btn btn-record'; rb.textContent = item.report || item.reportImage ? '기록 수정' : '✏️ 기록하기';
     rb.onclick = () => openEditModal(item.id);
@@ -1489,12 +1651,13 @@ const G = {
   eng: i => i.engineer ? i.engineer + ' 엔지니어' : '', engTel: i => i.engPhone ? `[ ${i.engPhone} ]` : ''
 };
 const STAGE_GUIDE = {
-  '문의접수': { title:'■ 문의 접수 안내', rows:[['고객명',G.name],['연락처',G.phone],['요청사항',G.req],['지역/주소',G.addr]], footer:'※ 접수 확인 후 담당자가 연락드리겠습니다.' },
-  '견적': { title:'■ 견적 안내', rows:[['고객명',G.name],['연락처',G.phone],['방문주소',G.addr],['요청사항',G.req],['견적금액',G.cost],['담당기사',G.eng],['비고',G.engTel]], footer:'※ 견적은 현장 상황에 따라 달라질 수 있습니다.' },
-  '방문 및 실측': { title:'■ 방문 및 실측 안내', rows:[['고객명',G.name],['연락처',G.phone],['방문일시',G.visit],['방문주소',G.addr],['요청사항',G.req],['처리비용',G.cost],['담당기사',G.eng],['비고',G.engTel]], footer:'※ 방문 당일 문자나 연락드리고 방문 하겠습니다.' },
+  '방문실측': { title:'■ 방문 실측 안내', rows:[['고객명',G.name],['연락처',G.phone],['방문일시',G.visit],['방문주소',G.addr],['요청사항',G.req],['처리비용',G.cost],['담당기사',G.eng],['비고',G.engTel]], footer:'※ 방문 당일 문자나 연락드리고 방문 하겠습니다.' },
+  '방문시공': { title:'■ 방문 시공 안내', rows:[['고객명',G.name],['연락처',G.phone],['시공일시',G.visit],['시공주소',G.addr],['시공내용',G.req],['처리비용',G.cost],['담당기사',G.eng],['비고',G.engTel]], footer:'※ 방문 당일 문자나 연락드리고 방문 하겠습니다.' },
+  '견적제출': { title:'■ 견적 안내', rows:[['고객명',G.name],['연락처',G.phone],['방문주소',G.addr],['요청사항',G.req],['견적금액',G.cost],['담당기사',G.eng],['비고',G.engTel]], footer:'※ 견적은 현장 상황에 따라 달라질 수 있습니다.' },
   '계약': { title:'■ 계약 안내', rows:[['고객명',G.name],['연락처',G.phone],['시공주소',G.addr],['계약내용',G.req],['최종 계약금액',G.total],['계약금',G.dep],['잔금',G.bal],['담당기사',G.eng],['비고',G.engTel]], footer:'※ 시공 일정은 별도로 안내드리겠습니다.' },
-  '시공 중': { title:'■ 시공 안내', rows:[['고객명',G.name],['연락처',G.phone],['시공일시',G.visit],['시공주소',G.addr],['시공내용',G.req],['담당기사',G.eng],['비고',G.engTel]], footer:'※ 시공 중 불편을 드려 죄송합니다. 안전하게 마무리하겠습니다.' },
-  '처리완료': { title:'■ 처리 완료 안내', rows:[['고객명',G.name],['연락처',G.phone],['처리일시',G.visit],['처리주소',G.addr],['처리내용',G.req],['처리비용',G.cost],['담당기사',G.eng],['비고',G.engTel]], footer:'※ 이용해 주셔서 감사합니다. 하자 문의는 언제든 연락 주세요.' }
+  '공사진행': { title:'■ 공사 진행 안내', rows:[['고객명',G.name],['연락처',G.phone],['시공일시',G.visit],['시공주소',G.addr],['시공내용',G.req],['담당기사',G.eng],['비고',G.engTel]], footer:'※ 공사 중 불편을 드려 죄송합니다. 안전하게 마무리하겠습니다.' },
+  '처리완료': { title:'■ 처리 완료 안내', rows:[['고객명',G.name],['연락처',G.phone],['처리일시',G.visit],['처리주소',G.addr],['처리내용',G.req],['처리비용',G.cost],['담당기사',G.eng],['비고',G.engTel]], footer:'※ 이용해 주셔서 감사합니다. 하자 문의는 언제든 연락 주세요.' },
+  '보류 및 재방문': { title:'■ 재방문 안내', rows:[['고객명',G.name],['연락처',G.phone],['재방문일시',G.visit],['방문주소',G.addr],['요청사항',G.req],['담당기사',G.eng],['비고',G.engTel]], footer:'※ 일정이 확정되면 다시 연락드리겠습니다.' }
 };
 let cardFile = '';
 function openCardModal(id) {
@@ -1578,7 +1741,7 @@ $('scheduleForm').addEventListener('submit', e => {
     data.reportAt = nowStr();
   }
   if (editingId) {
-    schedules = schedules.map(s => s.id === editingId ? { ...data, id: editingId, reportAt: data.report ? (s.report !== data.report ? nowStr() : s.reportAt) : '', reportImageLink: data.reportImageLink || s.reportImageLink } : s);
+    schedules = schedules.map(s => s.id === editingId ? { ...s, ...data, id: editingId, reportAt: data.report ? (s.report !== data.report ? nowStr() : s.reportAt) : '', reportImageLink: data.reportImageLink || s.reportImageLink } : s);
   } else {
     const dup = schedules.some(s => Object.keys(FIELD_IDS).every(k => s[k] === data[k]));
     if (dup && !confirm('똑같은 내용이 이미 등록되어 있습니다. 그래도 추가할까요?')) return;
@@ -1835,7 +1998,7 @@ function parseText(raw) {
 
 /* ===== 엑셀 읽기 ===== */
 const HEADER_RULES = [
-  ['skip', /기록일시|기록시각/], ['depositPaid', /계약금.*입금/], ['balancePaid', /잔금.*입금/], ['total', /^(최종)?계약금액$|^최종금액$|^총금액$/], ['deposit', /^계약금$/], ['balance', /^잔금$/], ['engPhone', /기사.*(연락|전화|번호)/], ['engineer', /담당|기사|엔지니어/],
+  ['skip', /기록일시|기록시각/], ['receiptIssued', /증빙발급|발급여부|발급완료/], ['receiptType', /증빙|현금영수증|세금계산서/], ['source', /수주처|수주|유입경로|유입|채널/], ['depositPaid', /계약금.*입금/], ['balancePaid', /잔금.*입금/], ['total', /^(최종)?계약금액$|^최종금액$|^총금액$/], ['deposit', /^계약금$/], ['balance', /^잔금$/], ['engPhone', /기사.*(연락|전화|번호)/], ['engineer', /담당|기사|엔지니어/],
   ['phone', /연락처|전화|휴대/], ['visit', /일시|일자|날짜|방문일/], ['note', /주소/], ['report', /기록/],
   ['request', /요청|내용|작업/], ['cost', /비용|금액/], ['status', /상태/], ['customer', /고객|성함|이름/]
 ];
@@ -1877,7 +2040,8 @@ function phoneStr(v) {
 }
 function cellVal(k, v) {
   if (k === 'visit') return toVisit(v);
-  if (k === 'depositPaid' || k === 'balancePaid') return /^(입금|완료|y|o|true|1|✔|✅)/i.test(cellStr(v));
+  if (k === 'status') return normStage(cellStr(v));
+  if (k === 'depositPaid' || k === 'balancePaid' || k === 'receiptIssued') return /^(입금|완료|발급|y|o|true|1|✔|✅)/i.test(cellStr(v));
   if (k === 'phone' || k === 'engPhone') return phoneStr(v);
   if ((k === 'cost' || k === 'total' || k === 'deposit' || k === 'balance') && typeof v === 'number') return v.toLocaleString('ko-KR');
   return cellStr(v);
@@ -1996,15 +2160,15 @@ function downloadBlob(blob, name) {
 }
 function exportExcel() {
   if (!schedules.length) { alert('저장할 스케줄이 없습니다.'); return; }
-  const head = ['진행 상태','고객명','연락처','방문 일시','요청 사항','처리 비용','최종 계약금액','계약금','계약금 입금','잔금','잔금 입금','담당 기사','기사 연락처','방문 주소','방문 후 기록','기록 일시','현장 사진 링크'];
+  const head = ['진행 상태','수주처','수주처 주소','고객명','연락처','방문 일시','요청 사항','처리 비용','최종 계약금액','계약금','계약금 입금','잔금','잔금 입금','증빙 종류','증빙 발급','담당 기사','기사 연락처','방문 주소','방문 후 기록','기록 일시','현장 사진 링크'];
   const payTxt = (s, k) => s[k + 'Paid'] ? '입금완료' + ([s[k + 'PaidAt'], s[k + 'Method']].filter(Boolean).length ? ' (' + [s[k + 'PaidAt'], s[k + 'Method']].filter(Boolean).join(' · ') + ')' : '') : (s[k] ? '미입금' : '');
   const rows = [...schedules].sort((a, b) => (a.visit || '9999').localeCompare(b.visit || '9999'))
-    .map(s => [s.status, s.customer, s.phone, fmtDate(s.visit), s.request, s.cost, s.total, s.deposit, payTxt(s,'deposit'), s.balance, payTxt(s,'balance'), s.engineer, s.engPhone, s.note, s.report, s.reportAt, s.reportImageLink || ''].map(v => v || ''));
+    .map(s => [s.status, s.source, s.sourceUrl, s.customer, s.phone, fmtDate(s.visit), s.request, s.cost, s.total, s.deposit, payTxt(s,'deposit'), s.balance, payTxt(s,'balance'), s.receiptType, s.receiptType ? (s.receiptIssued ? '발급완료' + (s.receiptDate ? ' (' + s.receiptDate + ')' : '') : '미발급') : '', s.engineer, s.engPhone, s.note, s.report, s.reportAt, s.reportImageLink || ''].map(v => v || ''));
   const name = '현장스케줄_' + todayStr();
   if (typeof XLSX !== 'undefined') {
     const wb = XLSX.utils.book_new();
     const ws = XLSX.utils.aoa_to_sheet([head, ...rows]);
-    ws['!cols'] = [12,10,15,17,36,22,14,12,18,12,18,10,15,36,50,17,30].map(w => ({ wch: w }));
+    ws['!cols'] = [12,10,24,10,15,17,36,22,14,12,18,12,18,12,18,10,15,36,50,17,30].map(w => ({ wch: w }));
     XLSX.utils.book_append_sheet(wb, ws, '스케줄');
     if (employees.length) {
       const we = XLSX.utils.aoa_to_sheet([['이름','연락처'], ...employees.map(e => [e.name, e.phone || ''])]);
@@ -2084,6 +2248,7 @@ function agendaItem(s) {
   } else { t.textContent = '시간\n미정'; t.style.fontSize = '.7rem'; t.style.color = '#999'; t.style.whiteSpace = 'pre'; }
   const main = document.createElement('span'); main.className = 'ag-main';
   const nm = document.createElement('div'); nm.className = 'ag-name'; nm.textContent = s.customer || '이름 없음';
+  if (s.source) nm.appendChild(srcTag(s.source));
   const sub = document.createElement('div'); sub.className = 'ag-sub';
   sub.textContent = [s.request, s.note, s.engineer ? '👷 ' + s.engineer : ''].filter(Boolean).join(' · ') || '-';
   main.append(nm, sub);
@@ -2161,7 +2326,7 @@ function renderSearch() {
   if (!calQ) return;
   const words = calQ.toLowerCase().split(/\s+/).filter(Boolean);
   const hits = schedules.filter(s => {
-    const hay = [s.customer, s.phone, (s.phone || '').replace(/\D/g, ''), s.request, s.note, s.engineer, s.engPhone, s.cost, s.report, s.status].join(' ').toLowerCase();
+    const hay = [s.customer, s.phone, (s.phone || '').replace(/\D/g, ''), s.request, s.note, s.engineer, s.engPhone, s.cost, s.report, s.status, s.source].join(' ').toLowerCase();
     return words.every(w => hay.includes(w));
   });
   const dated = hits.filter(s => visitDay(s)).sort(byVisitDesc), nodate = hits.filter(s => !visitDay(s));
@@ -2200,19 +2365,30 @@ function driveId(u) {
   const m = u.match(/\/d\/([\w-]{10,})/) || u.match(/[?&]id=([\w-]{10,})/);
   return m ? m[1] : '';
 }
-const hasPhoto = s => !!(localPhoto(s) || safeUrl(s.reportImageLink));
-function photoFileName(s, ext) {
+/* 사진 목록: 아직 올리지 않은 이 기기 사진 + 드라이브 사진 (최신 순) */
+function photoList(s) {
+  const out = [], data = localPhoto(s);
+  if (data) out.push({ data, src: data });
+  const ids = Array.isArray(s.reportImageIds) ? s.reportImageIds.filter(Boolean) : [];
+  const one = driveId(s.reportImageLink);
+  if (!ids.length && one) ids.push(one);
+  [...ids].reverse().forEach(id => out.push({ id, src: `https://drive.google.com/thumbnail?id=${id}&sz=w1600` }));
+  return out;
+}
+const hasPhoto = s => !!(photoList(s).length || safeUrl(s.reportImageLink));
+function photoFileName(s, ext, n) {
   const nm = (s.customer || '고객').replace(/[\\/:*?"<>|\s]+/g, '');
   const d = (s.visit || '').slice(0, 10) || todayStr();
-  return `현장사진_${nm}_${d}.${ext || 'jpg'}`;
+  return `현장사진_${nm}_${d}${n ? '_' + n : ''}.${ext || 'jpg'}`;
 }
-async function downloadPhoto(s) {
-  const data = localPhoto(s);
-  if (data) {
-    const mime = (data.match(/^data:([^;]+)/) || [])[1] || 'image/jpeg';
+async function downloadPhoto(s, idx) {
+  const list = photoList(s), p = list[idx || 0];
+  if (!p) { if (safeUrl(s.reportImageLink)) window.open(safeUrl(s.reportImageLink), '_blank', 'noopener'); return; }
+  if (p.data) {
+    const mime = (p.data.match(/^data:([^;]+)/) || [])[1] || 'image/jpeg';
     const ext = (mime.split('/')[1] || 'jpg').replace('jpeg', 'jpg');
-    const blob = await (await fetch(data)).blob();
-    const file = new File([blob], photoFileName(s, ext), { type: mime });
+    const blob = await (await fetch(p.data)).blob();
+    const file = new File([blob], photoFileName(s, ext, list.length > 1 ? (idx || 0) + 1 : 0), { type: mime });
     // 휴대폰: 공유 창에서 '이미지 저장'으로 사진첩에 바로 저장
     if (isMobile() && navigator.canShare && navigator.canShare({ files: [file] })) {
       try { await navigator.share({ files: [file], title: file.name }); return; }
@@ -2221,16 +2397,74 @@ async function downloadPhoto(s) {
     downloadBlob(blob, file.name);
     return;
   }
-  // 드라이브에만 있는 사진: 드라이브 다운로드 주소로 엶
-  const id = driveId(s.reportImageLink);
-  window.open(id ? `https://drive.google.com/uc?export=download&id=${id}` : safeUrl(s.reportImageLink), '_blank', 'noopener');
+  // 드라이브 사진: 드라이브 다운로드 주소로 엶
+  window.open(`https://drive.google.com/uc?export=download&id=${p.id}`, '_blank', 'noopener');
 }
-function photoDlButton(s) {
+function photoDlButton(s, idx) {
   const b = document.createElement('button');
   b.type = 'button'; b.className = 'btn btn-sm btn-dl'; b.textContent = '📥 사진 다운로드';
-  b.onclick = ev => { ev.stopPropagation(); downloadPhoto(s).catch(err => { console.error(err); alert('사진을 내려받지 못했습니다. 다시 시도해 주세요.'); }); };
+  b.onclick = ev => { ev.stopPropagation(); downloadPhoto(s, idx).catch(err => { console.error(err); alert('사진을 내려받지 못했습니다. 다시 시도해 주세요.'); }); };
   return b;
 }
+
+/* 대표 사진 주소 (가장 최근 사진) */
+function photoSrc(s) { const l = photoList(s); return l.length ? l[0].src : ''; }
+/* 작은 사진 (누르면 크게 보기) */
+function photoThumb(s) {
+  const list = photoList(s); if (!list.length) return null;
+  const wrap = document.createElement('div'); wrap.style.cssText = 'display:flex;gap:4px;flex-wrap:wrap;align-items:center;';
+  list.slice(0, 3).forEach((p, i) => {
+    const im = document.createElement('img'); im.className = 'thumb'; im.src = p.src; im.alt = '현장 사진'; im.title = '눌러서 크게 보기';
+    im.onerror = () => im.remove();
+    im.onclick = ev => { ev.stopPropagation(); openPhoto(s.id, i); };
+    wrap.appendChild(im);
+  });
+  if (list.length > 3) {
+    const m = document.createElement('span'); m.style.cssText = 'font-size:.75rem;font-weight:bold;color:#555;cursor:pointer;';
+    m.textContent = `+${list.length - 3}장`; m.onclick = ev => { ev.stopPropagation(); openPhoto(s.id, 3); };
+    wrap.appendChild(m);
+  }
+  return wrap;
+}
+/* 사진 크게 보기 팝업 (여러 장이면 ◀ ▶ 로 넘김) */
+let pmId = null, pmIdx = 0;
+function openPhoto(id, idx) {
+  const s = schedules.find(x => x.id === id);
+  if (!s || !hasPhoto(s)) return;
+  pmId = id; pmIdx = idx || 0;
+  showPhotoAt();
+  $('photoModal').classList.add('show');
+}
+function showPhotoAt() {
+  const s = schedules.find(x => x.id === pmId); if (!s) { closePhoto(); return; }
+  const list = photoList(s);
+  if (pmIdx >= list.length) pmIdx = Math.max(0, list.length - 1);
+  const cnt = list.length > 1 ? ` (${pmIdx + 1}/${list.length})` : '';
+  $('pmTitle').textContent = `📷 ${s.customer || '고객'} 현장 사진${visitDay(s) ? ' · ' + dateLabel(visitDay(s)) : ''}${cnt}`;
+  const im = $('pmImg'), msg = $('pmMsg'), p = list[pmIdx];
+  msg.style.display = 'none'; im.style.display = '';
+  im.onerror = () => { im.style.display = 'none'; msg.style.display = 'block'; };
+  if (p) im.src = p.src; else im.onerror();
+  const btns = $('pmBtns'); btns.innerHTML = '';
+  const mk = (cls, text, fn) => { const b = document.createElement('button'); b.type = 'button'; b.className = 'btn btn-sm ' + cls; b.textContent = text; b.onclick = fn; btns.appendChild(b); return b; };
+  if (list.length > 1) mk('btn-reset', '◀ 이전', () => { pmIdx = (pmIdx - 1 + list.length) % list.length; showPhotoAt(); });
+  if (p) { const dl = photoDlButton(s, pmIdx); dl.className = 'btn btn-save'; btns.appendChild(dl); }
+  if (list.length > 1) mk('btn-reset', '다음 ▶', () => { pmIdx = (pmIdx + 1) % list.length; showPhotoAt(); });
+  if (safeUrl(s.reportImageLink)) {
+    const a = document.createElement('a'); a.className = 'btn btn-card btn-sm'; a.style.textDecoration = 'none'; a.style.padding = '7px 14px';
+    a.href = safeUrl(s.reportImageLink); a.target = '_blank'; a.rel = 'noopener'; a.textContent = '🔗 드라이브 폴더';
+    btns.appendChild(a);
+  }
+  mk('btn-reset', '닫기', closePhoto);
+}
+function closePhoto() { pmId = null; $('photoModal').classList.remove('show'); $('pmImg').removeAttribute('src'); }
+document.addEventListener('keydown', e => {
+  if (!$('photoModal').classList.contains('show')) return;
+  if (e.key === 'Escape') closePhoto();
+  const n = pmId && photoList(schedules.find(x => x.id === pmId) || {}).length;
+  if (n > 1 && e.key === 'ArrowLeft') { pmIdx = (pmIdx - 1 + n) % n; showPhotoAt(); }
+  if (n > 1 && e.key === 'ArrowRight') { pmIdx = (pmIdx + 1) % n; showPhotoAt(); }
+});
 
 /* ===== 일정 상세 화면 ===== */
 function openDetail(id) {
@@ -2271,13 +2505,31 @@ function renderDetail() {
   };
   const tel = p => (p || '').replace(/[^\d+]/g, '');
 
+  if (hasPhoto(s)) {
+    const v = row('현장 사진', ''); v.textContent = '';
+    const src = photoSrc(s);
+    if (src) {
+      const im = document.createElement('img'); im.className = 'detail-photo'; im.src = src; im.alt = '현장 사진'; im.title = '눌러서 크게 보기';
+      im.onerror = () => { im.remove(); hint.textContent = '미리보기를 불러오지 못했습니다. [드라이브에서 보기]를 눌러 주세요.'; };
+      im.onclick = () => openPhoto(s.id);
+      v.appendChild(im);
+    }
+    const hint = document.createElement('div'); hint.className = 'photo-hint'; const pc = photoList(s).length; hint.textContent = src ? `👆 사진을 누르면 크게 볼 수 있습니다${pc > 1 ? ` (전체 ${pc}장, ◀ ▶로 넘겨 보기)` : ''}` : '';
+    v.appendChild(hint);
+    const q2 = document.createElement('div'); q2.className = 'quick-btns';
+    const dl = photoDlButton(s); dl.className = 'qbtn call'; q2.appendChild(dl);
+    if (src) q2.appendChild(Object.assign(document.createElement('button'), { type:'button', className:'qbtn', textContent:'🔍 크게 보기', onclick: () => openPhoto(s.id) }));
+    if (safeUrl(s.reportImageLink)) q2.appendChild(qa('', safeUrl(s.reportImageLink), '🔗 드라이브에서 보기', true));
+    v.appendChild(q2);
+  }
   row('방문 일시', visitDay(s) ? `${dateLabel(visitDay(s))}${visitTime(s) ? ' ' + ampm(visitTime(s)) : ' (시간 미정)'}` : '방문일 미정');
+  { const so = sourceOpenLink(s, 'qbtn'); if (so) so.style.cssText = 'background:#f3f0ff;border-color:#b197fc;color:#5f3dc4;'; row('수주처', s.source || '미지정', so ? [so] : null); }
   row('고객 연락처', s.phone, tel(s.phone) ? [qa('call', 'tel:' + tel(s.phone), '📞 전화'), qa('sms', 'sms:' + tel(s.phone), '💬 문자')] : null);
   row('요청 사항', s.request);
   const addr = (s.note || '').trim(), q = encodeURIComponent(addr);
   row('방문 주소', addr, addr ? [qa('naver', 'https://map.naver.com/p/search/' + q, '🗺 네이버지도', true), qa('kakao', 'https://map.kakao.com/link/search/' + q, '🗺 카카오맵', true)] : null);
   row('처리 비용', s.cost);
-  if (s.total || s.deposit || s.balance) {
+  if (s.total || s.deposit || s.balance || s.receiptType) {
     const lines = [];
     if (s.total) lines.push('최종 ' + won(s.total));
     if (s.deposit) lines.push(`계약금 ${won(s.deposit)} ${s.depositPaid ? '✅ 입금' + (s.depositPaidAt ? ' (' + s.depositPaidAt + ')' : '') : '⬜ 미입금'}`);
@@ -2287,26 +2539,11 @@ function renderDetail() {
       const remain = t - ((s.depositPaid ? toNum(s.deposit) : 0) + (s.balancePaid ? toNum(s.balance) : 0));
       lines.push(remain <= 0 ? '완납 ✅' : '미수금 ' + remain.toLocaleString('ko-KR') + '원');
     }
+    if (s.receiptType) lines.push('🧾 ' + receiptText(s));
     row('입금 현황', lines.join('\n'));
   }
   row('담당 기사', [s.engineer || '미배정', s.engPhone].filter(Boolean).join('  '), tel(s.engPhone) ? [qa('call', 'tel:' + tel(s.engPhone), '📞 기사 전화')] : null);
   row('방문 후 기록', s.report ? s.report + (s.reportAt ? `\n(${s.reportAt} 기록)` : '') : '');
-  if (hasPhoto(s)) {
-    const v = row('현장 사진', '');
-    v.textContent = '';
-    const img = localPhoto(s), fid = driveId(s.reportImageLink);
-    const src = img || (fid ? `https://drive.google.com/thumbnail?id=${fid}&sz=w1000` : '');
-    if (src) {
-      const im = document.createElement('img'); im.className = 'detail-photo'; im.src = src; im.alt = '현장 사진';
-      im.onerror = () => im.remove();   // 미리보기를 못 불러오면 숨김 (버튼으로는 계속 열 수 있음)
-      v.appendChild(im);
-    }
-    const q2 = document.createElement('div'); q2.className = 'quick-btns';
-    const dl = photoDlButton(s); dl.classList.remove('btn', 'btn-sm'); dl.className = 'qbtn call'; q2.appendChild(dl);
-    if (safeUrl(s.reportImageLink)) q2.appendChild(qa('', safeUrl(s.reportImageLink), '🔗 드라이브에서 보기', true));
-    v.appendChild(q2);
-  }
-
   const btns = $('detailBtns'); btns.innerHTML = '';
   const mkBtn = (cls, text, fn) => { const b = document.createElement('button'); b.type = 'button'; b.className = 'btn btn-sm ' + cls; b.textContent = text; b.onclick = fn; btns.appendChild(b); };
   mkBtn('btn-edit', '✏️ 수정', () => { const id = s.id; detailReturn = id; closeDetail(); openEditModal(id); });
@@ -2337,6 +2574,8 @@ document.querySelectorAll('.modal:not(#editModal)').forEach(modal => {
   });
 });
 fillStageOptions($('stage'), STAGES[0], false);
+fillSourceSelect($('sourceSel'), $('source'), '');
+renderSiteLinks();
 $('stage').addEventListener('change', () => { $('stage').style.background = STAGE_COLORS[$('stage').value] || '#fff'; });
 updateServerState();
 renderEmp();
