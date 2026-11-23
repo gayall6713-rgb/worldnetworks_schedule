@@ -232,6 +232,19 @@ body.role-view #viewNotice{display:block}
   .calendar-header button{padding:6px 10px;font-size:.82rem}
   .desk-only{display:none}
 }
+
+/* ===== 카톡 알림 바 ===== */
+#notifyBar{position:fixed;left:50%;bottom:16px;transform:translateX(-50%);width:min(460px,94vw);background:#fff;border-radius:16px;box-shadow:0 10px 32px rgba(0,0,0,.28);z-index:450;display:none;overflow:hidden;border:2px solid #fee500}
+#notifyBar.show{display:block}
+#notifyBar .nb-head{background:#fee500;color:#3c1e1e;font-weight:bold;padding:10px 14px;display:flex;justify-content:space-between;align-items:center;font-size:.95rem}
+#notifyBar .nb-x{background:none;border:none;font-size:1.3rem;cursor:pointer;color:#3c1e1e;line-height:1;padding:0 4px}
+#notifyBar pre{margin:0;padding:10px 14px;max-height:34vh;overflow:auto;white-space:pre-wrap;font-family:inherit;font-size:.85rem;color:#343a40;background:#fffdf0}
+#notifyBar .nb-btns{display:flex;gap:8px;padding:10px 14px 14px}
+#notifyBar .nb-btns button{flex:1;border:none;border-radius:10px;padding:12px 8px;font-weight:bold;font-size:.95rem;cursor:pointer;box-shadow:0 3px 0 rgba(0,0,0,.18)}
+#notifyBar .nb-btns button:active{transform:translateY(2px);box-shadow:0 1px 0 rgba(0,0,0,.18)}
+#notifyBar .nb-kakao{background:#fee500;color:#3c1e1e}
+#notifyBar .nb-copy{background:#e9ecef;color:#343a40;flex:0 0 34%!important}
+body.locked #notifyBar{display:none!important}
 </style>
 </head>
 <body class="locked">
@@ -547,6 +560,11 @@ body.role-view #viewNotice{display:block}
   </div>
 </div>
 
+<div id="notifyBar" role="dialog" aria-label="카톡 알림 보내기">
+  <div class="nb-head"><span id="nbTitle">📢 엔지니어에게 알릴까요?</span><button class="nb-x" onclick="closeNotify()" aria-label="닫기">✕</button></div>
+  <pre id="nbText"></pre>
+  <div class="nb-btns"><button class="nb-kakao" onclick="sendNotify()">💬 카톡으로 보내기</button><button class="nb-copy" onclick="copyNotify()">📋 복사</button></div>
+</div>
 <script src="https://cdn.jsdelivr.net/npm/tesseract.js@5.1.1/dist/tesseract.min.js"></script>
 <script src="https://cdn.jsdelivr.net/npm/xlsx@0.18.5/dist/xlsx.full.min.js"></script>
 <script src="https://cdn.jsdelivr.net/npm/html2canvas@1.4.1/dist/html2canvas.min.js"></script>
@@ -974,6 +992,7 @@ async function boot() {
 }
 
 async function save() {
+  checkNotify();
   try { localStorage.setItem(STORE_KEY, JSON.stringify(schedules)); } catch (e) {}
   renderCalendar();
   render();
@@ -986,7 +1005,7 @@ async function save() {
     const saved = await api('save', { schedules });
     if (!Array.isArray(saved)) throw new Error((saved && saved.error) || '저장 응답 형식 오류');
     if (!resync) {
-      schedules = saved; ensureIds();
+      schedules = saved; ensureIds(); takeNotifySnap();
       try { localStorage.setItem(STORE_KEY, JSON.stringify(schedules)); } catch (e) {}
       renderCalendar(); render(); refreshPopups();
     }
@@ -1009,10 +1028,11 @@ async function loadFromServer() {
   try {
     const data = await api('list');
     if (Array.isArray(data) && (data.length > 0 || !schedules.length || isAdmin())) {
-      schedules = data; ensureIds();
+      schedules = data; ensureIds(); takeNotifySnap();
       localStorage.setItem(STORE_KEY, JSON.stringify(schedules));
       renderCalendar(); render(); refreshPopups();
       showSync("✅ 최신 상태입니다");
+      openFromLink();
     }
   } catch (err) { if (err.message !== 'AUTH') showSync("⚠️ 인터넷 연결 불안정"); }
 }
@@ -3136,6 +3156,124 @@ $('empBox').open = employees.length === 0;
 restoreDraft();
 renderCalendar();
 render();
+
+/* ===== 카톡 알림: 일정 변경·계약 시 엔지니어 단톡방에 알리기 =====
+   - 카카오 JavaScript 키를 넣으면 카카오톡 공유창이 바로 열립니다.
+   - 키가 비어 있으면 휴대폰 '공유하기' 창이 열리고, 거기서 카카오톡을 고르면 됩니다.
+   - 금액은 협력업체도 보기 때문에 메시지에 넣지 않습니다. */
+const KAKAO_JS_KEY = '';   // ← 카카오 개발자 사이트의 'JavaScript 키'를 따옴표 안에 붙여넣기
+const APP_URL = 'https://gayall6713-rgb.github.io/worldnetworks_schedule/';
+let notifySnap = {};
+let notifyItems = [];
+function takeNotifySnap() {
+  notifySnap = {};
+  schedules.forEach(x => { if (x && x.id) notifySnap[x.id] = { status: x.status || '', visit: x.visit || '', installDate: x.installDate || '' }; });
+}
+takeNotifySnap();
+const WD = ['일','월','화','수','목','금','토'];
+function nbDate(v) {
+  if (!v) return '미정';
+  const m = String(v).match(/^(\d{4})-(\d{2})-(\d{2})(?:T(\d{2}):(\d{2}))?/);
+  if (!m) return String(v);
+  const d = new Date(+m[1], +m[2] - 1, +m[3]);
+  return `${+m[2]}/${+m[3]}(${WD[d.getDay()]})` + (m[4] ? ` ${m[4]}:${m[5]}` : '');
+}
+/* save()가 불릴 때마다 바뀐 내용을 찾아냄 */
+function checkNotify() {
+  if (!me || !canEdit()) { takeNotifySnap(); return; }
+  const found = [];
+  schedules.forEach(x => {
+    const old = notifySnap[x.id];
+    const kinds = [];
+    if (x.status === '계약' && (!old || old.status !== '계약')) kinds.push('contract');
+    if (old && old.visit && (x.visit || '') !== old.visit) kinds.push('visit');
+    if (old && old.installDate && (x.installDate || '') !== old.installDate) kinds.push('install');
+    // 시공일 바꾸면 자동 생성된 시공 일정도 같이 바뀌므로 원래 일정 쪽만 알림
+    if (x.installFor && kinds.length && kinds.every(k => k === 'visit')) {
+      const par = schedules.find(p => p.id === x.installFor);
+      const po = par && notifySnap[par.id];
+      if (po && (po.installDate || '') !== (par.installDate || '')) return;
+    }
+    if (kinds.length) found.push({ id: x.id, kinds, old: old || {} });
+  });
+  takeNotifySnap();
+  if (!found.length || found.length > 10) return;   // 엑셀 대량 등록 등은 제외
+  found.forEach(f => { notifyItems = notifyItems.filter(n => n.id !== f.id); notifyItems.push(f); });
+  showNotify();
+}
+function notifyText() {
+  const parts = notifyItems.map(n => {
+    const x = schedules.find(s => s.id === n.id);
+    if (!x) return '';
+    const head = n.kinds.includes('contract') ? '✅ 계약 확정' : '📅 일정 변경';
+    const L = [`${head} - ${x.customer || '고객'}${x.source ? ' [' + x.source + ']' : ''}`];
+    if (x.note) L.push(`📍 ${x.note}`);
+    if (n.kinds.includes('visit')) L.push(`🕘 방문: ${nbDate(n.old.visit)} → ${nbDate(x.visit)}`);
+    else if (x.visit) L.push(`🕘 방문: ${nbDate(x.visit)}`);
+    if (n.kinds.includes('install')) L.push(`🔨 시공: ${nbDate(n.old.installDate)} → ${nbDate(x.installDate)}`);
+    else if (x.installDate) L.push(`🔨 시공: ${nbDate(x.installDate)}`);
+    if (x.request) L.push(`📝 ${String(x.request).slice(0, 60)}`);
+    L.push(`👷 담당: ${x.engineer || '미정'}`);
+    return L.join('\n');
+  }).filter(Boolean);
+  return `[월드네트웍스 일정 알림]\n\n${parts.join('\n\n')}`;
+}
+function showNotify() {
+  if (!notifyItems.length) return closeNotify();
+  $('nbTitle').textContent = `📢 엔지니어에게 알릴까요? (${notifyItems.length}건)`;
+  $('nbText').textContent = notifyText() + '\n\n▶ 앱에서 보기: ' + notifyLink();
+  $('notifyBar').classList.add('show');
+}
+function closeNotify() { notifyItems = []; $('notifyBar').classList.remove('show'); }
+function notifyLink() { return notifyItems.length === 1 ? `${APP_URL}?open=${encodeURIComponent(notifyItems[0].id)}` : APP_URL; }
+let kakaoReady = null;
+function loadKakao() {
+  if (!KAKAO_JS_KEY) return Promise.resolve(false);
+  if (kakaoReady) return kakaoReady;
+  kakaoReady = new Promise(res => {
+    const sc = document.createElement('script');
+    sc.src = 'https://t1.kakaocdn.net/kakao_js_sdk/2.8.5/kakao.min.js'; sc.crossOrigin = 'anonymous';
+    sc.onload = () => { try { if (!Kakao.isInitialized()) Kakao.init(KAKAO_JS_KEY); res(true); } catch (e) { res(false); } };
+    sc.onerror = () => { kakaoReady = null; res(false); };
+    document.head.appendChild(sc);
+  });
+  return kakaoReady;
+}
+loadKakao();
+async function sendNotify() {
+  const text = notifyText(), link = notifyLink();
+  if (await loadKakao()) {
+    try {
+      // 카카오 공유 '텍스트형'은 200자까지라 길면 줄이고 나머지는 앱에서 보게 함
+      const short = text.length > 195 ? text.slice(0, 180) + '…\n(자세한 내용은 앱에서)' : text;
+      Kakao.Share.sendDefault({ objectType: 'text', text: short, link: { mobileWebUrl: link, webUrl: link }, buttonTitle: '앱에서 보기' });
+      closeNotify(); return;
+    } catch (e) { /* 실패하면 아래 공유하기로 */ }
+  }
+  const full = text + '\n\n▶ 앱에서 보기: ' + link;
+  if (navigator.share) {
+    try { await navigator.share({ text: full }); closeNotify(); return; }
+    catch (e) { if (e && e.name === 'AbortError') return; }
+  }
+  copyNotify();
+}
+async function copyNotify() {
+  const full = notifyText() + '\n\n▶ 앱에서 보기: ' + notifyLink();
+  try { await navigator.clipboard.writeText(full); }
+  catch (e) {
+    const ta = document.createElement('textarea'); ta.value = full; document.body.appendChild(ta); ta.select();
+    try { document.execCommand('copy'); } catch (_) {} ta.remove();
+  }
+  closeNotify();
+  showSync('✅ 복사했습니다 — 카톡 단톡방에 붙여넣기 하세요');
+}
+/* 카톡 메시지의 [앱에서 보기]로 들어오면 해당 일정 상세를 열어 줌 */
+function openFromLink() {
+  const id = new URLSearchParams(location.search).get('open');
+  if (!id) return;
+  history.replaceState(null, '', location.pathname);
+  if (schedules.some(x => x.id === id)) openDetail(id);
+}
 </script>
 <script>
 // ===== 휴대폰 앱 설치 (PWA) =====
