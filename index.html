@@ -19,7 +19,7 @@
 body{font-family:'Malgun Gothic',sans-serif;background:var(--bg-color);margin:0;padding:15px;color:var(--text-main)}
 .container{max-width:1000px;margin:0 auto;background:var(--card-bg);padding:20px;border-radius:12px;box-shadow:0 4px 12px rgba(0,0,0,.08)}
 h2{text-align:center;font-size:1.4rem;margin-bottom:20px}
-#serverBar{display:flex;flex-wrap:wrap;align-items:center;justify-content:flex-end;gap:8px;margin-bottom:10px;font-size:.82rem}
+#serverBar{display:flex;flex-wrap:wrap;align-items:center;justify-content:flex-end;gap:8px;gap:8px;margin-bottom:10px;font-size:.82rem}
 #serverState{display:none}
 .btn-dl{background:linear-gradient(#ffa94d,#f76707);--edge:#a84300;color:#fff}
 .tab-menu{display:flex;background:#e9ecef;border-radius:10px;padding:4px;margin-bottom:20px}
@@ -120,6 +120,26 @@ select{width:100%;padding:10px;border:1px solid #ddd;border-radius:4px;box-sizin
 .list-scroll.dragging{cursor:grabbing;user-select:none}
 .list-scroll thead th{position:sticky;top:0;z-index:2;box-shadow:inset 0 -1px 0 #ddd}
 .name-cell{cursor:pointer;color:var(--primary);font-weight:bold;text-decoration:underline;white-space:nowrap}
+body.locked .container,body.locked #syncStatus{display:none!important}
+#loginScreen{position:fixed;inset:0;background:linear-gradient(160deg,#1e3a8a,#2563eb);display:none;align-items:center;justify-content:center;padding:16px;z-index:500}
+body.locked #loginScreen{display:flex}
+.login-box{background:#fff;border-radius:16px;padding:26px 22px;width:100%;max-width:360px;box-shadow:0 12px 40px rgba(0,0,0,.35);box-sizing:border-box}
+.login-box h3{margin:0 0 4px;text-align:center;font-size:1.25rem}
+.login-box .sub{text-align:center;color:#666;font-size:.85rem;margin:0 0 18px}
+.login-box input[type=text],.login-box input[type=password]{width:100%;padding:13px;border:1.5px solid #ced4da;border-radius:8px;font-size:1rem;box-sizing:border-box;margin-bottom:10px}
+.login-box input:focus{outline:none;border-color:var(--primary)}
+.login-box .btn{width:100%;margin-top:6px}
+#loginMsg{color:#e03131;font-size:.85rem;font-weight:bold;min-height:1.2em;margin-top:10px;text-align:center;white-space:pre-line}
+#userBox{display:flex;align-items:center;gap:6px;font-size:.8rem;flex-wrap:wrap}
+#userBox b{white-space:nowrap}
+.role-badge{font-size:.72rem;font-weight:bold;padding:2px 8px;border-radius:10px;color:#fff;white-space:nowrap}
+.ub-btn{border:1px solid #ced4da;background:#fff;border-radius:14px;padding:4px 10px;font-size:.75rem;font-weight:bold;cursor:pointer;white-space:nowrap}
+/* 권한별 화면 제한 */
+body:not(.role-admin) .btn-del:not(.keep),body:not(.role-admin) #clearAll,body:not(.role-admin) #empBox{display:none!important}
+body.role-view .upload-box,body.role-view #addScheduleFromDayBtn,body.role-view #addScheduleFromHistoryBtn,body.role-view .dp-add,body.role-view #draftBtn,body.role-view #resetForm,body.role-view .view-hide{display:none!important}
+body.role-view #tab-manage>#scheduleForm{display:none}
+#viewNotice{display:none;background:#fff3bf;border:1px solid #fcc419;color:#7c5800;border-radius:8px;padding:10px 12px;font-size:.85rem;margin-bottom:12px}
+body.role-view #viewNotice{display:block}
 #syncStatus{position:fixed;left:50%;bottom:24px;transform:translateX(-50%);background:rgba(33,37,41,.92);color:#fff;padding:12px 22px;border-radius:24px;font-size:.95rem;z-index:400;font-weight:bold;display:none;box-shadow:0 6px 20px rgba(0,0,0,.3);max-width:90vw;text-align:center}
 #syncStatus.ok{background:#2f9e44}#syncStatus.err{background:#e03131}
 #saveState{font-weight:bold;padding:5px 12px;border-radius:20px;font-size:.8rem;margin-right:auto;white-space:nowrap}
@@ -205,12 +225,35 @@ select{width:100%;padding:10px;border:1px solid #ddd;border-radius:4px;box-sizin
 }
 </style>
 </head>
-<body>
+<body class="locked">
+<div id="loginScreen">
+  <form class="login-box" id="loginForm" autocomplete="on">
+    <h3 id="loginTitle">🔒 현장 스케줄 로그인</h3>
+    <p class="sub" id="loginSub">직원 이름과 비밀번호를 입력하세요</p>
+    <input type="text" id="loginName" placeholder="이름 (예: 이대진)" autocomplete="username" required>
+    <input type="text" id="loginPhone" placeholder="연락처 (선택)" style="display:none;" autocomplete="tel">
+    <input type="password" id="loginPw" placeholder="비밀번호" autocomplete="current-password" required>
+    <input type="password" id="loginPw2" placeholder="비밀번호 한 번 더" style="display:none;" autocomplete="new-password">
+    <label class="chk" style="justify-content:center;"><input type="checkbox" id="loginKeep" checked> 이 기기에서 로그인 유지 (30일)</label>
+    <button type="submit" class="btn btn-submit" id="loginBtn">로그인</button>
+    <div id="loginMsg"></div>
+  </form>
+</div>
+<div id="pwModal" class="modal">
+  <form class="modal-box" id="pwForm" style="max-width:360px;">
+    <h4 style="margin:0 0 12px;">🔑 내 비밀번호 바꾸기</h4>
+    <input type="password" id="pwOld" placeholder="지금 비밀번호" autocomplete="current-password" style="width:100%;padding:10px;margin-bottom:8px;box-sizing:border-box;border:1px solid #ddd;border-radius:6px;" required>
+    <input type="password" id="pwNew" placeholder="새 비밀번호 (4자 이상)" autocomplete="new-password" style="width:100%;padding:10px;margin-bottom:8px;box-sizing:border-box;border:1px solid #ddd;border-radius:6px;" required>
+    <input type="password" id="pwNew2" placeholder="새 비밀번호 한 번 더" autocomplete="new-password" style="width:100%;padding:10px;margin-bottom:8px;box-sizing:border-box;border:1px solid #ddd;border-radius:6px;" required>
+    <div class="btn-row"><button type="submit" class="btn btn-submit">변경</button><button type="button" class="btn btn-reset" onclick="$('pwModal').classList.remove('show')">닫기</button></div>
+  </form>
+</div>
 <div id="syncStatus">🔄 연동 중...</div>
 <div class="container">
   <h2>현장 방문 및 스케줄 관리</h2>
   <div id="serverBar">
     <span id="saveState"></span>
+    <span id="userBox"></span>
     <span id="serverState"></span>
     <span id="siteLinks"></span>
     <button type="button" id="installBtn">📲 앱 설치</button>
@@ -255,6 +298,7 @@ select{width:100%;padding:10px;border:1px solid #ddd;border-radius:4px;box-sizin
   </div>
 
   <div id="tab-manage" class="tab-content">
+    <div id="viewNotice">👀 <b>보기 권한</b>입니다. 일정을 보고, <b>방문 후 기록·현장 사진</b>만 남길 수 있습니다. 일정의 [수정]을 눌러 기록을 남겨 주세요.</div>
     <div class="upload-box">
       <input type="file" id="imageUpload" accept="image/*,.heic,.heif,.xlsx,.xlsm,.xls,.csv,.pdf,.doc,.docx">
       <p class="hint">이미지·엑셀 파일은 글자를 읽어 폼에 입력하고 원본도 Drive에 저장합니다. PDF·Word 견적서는 원본을 Drive에 보관합니다.<br>복사한 이미지·엑셀 셀은 <b>Ctrl+V</b>로 붙여 넣을 수 있습니다.</p>
@@ -320,10 +364,10 @@ select{width:100%;padding:10px;border:1px solid #ddd;border-radius:4px;box-sizin
         <!-- 방문 후 기록 및 현장 사진 첨부 영역 (구글 드라이브 자동 연동) -->
         <div class="form-group full" style="background:#f1f3f5; padding:12px; border-radius:8px; border:1px solid #ced4da;">
           <label style="color:#007bff; margin-bottom:6px;">📝 방문 후 기록 및 현장 사진 (입력/수정 시 즉시 저장 및 드라이브 백업)</label>
-          <textarea id="report" class="field" rows="3" placeholder="실측 사이즈, 작업 내용, 특이사항 등을 기재"></textarea>
+          <textarea id="report" data-role-ok class="field" rows="3" placeholder="실측 사이즈, 작업 내용, 특이사항 등을 기재"></textarea>
           <div style="margin-top:8px;">
             <label style="font-size:0.85rem; font-weight:normal; margin-bottom:4px;">현장 사진 첨부</label>
-            <input type="file" id="formReportImage" accept="image/*,.heic,.heif" style="font-size:0.85rem; margin-bottom:6px;">
+            <input type="file" id="formReportImage" data-role-ok accept="image/*,.heic,.heif" style="font-size:0.85rem; margin-bottom:6px;">
             <div>
               <img id="formReportImgPreview" src="" alt="미리보기" style="max-width:100%; max-height:160px; border-radius:4px; display:none; border:1px solid #ddd;">
             </div>
@@ -346,6 +390,13 @@ select{width:100%;padding:10px;border:1px solid #ddd;border-radius:4px;box-sizin
         <div class="grid">
           <div class="form-group"><label>직원 이름</label><input type="text" id="empName" placeholder="예: 이대진" required></div>
           <div class="form-group"><label>직원 연락처</label><input type="text" id="empPhone" placeholder="예: 010-8866-6944"></div>
+          <div class="form-group"><label>권한</label><select id="empRole">
+            <option value="직원">직원 — 등록·수정 가능, 삭제 불가</option>
+            <option value="보기">보기 — 보기 + 방문 후 기록·사진만</option>
+            <option value="관리자">관리자 — 모두 가능 + 직원 관리</option>
+            <option value="접속안함">접속 안 함 — 기사 목록에만 표시</option>
+          </select></div>
+          <div class="form-group"><label>비밀번호 <span id="empPwHint" style="font-weight:normal;color:#888;font-size:.78rem;">(4자 이상)</span></label><input type="text" id="empPw" placeholder="새로 정하거나 바꿀 때만 입력" autocomplete="off"></div>
         </div>
         <div class="btn-row">
           <button type="submit" class="btn btn-submit" id="empSubmit">직원 추가</button>
@@ -354,7 +405,7 @@ select{width:100%;padding:10px;border:1px solid #ddd;border-radius:4px;box-sizin
       </form>
       <div class="table-responsive" style="margin-top:12px;">
         <table class="schedule-table" style="min-width:360px;">
-          <thead><tr><th>이름</th><th>연락처</th><th>관리</th></tr></thead>
+          <thead><tr><th>이름</th><th>연락처</th><th>권한</th><th>비밀번호</th><th>관리</th></tr></thead>
           <tbody id="empBody"></tbody>
         </table>
       </div>
@@ -527,7 +578,7 @@ function syncInstall(item) {
     return 'created';
   }
   if (linked) {
-    if (confirm(`시공 예정일을 지웠습니다.\n${dateLabel(visitDay(linked))}에 자동으로 만든 시공 일정도 삭제할까요?\n\n[확인] 시공 일정도 삭제\n[취소] 시공 일정은 남겨 둠`)) {
+    if (isAdmin() && confirm(`시공 예정일을 지웠습니다.\n${dateLabel(visitDay(linked))}에 자동으로 만든 시공 일정도 삭제할까요?\n\n[확인] 시공 일정도 삭제\n[취소] 시공 일정은 남겨 둠`)) {
       schedules = schedules.filter(x => x.id !== linked.id);
     } else delete linked.installFor;
     item.installId = ''; item.installSyncedDate = '';
@@ -638,19 +689,165 @@ function setSaveState(st) {
   el.title = st === 'err' ? '인터넷 연결을 확인한 뒤 누르면 다시 저장합니다' : '';
 }
 
+/* ===== 로그인 · 권한 ===== */
+const TOKEN_KEY = 'siteToken_v1', ME_KEY = 'siteMe_v1';
+let authToken = localStorage.getItem(TOKEN_KEY) || sessionStorage.getItem(TOKEN_KEY) || '';
+let me = null;
+try { me = JSON.parse(localStorage.getItem(ME_KEY) || sessionStorage.getItem(ME_KEY) || 'null'); } catch (e) { me = null; }
+const ROLE_COLORS = { '관리자':'#e03131', '직원':'#1c7ed6', '보기':'#868e96', '접속안함':'#adb5bd' };
+const isAdmin = () => !!me && me.role === '관리자';
+const canEdit = () => !!me && (me.role === '관리자' || me.role === '직원');
+const viewOnly = () => !!me && me.role === '보기';
+let setupMode = false;
+
+/* 서버에 요청 (로그인 표 자동 첨부) */
+async function api(action, data) {
+  const res = await fetch(SCRIPT_URL, { method:'POST', body: JSON.stringify(Object.assign({ action, token: authToken }, data || {})) });
+  const j = await res.json();
+  if (j && j.ok === false && j.error === 'AUTH') { forceLogout('로그인이 만료되었거나 권한이 바뀌었습니다.\n다시 로그인해 주세요.'); throw new Error('AUTH'); }
+  if (j && j.ok === false && j.error === 'FORBIDDEN') { alert('이 작업을 할 권한이 없습니다.'); throw new Error('FORBIDDEN'); }
+  return j;
+}
+function storeLogin(token, user, keep) {
+  authToken = token; me = user;
+  [localStorage, sessionStorage].forEach(st => { try { st.removeItem(TOKEN_KEY); st.removeItem(ME_KEY); } catch (e) {} });
+  const st = keep ? localStorage : sessionStorage;
+  try { st.setItem(TOKEN_KEY, token); st.setItem(ME_KEY, JSON.stringify(user)); } catch (e) {}
+}
+function applyRole() {
+  document.body.classList.toggle('role-admin', isAdmin());
+  document.body.classList.toggle('role-staff', !!me && me.role === '직원');
+  document.body.classList.toggle('role-view', viewOnly());
+  const box = $('userBox'); box.innerHTML = '';
+  if (!me) return;
+  const nm = document.createElement('b'); nm.textContent = '👤 ' + me.name;
+  const rb = document.createElement('span'); rb.className = 'role-badge'; rb.textContent = me.role; rb.style.background = ROLE_COLORS[me.role] || '#868e96';
+  const pw = document.createElement('button'); pw.type = 'button'; pw.className = 'ub-btn'; pw.textContent = '🔑 비번 변경';
+  pw.onclick = () => { $('pwForm').reset(); $('pwModal').classList.add('show'); $('pwOld').focus(); };
+  const lo = document.createElement('button'); lo.type = 'button'; lo.className = 'ub-btn'; lo.textContent = '로그아웃';
+  lo.onclick = async () => {
+    if (!confirm('로그아웃할까요?')) return;
+    try { await api('logout'); } catch (e) {}
+    forceLogout('로그아웃했습니다.');
+  };
+  box.append(nm, rb, pw, lo);
+  lockView(document);
+  if (!isAdmin() && $('empBox')) $('empBox').open = false;
+}
+/* 보기 권한: 방문 후 기록·사진 칸 말고는 입력 막기 */
+function lockView(root) {
+  if (!root) return;
+  const v = viewOnly();
+  const scopes = root === document ? [$('scheduleTableBody'), $('scheduleForm'), $('historyListContainer'), $('dayModalListContainer'), $('detailBody')] : [root];
+  scopes.forEach(sc => {
+    if (!sc) return;
+    sc.querySelectorAll('input,select,textarea').forEach(el => {
+      if (el.closest('[data-role-ok]')) return;
+      el.disabled = v;
+    });
+  });
+}
+function lockScreen(msg) {
+  document.body.classList.add('locked');
+  $('loginMsg').textContent = msg || '';
+  $('loginPw').value = ''; $('loginPw2').value = '';
+  setTimeout(() => (setupMode || !$('loginName').value ? $('loginName') : $('loginPw')).focus(), 50);
+}
+function showSetup(on) {
+  setupMode = on;
+  $('loginTitle').textContent = on ? '🛠 처음 사용: 관리자 계정 만들기' : '🔒 현장 스케줄 로그인';
+  $('loginSub').textContent = on ? '사장님(관리자) 이름과 비밀번호를 정해 주세요. 직원 계정은 들어간 뒤 [직원 관리]에서 만듭니다.' : '직원 이름과 비밀번호를 입력하세요';
+  $('loginPhone').style.display = on ? '' : 'none';
+  $('loginPw2').style.display = on ? '' : 'none';
+  $('loginPw').autocomplete = on ? 'new-password' : 'current-password';
+  $('loginBtn').textContent = on ? '관리자 계정 만들고 시작' : '로그인';
+}
+function unlock() {
+  document.body.classList.remove('locked');
+  applyRole();
+  renderEmp(); renderCalendar(); render();
+}
+/* 로그아웃: 이 기기에 남은 일정·직원 자료도 지움 */
+function forceLogout(msg) {
+  authToken = ''; me = null;
+  [localStorage, sessionStorage].forEach(st => { try { [TOKEN_KEY, ME_KEY, STORE_KEY, EMP_KEY, DRAFT_KEY].forEach(k => st.removeItem(k)); } catch (e) {} });
+  schedules = []; employees = [];
+  document.querySelectorAll('.modal.show').forEach(m => m.classList.remove('show'));
+  try { clearForm(); } catch (e) {}
+  applyRole(); renderEmp(); renderCalendar(); render();
+  showSetup(false);
+  lockScreen(msg);
+}
+$('loginForm').addEventListener('submit', async ev => {
+  ev.preventDefault();
+  const name = $('loginName').value.trim(), pw = $('loginPw').value;
+  if (!name || !pw) return;
+  if (setupMode) {
+    if (pw.length < 4) { $('loginMsg').textContent = '비밀번호는 4자 이상으로 정해 주세요.'; return; }
+    if (pw !== $('loginPw2').value) { $('loginMsg').textContent = '비밀번호 두 칸이 서로 다릅니다.'; return; }
+  }
+  $('loginBtn').disabled = true; $('loginMsg').textContent = '확인 중...';
+  try {
+    const res = await fetch(SCRIPT_URL, { method:'POST', body: JSON.stringify(setupMode
+      ? { action:'setup', name, password: pw, phone: normPhone($('loginPhone').value.trim()) }
+      : { action:'login', name, password: pw }) });
+    const j = await res.json();
+    if (!j || !j.ok) { $('loginMsg').textContent = (j && j.error) || '로그인하지 못했습니다.'; return; }
+    storeLogin(j.token, j.user, $('loginKeep').checked);
+    showSetup(false);
+    $('loginPw').value = ''; $('loginPw2').value = ''; $('loginMsg').textContent = '';
+    unlock();
+    showSync(`✅ ${j.user.name}님 환영합니다 (${j.user.role})`);
+    await loadFromServer(); loadEmployees();
+  } catch (e) {
+    $('loginMsg').textContent = '서버에 연결하지 못했습니다. 인터넷 연결을 확인해 주세요.';
+  } finally { $('loginBtn').disabled = false; }
+});
+$('pwForm').addEventListener('submit', async ev => {
+  ev.preventDefault();
+  if ($('pwNew').value.length < 4) { alert('새 비밀번호는 4자 이상으로 정해 주세요.'); return; }
+  if ($('pwNew').value !== $('pwNew2').value) { alert('새 비밀번호 두 칸이 서로 다릅니다.'); return; }
+  try {
+    const j = await api('changePassword', { oldPassword: $('pwOld').value, newPassword: $('pwNew').value });
+    if (!j.ok) { alert(j.error || '바꾸지 못했습니다.'); return; }
+    $('pwModal').classList.remove('show');
+    showSync('✅ 비밀번호를 바꿨습니다');
+  } catch (e) { if (e.message !== 'AUTH') alert('서버에 연결하지 못했습니다.'); }
+});
+/* 앱 시작: 로그인 확인 */
+async function boot() {
+  if (me && me.name) $('loginName').value = me.name;
+  if (authToken) {
+    try {
+      const j = await api('me');
+      if (j && j.ok) {
+        storeLogin(authToken, j.user, !!localStorage.getItem(TOKEN_KEY));
+        unlock(); await loadFromServer(); loadEmployees(); return;
+      }
+    } catch (e) {
+      if (e.message === 'AUTH') return;
+      if (me) { unlock(); showSync('⚠️ 인터넷 연결이 불안정해 이 기기에 저장된 자료로 보여 줍니다'); return; }
+    }
+  }
+  try {
+    const st = await (await fetch(SCRIPT_URL)).json();
+    showSetup(!!(st && st.needsSetup));
+    lockScreen(st && st.needsSetup ? '' : '');
+  } catch (e) { showSetup(false); lockScreen('서버에 연결하지 못했습니다. 인터넷 연결을 확인해 주세요.'); }
+}
+
 async function save() {
   try { localStorage.setItem(STORE_KEY, JSON.stringify(schedules)); } catch (e) {}
   renderCalendar();
   render();
-  if (!SCRIPT_URL) return;
+  if (!SCRIPT_URL || !authToken) return;
   if (isSyncing) { resync = true; return; }   // 저장 중에 또 바뀌면 끝난 뒤 한 번 더 저장
   showSync("🔄 구글 시트에 저장 중...");
   setSaveState('ing');
   isSyncing = true;
   try {
-    const res = await fetch(SCRIPT_URL, { method:'POST', body: JSON.stringify(schedules) });
-    const saved = await res.json();
-    if (!Array.isArray(saved)) throw new Error('저장 응답 형식 오류');
+    const saved = await api('save', { schedules });
+    if (!Array.isArray(saved)) throw new Error((saved && saved.error) || '저장 응답 형식 오류');
     if (!resync) {
       schedules = saved; ensureIds();
       try { localStorage.setItem(STORE_KEY, JSON.stringify(schedules)); } catch (e) {}
@@ -659,6 +856,8 @@ async function save() {
     showSync("✅ 저장 완료! 구글 시트에 반영되었습니다");
     setSaveState('ok');
   } catch (err) {
+    if (err.message === 'AUTH') { resync = false; return; }
+    if (err.message === 'FORBIDDEN') { resync = false; loadFromServer(); return; }
     showSync("⚠️ 저장 실패 — 인터넷 확인 후 위쪽 [저장 실패]를 눌러 다시 저장하세요 (이 기기에는 임시 보관됨)");
     setSaveState('err');
   } finally {
@@ -668,20 +867,19 @@ async function save() {
 }
 
 async function loadFromServer() {
-  if (!SCRIPT_URL || isSyncing) return;
+  if (!SCRIPT_URL || isSyncing || !authToken) return;
   showSync("🔄 데이터 불러오는 중...");
   try {
-    const res = await fetch(SCRIPT_URL);
-    const data = await res.json();
-    if (Array.isArray(data) && data.length > 0) {
+    const data = await api('list');
+    if (Array.isArray(data) && (data.length > 0 || !schedules.length || isAdmin())) {
       schedules = data; ensureIds();
       localStorage.setItem(STORE_KEY, JSON.stringify(schedules));
       renderCalendar(); render(); refreshPopups();
       showSync("✅ 최신 상태입니다");
     }
-  } catch (err) { showSync("⚠️ 인터넷 연결 불안정"); }
+  } catch (err) { if (err.message !== 'AUTH') showSync("⚠️ 인터넷 연결 불안정"); }
 }
-window.onload = () => { loadFromServer(); loadEmployees(); };
+window.onload = () => { boot(); };
 
 let editingId = null;
 let currentYear = new Date().getFullYear();
@@ -762,6 +960,7 @@ function moveMonth(dir) {
 }
 
 function selectDateForVisit(event, dateStr) {
+  if (!canEdit()) return;
   if (event.target.classList.contains('cal-badge') || event.target.classList.contains('cal-date-num')) return;
   $('visitDate').value = dateStr + 'T09:00';
   switchTab('manage');
@@ -877,6 +1076,7 @@ function renderHistoryModal() {
       container.appendChild(card);
     });
   }
+  lockView(container);
   box.scrollTop = keepScroll;
 }
 
@@ -1012,7 +1212,7 @@ function buildEditCard(item, ctx) {
   const srcWrap = document.createElement('div'); srcWrap.append(srcSel, srcTxt);
   f.sourceUrl = inp('text', item.sourceUrl, '숨고 채팅방 주소 붙여넣기 (선택)');
   f.status.addEventListener('change', () => { f.status.style.background = STAGE_COLORS[f.status.value] || '#fff'; });
-  f.report = document.createElement('textarea'); f.report.className = 'field'; f.report.rows = 3; f.report.value = item.report || '';
+  f.report = document.createElement('textarea'); f.report.className = 'field'; f.report.dataset.roleOk = ''; f.report.rows = 3; f.report.value = item.report || '';
   f.report.placeholder = '실측 사이즈, 작업 내용, 특이사항 등을 기재';
 
   // 담당 기사: 직원 목록에서 선택 (없으면 직접 입력)
@@ -1037,13 +1237,13 @@ function buildEditCard(item, ctx) {
 
   // 현장 사진 첨부 (HEIC는 자동으로 JPG 변환)
   let newImage = item.reportImage || '', newLink = item.reportImageLink || '', photoChanged = false, photoCleared = false;
-  const photoInp = document.createElement('input'); photoInp.type = 'file'; photoInp.accept = 'image/*,.heic,.heif';
+  const photoInp = document.createElement('input'); photoInp.dataset.roleOk = ''; photoInp.type = 'file'; photoInp.accept = 'image/*,.heic,.heif';
   photoInp.style.cssText = 'font-size:.85rem;padding:0;border:none;';
   const photoPrev = document.createElement('img');
   photoPrev.alt = '현장 사진 미리보기'; photoPrev.style.cssText = 'max-width:100%;max-height:160px;border-radius:4px;border:1px solid #ddd;margin-top:6px;display:none;';
   const photoLink = document.createElement('div'); photoLink.style.marginTop = '6px';
   const photoDel = document.createElement('button');
-  photoDel.type = 'button'; photoDel.className = 'btn btn-del btn-sm'; photoDel.textContent = '🗑 사진 삭제'; photoDel.style.marginTop = '6px';
+  photoDel.type = 'button'; photoDel.className = 'btn btn-del btn-sm keep'; photoDel.textContent = '🗑 사진 삭제'; photoDel.style.marginTop = '6px';
   const showPhoto = () => {
     if (newImage) { photoPrev.src = newImage; photoPrev.style.display = 'block'; } else { photoPrev.removeAttribute('src'); photoPrev.style.display = 'none'; }
     photoLink.innerHTML = '';
@@ -1133,6 +1333,7 @@ function buildEditCard(item, ctx) {
   fullBtn.onclick = () => { const id = item.id; ctx.close(); openEditModal(id); };
   btns.append(saveBtn, cancelBtn, fullBtn);
   card.appendChild(btns);
+  lockView(card);
   return card;
 }
 
@@ -1142,39 +1343,37 @@ let employees = [];
 try { employees = JSON.parse(localStorage.getItem(EMP_KEY) || '[]'); } catch (e) { employees = []; }
 let empServerOk = false;   // 구글 서버가 직원 저장을 지원하는지 (지원 확인 전에는 절대 전송하지 않음)
 let empSyncing = false, empResync = false;
+const empPublic = list => list.map(e => ({ id: e.id, name: e.name, phone: e.phone || '', role: e.role || '접속안함', hasPw: !!e.hasPw }));
 function saveEmp() {
-  try { localStorage.setItem(EMP_KEY, JSON.stringify(employees)); } catch (e) {}
+  try { localStorage.setItem(EMP_KEY, JSON.stringify(empPublic(employees))); } catch (e) {}
   pushEmployees();
 }
 async function pushEmployees() {
-  if (!SCRIPT_URL || !empServerOk) return;
+  if (!SCRIPT_URL || !isAdmin()) return;
   if (empSyncing) { empResync = true; return; }
   empSyncing = true;
   try {
-    const res = await fetch(SCRIPT_URL, { method:'POST', body: JSON.stringify({ action:'saveEmployees', employees }) });
-    const data = await res.json();
-    if (!data || !Array.isArray(data.employees)) throw new Error('응답 오류');
-    showSync('✅ 직원 목록 구글 시트 저장 완료');
-  } catch (e) { showSync('⚠️ 직원 목록 서버 저장 실패 (이 기기에는 저장됨)'); }
+    const data = await api('saveEmployees', { employees: employees.map(e => ({ id: e.id, name: e.name, phone: e.phone || '', role: e.role || '접속안함', password: e._pw || '' })) });
+    if (!data || !Array.isArray(data.employees)) throw new Error((data && data.error) || '응답 오류');
+    employees = empPublic(data.employees);
+    try { localStorage.setItem(EMP_KEY, JSON.stringify(employees)); } catch (e) {}
+    renderEmp();
+    showSync('✅ 직원 목록·권한 저장 완료');
+  } catch (e) {
+    if (e.message !== 'AUTH' && e.message !== 'FORBIDDEN') alert('직원 목록을 저장하지 못했습니다.\n' + e.message);
+    loadEmployees();   // 서버에 있는 원래 목록으로 되돌림
+  }
   finally { empSyncing = false; if (empResync) { empResync = false; pushEmployees(); } }
 }
 async function loadEmployees() {
-  if (!SCRIPT_URL) return;
+  if (!SCRIPT_URL || !authToken) return;
   try {
-    const res = await fetch(SCRIPT_URL + '?action=employees');
-    const data = await res.json();
-    // 예전 서버는 일정 배열을 돌려줌 → 직원 기능 미지원으로 보고 아무것도 하지 않음
-    if (!data || Array.isArray(data) || !Array.isArray(data.employees)) { empServerOk = false; return; }
+    const data = await api('employees');
+    if (!data || !Array.isArray(data.employees)) return;
     empServerOk = true;
-    if (data.employees.length) {
-      employees = data.employees.filter(e => e && e.name).map(e => ({
-        id: e.id || ('e' + Date.now() + Math.random().toString(36).slice(2, 5)),
-        name: String(e.name), phone: String(e.phone || '') }));
-      try { localStorage.setItem(EMP_KEY, JSON.stringify(employees)); } catch (e) {}
-      renderEmp();
-    } else if (employees.length) {
-      pushEmployees();   // 서버가 비어 있고 이 기기에 직원이 있으면 올려 줌
-    }
+    employees = empPublic(data.employees.filter(e => e && e.name));
+    try { localStorage.setItem(EMP_KEY, JSON.stringify(employees)); } catch (e) {}
+    renderEmp();
   } catch (e) {}
 }
 let editingEmpId = null;
@@ -1207,7 +1406,8 @@ $('engSelect').addEventListener('change', () => {
 
 function resetEmpForm() {
   editingEmpId = null;
-  $('empName').value = ''; $('empPhone').value = '';
+  $('empName').value = ''; $('empPhone').value = ''; $('empRole').value = '직원'; $('empPw').value = '';
+  $('empPwHint').textContent = '(4자 이상)';
   $('empSubmit').textContent = '직원 추가';
   $('empCancel').style.display = 'none';
 }
@@ -1216,26 +1416,32 @@ function renderEmp() {
   const body = $('empBody'); body.innerHTML = '';
   if (!employees.length) {
     const tr = document.createElement('tr'), td = document.createElement('td');
-    td.colSpan = 3; td.className = 'empty'; td.textContent = '등록된 직원이 없습니다.';
+    td.colSpan = 5; td.className = 'empty'; td.textContent = '등록된 직원이 없습니다.';
     tr.appendChild(td); body.appendChild(tr);
   }
   employees.forEach(emp => {
     const tr = document.createElement('tr');
     if (emp.id === editingEmpId) tr.className = 'editing';
     [emp.name, emp.phone || ''].forEach(t => { const td = document.createElement('td'); td.textContent = t; tr.appendChild(td); });
+    const rtd = document.createElement('td'); const rb = document.createElement('span'); rb.className = 'role-badge';
+    rb.textContent = emp.role || '접속안함'; rb.style.background = ROLE_COLORS[emp.role] || '#adb5bd'; rtd.appendChild(rb); tr.appendChild(rtd);
+    const ptd = document.createElement('td'); ptd.textContent = (emp.role || '접속안함') === '접속안함' ? '-' : (emp.hasPw ? '✅ 설정됨' : '⚠️ 없음 (로그인 불가)'); tr.appendChild(ptd);
     const td = document.createElement('td'); td.className = 'act';
     const eb = document.createElement('button');
     eb.type = 'button'; eb.className = 'btn btn-edit'; eb.textContent = '수정';
     eb.onclick = () => {
       editingEmpId = emp.id;
       $('empName').value = emp.name; $('empPhone').value = emp.phone || '';
+      $('empRole').value = emp.role || '접속안함'; $('empPw').value = '';
+      $('empPwHint').textContent = emp.hasPw ? '(바꿀 때만 입력 · 비워 두면 그대로)' : '(4자 이상 · 정해야 로그인 가능)';
       $('empSubmit').textContent = '수정 저장'; $('empCancel').style.display = '';
       renderEmp(); $('empName').focus();
     };
     const db = document.createElement('button');
     db.type = 'button'; db.className = 'btn btn-del'; db.style.marginLeft = '4px'; db.textContent = '삭제';
     db.onclick = () => {
-      if (!confirm(`직원 '${emp.name}'을(를) 삭제할까요?\n(이미 등록된 스케줄의 기사 이름은 그대로 남습니다)`)) return;
+      if (me && emp.id === me.id) { alert('지금 로그인한 본인은 삭제할 수 없습니다.'); return; }
+      if (!confirm(`직원 '${emp.name}'을(를) 삭제할까요?\n삭제하면 이 직원은 더 이상 로그인할 수 없습니다.\n(이미 등록된 스케줄의 기사 이름은 그대로 남습니다)`)) return;
       employees = employees.filter(x => x.id !== emp.id);
       if (editingEmpId === emp.id) resetEmpForm();
       saveEmp(); renderEmp();
@@ -1247,10 +1453,17 @@ function renderEmp() {
 $('empForm').addEventListener('submit', ev => {
   ev.preventDefault();
   const name = $('empName').value.trim(), phone = normPhone($('empPhone').value.trim());
+  const role = $('empRole').value, pw = $('empPw').value.trim();
   if (!name) return;
+  if (!isAdmin()) { alert('직원 관리는 관리자만 할 수 있습니다.'); return; }
   if (employees.some(e => e.name === name && e.id !== editingEmpId)) { alert('이미 등록된 직원 이름입니다.'); return; }
-  if (editingEmpId) employees = employees.map(e => e.id === editingEmpId ? { ...e, name, phone } : e);
-  else employees.push({ id: 'e' + Date.now() + Math.random().toString(36).slice(2, 5), name, phone });
+  if (pw && pw.length < 4) { alert('비밀번호는 4자 이상으로 정해 주세요.'); return; }
+  const prev = employees.find(e => e.id === editingEmpId);
+  if (role !== '접속안함' && !pw && !(prev && prev.hasPw)) { alert(`'${name}'님이 로그인하려면 비밀번호를 정해 주세요.\n(로그인하지 않는 기사라면 권한을 '접속 안 함'으로 고르세요)`); $('empPw').focus(); return; }
+  if (me && editingEmpId === me.id && role !== '관리자') { alert('본인의 관리자 권한은 뺄 수 없습니다.'); return; }
+  if (editingEmpId) employees = employees.map(e => e.id === editingEmpId ? { ...e, name, phone, role, _pw: pw } : e);
+  else employees.push({ id: 'e' + Date.now() + Math.random().toString(36).slice(2, 5), name, phone, role, _pw: pw });
+  if (pw) alert(`'${name}'님 비밀번호: ${pw}\n직원에게 알려 주세요. 직원은 로그인 후 [🔑 비번 변경]으로 바꿀 수 있습니다.`);
   saveEmp(); resetEmpForm(); renderEmp();
 });
 $('empCancel').onclick = () => { resetEmpForm(); renderEmp(); };
@@ -1486,6 +1699,7 @@ function clearForm() {
   $('formReportImgPreview').src = '';
   $('formReportImage').value = '';
   setForm({}); clearDraft(); editingId = null;
+  lockView($('scheduleForm'));
   $('installGroup').style.display = '';
   $('formMode').textContent = '';
   $('submitBtn').textContent = '💾 스케줄 추가';
@@ -1669,6 +1883,7 @@ function render() {
     td.appendChild(eb); td.appendChild(document.createElement('br')); td.appendChild(db);
     tr.appendChild(td); body.appendChild(tr);
   });
+  lockView(body);
 }
 
 function updateDeleteBtn() { $('formDeleteBtn').style.display = editingId ? '' : 'none'; }
@@ -1697,6 +1912,7 @@ function openEditModal(id) {
   if (!formHome) formHome = { parent: f.parentNode, next: f.nextSibling };
   $('editModalBody').appendChild(f);
   $('editModal').classList.add('show');
+  lockView($('scheduleForm'));
   editSnapshot = formSnap();
   render();
 }
@@ -1829,6 +2045,7 @@ document.addEventListener('visibilitychange', () => { if (document.hidden) saveD
 
 $('scheduleForm').addEventListener('submit', e => {
   e.preventDefault();
+  if (!canEdit() && !editingId) { alert('보기 권한은 새 일정을 등록할 수 없습니다.'); return; }
   const data = getForm();
   if (data.report && !data.reportAt && (!editingId || schedules.find(s => s.id === editingId).report !== data.report)) {
     data.reportAt = nowStr();
@@ -1853,6 +2070,7 @@ $('scheduleForm').addEventListener('submit', e => {
 $('resetForm').onclick = () => { if (editingId) closeEditAsk(); else clearForm(); };
 $('saveState').onclick = () => { if ($('saveState').classList.contains('err')) save(); };
 $('clearAll').onclick = () => {
+  if (!isAdmin()) return;
   if (schedules.length && confirm('등록된 스케줄을 모두 삭제할까요?')) { schedules = []; save(); clearForm(); }
 };
 
@@ -1912,7 +2130,7 @@ function fileToDataUrl(file) {
   });
 }
 async function uploadOriginalFile(file) {
-  if (!SCRIPT_URL) return;
+  if (!SCRIPT_URL || !canEdit()) return;
   if (file.size > 8 * 1024 * 1024) {
     showSync('⚠️ 원본 파일은 8MB 이하로 선택해 주세요');
     return;
@@ -1920,10 +2138,7 @@ async function uploadOriginalFile(file) {
   try {
     showSync('📎 첨부 원본을 Drive에 저장 중...');
     const data = await fileToDataUrl(file);
-    const res = await fetch(SCRIPT_URL, { method:'POST', body: JSON.stringify({
-      action:'uploadFile', fileName:file.name, mimeType:file.type || 'application/octet-stream', data
-    }) });
-    const result = await res.json();
+    const result = await api('uploadFile', { fileName:file.name, mimeType:file.type || 'application/octet-stream', data });
     if (!result || !result.ok) throw new Error(result && result.error || '업로드 실패');
     showSync('✅ 원본 파일 Drive 저장 완료');
   } catch (err) {
@@ -2150,6 +2365,7 @@ function cellVal(k, v) {
 function tsvRows(text) { return text.replace(/\r/g, '').split('\n').filter(l => l.trim()).map(l => l.split('\t')); }
 
 function processRows(rows) {
+  if (!canEdit()) return;
   rows = rows.filter(r => r && r.some(c => cellStr(c)));
   if (!rows.length) { $('status').textContent = '읽을 내용이 없습니다.'; return; }
   let hi = -1, map = null;
@@ -2205,6 +2421,7 @@ async function handleExcel(file) {
 
 /* 붙여넣기 */
 document.addEventListener('paste', e => {
+  if (!canEdit()) return;
   if (!$('tab-manage').classList.contains('active')) return;
   const cd = e.clipboardData; if (!cd) return;
   const t = e.target;
@@ -2393,7 +2610,7 @@ function renderDayPanel() {
   const head = document.createElement('div'); head.className = 'dp-head';
   const t = document.createElement('b'); t.textContent = `${dateLabel(selDate)} · ${list.length}건`;
   const add = document.createElement('button');
-  add.type = 'button'; add.className = 'btn btn-save'; add.textContent = '➕ 새 일정';
+  add.type = 'button'; add.className = 'btn btn-save dp-add'; add.textContent = '➕ 새 일정';
   add.onclick = () => { clearForm(); $('visitDate').value = selDate + 'T09:00'; switchTab('manage'); $('customer').focus(); };
   head.append(t, add);
   const box = document.createElement('div'); box.className = 'agenda';
@@ -2652,7 +2869,9 @@ function renderDetail() {
     row('입금 현황', lines.join('\n'));
   }
   row('담당 기사', [s.engineer || '미배정', s.engPhone].filter(Boolean).join('  '), tel(s.engPhone) ? [qa('call', 'tel:' + tel(s.engPhone), '📞 기사 전화')] : null);
+  if (s.updatedBy) row('최종 수정', `${s.updatedBy} · ${s.updatedAt || ''}`);
   row('방문 후 기록', s.report ? s.report + (s.reportAt ? `\n(${s.reportAt} 기록)` : '') : '');
+  lockView(body);
   const btns = $('detailBtns'); btns.innerHTML = '';
   const mkBtn = (cls, text, fn) => { const b = document.createElement('button'); b.type = 'button'; b.className = 'btn btn-sm ' + cls; b.textContent = text; b.onclick = fn; btns.appendChild(b); };
   mkBtn('btn-edit', '✏️ 수정', () => { const id = s.id; detailReturn = id; closeDetail(); openEditModal(id); });
