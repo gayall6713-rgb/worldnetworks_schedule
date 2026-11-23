@@ -2849,7 +2849,32 @@ function renderDetail() {
     const lk = schedules.find(x => x.id === s.installId);
     row('🔨 시공 예정일', `${dateLabel(s.installDate.slice(0, 10))}${s.installDate.length >= 16 ? ' ' + ampm(s.installDate.slice(11, 16)) : ''}`, lk ? [jump(lk.id, '🔨 시공 일정 보기')] : null);
   }
-  { const so = sourceOpenLink(s, 'qbtn'); if (so) so.style.cssText = 'background:#f3f0ff;border-color:#b197fc;color:#5f3dc4;'; row('수주처', s.source || '미지정', so ? [so] : null); }
+  {
+    // 수주처: 상세 화면에서 바로 선택 (바꾸면 즉시 저장)
+    const v = row('수주처', ''); v.textContent = '';
+    const sel = document.createElement('select'), txt = document.createElement('input');
+    sel.style.cssText = 'width:auto;min-width:150px;padding:6px 8px;font-weight:bold;font-size:.9rem;';
+    txt.type = 'text'; txt.placeholder = '수주처 직접 입력 후 Enter'; txt.style.cssText = 'display:none;margin-top:6px;padding:7px;width:100%;box-sizing:border-box;border:1px solid #ddd;border-radius:4px;';
+    fillSourceSelect(sel, txt, s.source);
+    sel.options[0].textContent = '미지정 (선택하세요)';
+    const paint = () => { sel.style.background = s.source ? srcColor(s.source) : '#fff3bf'; sel.style.color = s.source ? '#fff' : '#a16207'; };
+    paint();
+    const commit = val => {
+      const live = schedules.find(x => x.id === s.id); if (!live) return;
+      if ((live.source || '') === val) return;
+      live.source = val; s.source = val; paint();
+      save(); showSync(val ? `✅ 수주처를 '${val}'(으)로 저장했습니다` : '✅ 수주처를 비웠습니다');
+    };
+    sel.onchange = () => {
+      if (sel.value === '__custom__') { txt.value = ''; txt.style.display = 'block'; txt.focus(); return; }
+      txt.style.display = 'none'; commit(sel.value);
+    };
+    txt.onkeydown = e => { if (e.key === 'Enter') { e.preventDefault(); txt.blur(); } };
+    txt.onchange = () => { const t = txt.value.trim(); if (t) commit(t); };
+    v.append(sel, txt);
+    const so = sourceOpenLink(s, 'qbtn');
+    if (so) { so.style.cssText = 'background:#f3f0ff;border-color:#b197fc;color:#5f3dc4;'; const q = document.createElement('div'); q.className = 'quick-btns'; q.appendChild(so); v.appendChild(q); }
+  }
   row('고객 연락처', s.phone, tel(s.phone) ? [qa('call', 'tel:' + tel(s.phone), '📞 전화'), qa('sms', 'sms:' + tel(s.phone), '💬 문자')] : null);
   row('요청 사항', s.request);
   const addr = (s.note || '').trim(), q = encodeURIComponent(addr);
