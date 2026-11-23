@@ -137,7 +137,7 @@ body.locked #loginScreen{display:flex}
 .ub-btn.switch{background:#fff3bf;border-color:#fcc419;color:#7c5800}
 .ub-btn.out{background:#ffe3e3;border-color:#ffa8a8;color:#c92a2a}
 /* 권한별 화면 제한 */
-body:not(.role-admin) .btn-del:not(.keep),body:not(.role-admin) #clearAll,body:not(.role-admin) #empBox{display:none!important}
+body:not(.role-admin) .btn-del:not(.keep),body:not(.role-admin) #clearAll,body:not(.role-admin) #fillSoomgo,body:not(.role-admin) #empBox{display:none!important}
 body.role-view .upload-box,body.role-view #addScheduleFromDayBtn,body.role-view #addScheduleFromHistoryBtn,body.role-view .dp-add,body.role-view #draftBtn,body.role-view #resetForm,body.role-view .view-hide{display:none!important}
 body.role-view #tab-manage>#scheduleForm{display:none}
 body.role-partner #filterSource,body.role-partner #filterPay,body.role-partner .partner-hide{display:none!important}
@@ -260,7 +260,7 @@ body.locked #notifyBar{display:none!important}
     <button type="submit" class="btn btn-submit" id="loginBtn">로그인</button>
     <button type="button" class="btn btn-reset" id="loginOther" style="width:100%;margin-top:12px;font-size:.9rem;padding:10px;">👥 다른 사람으로 로그인</button>
     <div id="loginMsg"></div>
-    <div style="text-align:center;font-size:.7rem;color:#adb5bd;margin-top:10px;">앱 버전 1123-10</div>
+    <div style="text-align:center;font-size:.7rem;color:#adb5bd;margin-top:10px;">앱 버전 1123-11</div>
   </form>
 </div>
 <div id="logModal" class="modal">
@@ -287,7 +287,7 @@ body.locked #notifyBar{display:none!important}
     <div class="btn-row"><button type="submit" class="btn btn-submit">변경</button><button type="button" class="btn btn-reset" onclick="$('pwModal').classList.remove('show')">닫기</button></div>
   </form>
 </div>
-<div id="appVer" style="position:fixed;left:6px;bottom:4px;font-size:.65rem;color:#adb5bd;z-index:1;pointer-events:none;">앱 버전 1123-10</div>
+<div id="appVer" style="position:fixed;left:6px;bottom:4px;font-size:.65rem;color:#adb5bd;z-index:1;pointer-events:none;">앱 버전 1123-11</div>
 <div id="syncStatus">🔄 연동 중...</div>
 <div class="container">
   <h2>현장 방문 및 스케줄 관리</h2>
@@ -459,6 +459,7 @@ body.locked #notifyBar{display:none!important}
       <div class="list-tools">
         <select id="filterStage" class="filter-sel" title="상태별 보기"></select>
         <button type="button" class="btn btn-excel" id="exportExcel">📥 엑셀로 저장</button>
+        <button type="button" class="btn btn-excel" id="fillSoomgo" style="display:none;background:linear-gradient(#9c36b5,#862e9c);">🟣 수주처 빈칸 → 숨고</button>
         <button type="button" class="btn btn-clear" id="clearAll">전체 삭제</button>
       </div>
     </div>
@@ -1907,6 +1908,8 @@ function renderFilter() {
   addS('', '수주처 전체');
   [...new Set([...SOURCES, ...schedules.map(x => x.source).filter(Boolean)])].forEach(n => addS(n, `${n} (${schedules.filter(x => x.source === n).length})`));
   if (schedules.some(x => !x.source)) addS('__none__', `수주처 미지정 (${schedules.filter(x => !x.source).length})`);
+  { const nb = schedules.filter(x => !(x.source || '').trim()).length, fb = $('fillSoomgo');
+    if (fb) { fb.style.display = nb ? '' : 'none'; fb.textContent = `🟣 수주처 빈칸 ${nb}건 → 숨고`; } }
   ss.value = fSrc;
   if (ss.value !== fSrc) { fSrc = ''; ss.value = ''; }
   const es = $('filterEng'); es.innerHTML = '';
@@ -2249,6 +2252,15 @@ $('scheduleForm').addEventListener('submit', e => {
 });
 $('resetForm').onclick = () => { if (editingId) closeEditAsk(); else clearForm(); };
 $('saveState').onclick = () => { if ($('saveState').classList.contains('err')) save(); };
+/* 수주처가 비어 있는 일정만 한 번에 '숨고'로 지정 (홈씨씨·오늘의집 등 이미 입력된 건 그대로) */
+$('fillSoomgo').onclick = () => {
+  if (!isAdmin()) return;
+  const blank = schedules.filter(x => !(x.source || '').trim());
+  if (!blank.length) { showSync('수주처가 빈 일정이 없습니다'); return; }
+  if (!confirm(`수주처가 비어 있는 일정 ${blank.length}건을 모두 '숨고'로 바꿀까요?\n(이미 수주처가 입력된 일정은 바뀌지 않습니다)`)) return;
+  blank.forEach(x => { x.source = '숨고'; });
+  save(); showSync(`✅ ${blank.length}건의 수주처를 '숨고'로 바꿨습니다`);
+};
 $('clearAll').onclick = () => {
   if (!isAdmin()) return;
   if (schedules.length && confirm('등록된 스케줄을 모두 삭제할까요?')) { schedules = []; save(); clearForm(); }
