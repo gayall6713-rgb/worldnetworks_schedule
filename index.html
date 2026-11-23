@@ -2686,12 +2686,31 @@ function driveId(u) {
 /* 사진 목록: 아직 올리지 않은 이 기기 사진 + 드라이브 사진 (최신 순) */
 function photoList(s) {
   const out = [], data = localPhoto(s);
-  if (data) out.push({ data, src: data });
   const ids = Array.isArray(s.reportImageIds) ? s.reportImageIds.filter(Boolean) : [];
   const one = driveId(s.reportImageLink);
   if (!ids.length && one) ids.push(one);
-  [...ids].reverse().forEach(id => out.push({ id, src: `https://drive.google.com/thumbnail?id=${id}&sz=w1600` }));
+  ids.forEach(id => out.push({ id, src: `https://drive.google.com/thumbnail?id=${id}&sz=w1600` }));   // 올린 순서대로
+  if (data) out.push({ data, src: data });   // 아직 저장 전인 새 사진은 맨 뒤
   return out;
+}
+/* 드라이브 폴더 주소만 있는 예전 일정: 폴더 안 사진 목록을 서버에서 받아 옴 */
+const folderLoading = {};
+async function loadFolderPhotos(s) {
+  if (!s || folderLoading[s.id] || !authToken) return;
+  if (Array.isArray(s.reportImageIds) && s.reportImageIds.length) return;
+  if (!/folders\//.test(s.reportImageLink || '')) return;
+  folderLoading[s.id] = true;
+  try {
+    const j = await api('folderPhotos', { id: s.id });
+    const live = schedules.find(x => x.id === s.id);
+    if (live && j && Array.isArray(j.ids) && j.ids.length) {
+      live.reportImageIds = j.ids;
+      try { localStorage.setItem(STORE_KEY, JSON.stringify(schedules)); } catch (e) {}
+      render(); refreshPopups();
+      if (detailId === live.id) renderDetail();
+      if (pmId === live.id) showPhotoAt();
+    }
+  } catch (e) {} finally { setTimeout(() => { delete folderLoading[s.id]; }, 60000); }
 }
 const hasPhoto = s => !!(photoList(s).length || safeUrl(s.reportImageLink));
 function photoFileName(s, ext, n) {
@@ -2768,12 +2787,23 @@ function showPhotoAt() {
   if (list.length > 1) mk('btn-reset', '◀ 이전', () => { pmIdx = (pmIdx - 1 + list.length) % list.length; showPhotoAt(); });
   if (p) { const dl = photoDlButton(s, pmIdx); dl.className = 'btn btn-save'; btns.appendChild(dl); }
   if (list.length > 1) mk('btn-reset', '다음 ▶', () => { pmIdx = (pmIdx + 1) % list.length; showPhotoAt(); });
-  if (safeUrl(s.reportImageLink)) {
+  if (!list.length && safeUrl(s.reportImageLink)) {
     const a = document.createElement('a'); a.className = 'btn btn-card btn-sm'; a.style.textDecoration = 'none'; a.style.padding = '7px 14px';
     a.href = safeUrl(s.reportImageLink); a.target = '_blank'; a.rel = 'noopener'; a.textContent = '🔗 드라이브 폴더';
     btns.appendChild(a);
   }
   mk('btn-reset', '닫기', closePhoto);
+  // 아래쪽 작은 사진 줄 (누르면 그 사진으로 이동)
+  let strip = $('pmStrip');
+  if (!strip) { strip = document.createElement('div'); strip.id = 'pmStrip'; strip.style.cssText = 'display:flex;gap:6px;justify-content:center;flex-wrap:wrap;margin-top:10px;'; $('photoModal').querySelector('.pm-box').appendChild(strip); }
+  strip.innerHTML = '';
+  if (list.length > 1) list.forEach((q, i) => {
+    const t = document.createElement('img'); t.src = q.src; t.alt = `${i + 1}번 사진`;
+    t.style.cssText = `width:54px;height:54px;object-fit:cover;border-radius:4px;cursor:pointer;border:3px solid ${i === pmIdx ? '#ffd43b' : 'transparent'};opacity:${i === pmIdx ? 1 : .65};`;
+    t.onclick = () => { pmIdx = i; showPhotoAt(); };
+    strip.appendChild(t);
+  });
+  if (!list.length) loadFolderPhotos(s);
 }
 function closePhoto() { pmId = null; $('photoModal').classList.remove('show'); $('pmImg').removeAttribute('src'); }
 document.addEventListener('keydown', e => {
@@ -2825,20 +2855,28 @@ function renderDetail() {
 
   if (hasPhoto(s)) {
     const v = row('현장 사진', ''); v.textContent = '';
-    const src = photoSrc(s);
-    if (src) {
-      const im = document.createElement('img'); im.className = 'detail-photo'; im.src = src; im.alt = '현장 사진'; im.title = '눌러서 크게 보기';
-      im.onerror = () => { im.remove(); hint.textContent = '미리보기를 불러오지 못했습니다. [드라이브에서 보기]를 눌러 주세요.'; };
-      im.onclick = () => openPhoto(s.id);
-      v.appendChild(im);
+    const list = photoList(s);
+    if (list.length) {
+      const strip = document.createElement('div'); strip.style.cssText = 'display:flex;gap:6px;overflow-x:auto;padding-bottom:4px;';
+      list.forEach((p, i) => {
+        const im = document.createElement('img'); im.className = 'thumb'; im.src = p.src; im.alt = `현장 사진 ${i + 1}`;
+        im.style.cssText = 'width:84px;height:84px;flex:0 0 auto;margin:0;';
+        im.title = '눌러서 크게 보기'; im.onclick = () => openPhoto(s.id, i);
+        im.onerror = () => { im.style.opacity = '.3'; };
+        strip.appendChild(im);
+      });
+      v.appendChild(strip);
+      const q2 = document.createElement('div'); q2.className = 'quick-btns';
+      const vb = Object.assign(document.createElement('button'), { type:'button', className:'qbtn call', textContent:`📷 사진 보기 (${list.length}장)`, onclick: () => openPhoto(s.id, 0) });
+      const dl = photoDlButton(s, 0); dl.className = 'qbtn'; dl.textContent = '📥 다운로드';
+      dl.onclick = ev => { ev.stopPropagation(); openPhoto(s.id, 0); };
+      q2.append(vb, dl);
+      v.appendChild(q2);
+    } else {
+      const h = document.createElement('div'); h.className = 'photo-hint'; h.textContent = '📷 드라이브에서 사진을 불러오는 중...';
+      v.appendChild(h);
+      loadFolderPhotos(s);
     }
-    const hint = document.createElement('div'); hint.className = 'photo-hint'; const pc = photoList(s).length; hint.textContent = src ? `👆 사진을 누르면 크게 볼 수 있습니다${pc > 1 ? ` (전체 ${pc}장, ◀ ▶로 넘겨 보기)` : ''}` : '';
-    v.appendChild(hint);
-    const q2 = document.createElement('div'); q2.className = 'quick-btns';
-    const dl = photoDlButton(s); dl.className = 'qbtn call'; q2.appendChild(dl);
-    if (src) q2.appendChild(Object.assign(document.createElement('button'), { type:'button', className:'qbtn', textContent:'🔍 크게 보기', onclick: () => openPhoto(s.id) }));
-    if (safeUrl(s.reportImageLink)) q2.appendChild(qa('', safeUrl(s.reportImageLink), '🔗 드라이브에서 보기', true));
-    v.appendChild(q2);
   }
   row(s.installFor ? '시공 일시' : '방문 일시', visitDay(s) ? `${dateLabel(visitDay(s))}${visitTime(s) ? ' ' + ampm(visitTime(s)) : ' (시간 미정)'}` : '방문일 미정');
   const jump = (id, text) => Object.assign(document.createElement('button'), { type:'button', className:'qbtn sms', textContent:text, onclick: () => openDetail(id) });
