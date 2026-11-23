@@ -153,6 +153,7 @@ body.role-view #viewNotice{display:block}
 @media (max-width:560px){.grid{grid-template-columns:1fr}.guide-preview-card{padding:14px}}
 .site-link{border:none;border-radius:20px;padding:6px 14px;font-size:.82rem;font-weight:bold;color:#fff;background:linear-gradient(180deg,#8b5cf6,#6d28d9);box-shadow:0 3px 0 #4c1d95,0 4px 8px rgba(0,0,0,.2);cursor:pointer;white-space:nowrap;text-decoration:none;display:inline-block}
 .site-link:active{transform:translateY(2px);box-shadow:0 1px 0 #4c1d95}
+.site-addr{display:inline-block;margin-top:5px;font-size:.85rem;font-weight:bold;color:#1c7ed6;text-decoration:underline;word-break:break-all}
 .src-open{font-size:.78rem;margin-left:6px;color:#6d28d9;font-weight:bold;text-decoration:none;white-space:nowrap}
 #installBtn{display:none;border:none;border-radius:20px;padding:6px 14px;font-size:.82rem;font-weight:bold;color:#fff;background:linear-gradient(180deg,#3b82f6,#1d4ed8);box-shadow:0 3px 0 #1e3a8a,0 4px 8px rgba(0,0,0,.2);cursor:pointer;white-space:nowrap}
 #installBtn:active{transform:translateY(2px);box-shadow:0 1px 0 #1e3a8a}
@@ -242,7 +243,7 @@ body.role-view #viewNotice{display:block}
     <button type="submit" class="btn btn-submit" id="loginBtn">로그인</button>
     <button type="button" class="btn btn-reset" id="loginOther" style="width:100%;margin-top:12px;font-size:.9rem;padding:10px;">👥 다른 사람으로 로그인</button>
     <div id="loginMsg"></div>
-    <div style="text-align:center;font-size:.7rem;color:#adb5bd;margin-top:10px;">앱 버전 1123-8</div>
+    <div style="text-align:center;font-size:.7rem;color:#adb5bd;margin-top:10px;">앱 버전 1123-9</div>
   </form>
 </div>
 <div id="logModal" class="modal">
@@ -269,7 +270,7 @@ body.role-view #viewNotice{display:block}
     <div class="btn-row"><button type="submit" class="btn btn-submit">변경</button><button type="button" class="btn btn-reset" onclick="$('pwModal').classList.remove('show')">닫기</button></div>
   </form>
 </div>
-<div id="appVer" style="position:fixed;left:6px;bottom:4px;font-size:.65rem;color:#adb5bd;z-index:1;pointer-events:none;">앱 버전 1123-8</div>
+<div id="appVer" style="position:fixed;left:6px;bottom:4px;font-size:.65rem;color:#adb5bd;z-index:1;pointer-events:none;">앱 버전 1123-9</div>
 <div id="syncStatus">🔄 연동 중...</div>
 <div class="container">
   <h2>현장 방문 및 스케줄 관리</h2>
@@ -345,6 +346,7 @@ body.role-view #viewNotice{display:block}
         <div class="form-group"><label>수주처</label>
           <select id="sourceSel"></select>
           <input type="text" id="source" placeholder="수주처 직접 입력" style="display:none;margin-top:6px;">
+          <div id="sourceSite"></div>
         </div>
         <div class="form-group full"><label>수주처 채팅·요청서 주소 <span style="font-weight:normal;color:#888;font-size:.8rem;">(선택 · 숨고 채팅방 주소를 붙여 넣으면 앱에서 바로 열 수 있어요)</span></label>
           <input type="text" id="sourceUrl" placeholder="예: https://soomgo.com/..." inputmode="url" autocomplete="off"></div>
@@ -623,9 +625,18 @@ const SOURCES = ['숨고', '홈씨씨', '오늘의집', '개인'];
 const SOURCE_COLORS = { '숨고':'#7048e8', '홈씨씨':'#e8590c', '오늘의집':'#1c7ed6', '개인':'#495057' };
 const srcColor = v => SOURCE_COLORS[v] || '#868e96';
 /* 수주처 사이트 바로가기 (다른 곳을 추가하려면 '이름':'주소' 형식으로 넣으면 됩니다) */
-const SOURCE_LINKS = { '숨고':'https://soomgo.com/' };
+const SOURCE_LINKS = { '숨고':'https://soomgo.com', '홈씨씨':'https://www.homecc.com', '오늘의집':'https://ohou.se' };
+/* 수주처 사이트 주소 링크 (예: 🔗 soomgo.com) — 누르면 그 사이트가 새 창으로 열림 */
+function siteLinkEl(source) {
+  const u = SOURCE_LINKS[source]; if (!u) return null;
+  const a = document.createElement('a'); a.href = u; a.target = '_blank'; a.rel = 'noopener';
+  a.className = 'site-addr'; a.textContent = '🔗 ' + u.replace(/^https?:\/\//, '').replace(/\/$/, '');
+  a.title = source + ' 사이트 열기'; a.onclick = ev => ev.stopPropagation();
+  return a;
+}
+function showSiteLink(box, source) { box.innerHTML = ''; const a = siteLinkEl(source); if (a) box.appendChild(a); }
 /* 이 일정에서 열 주소: 직접 넣은 채팅방 주소 → 없으면 수주처 사이트 */
-const sourceLinkOf = s => safeUrl((s.sourceUrl || '').trim()) || SOURCE_LINKS[s.source] || '';
+const sourceLinkOf = s => safeUrl((s.sourceUrl || '').trim());   // 고객별 채팅방 주소 (사이트 주소는 siteLinkEl)
 function sourceOpenLink(s, cls) {
   const u = sourceLinkOf(s); if (!u) return null;
   const a = document.createElement('a'); a.href = u; a.target = '_blank'; a.rel = 'noopener';
@@ -1248,6 +1259,7 @@ function buildScheduleCard(item, isDup, ctx) {
   const time = item.visit && item.visit.length >= 16 ? item.visit.slice(11, 16) : '시간 미지정';
   detail.textContent = `${ctx.showDate ? '' : `방문 시간: ${time} · `}${item.source ? `수주처: ${item.source} · ` : ''}요청사항: ${item.request || '-'} · 비용/주소: ${item.cost || '-'} / ${item.note || '-'} · 담당기사: ${item.engineer || '미배정'}${item.engPhone ? ' (' + item.engPhone + ')' : ''}`;
   card.append(title, detail);
+  { const sl = siteLinkEl(item.source); if (sl) { sl.style.marginRight = '10px'; card.appendChild(sl); } }
   { const so = sourceOpenLink(item); if (so) { so.style.marginLeft = '0'; so.style.display = 'inline-block'; so.style.marginTop = '4px'; card.appendChild(so); } }
   if (item.report) {
     const report = document.createElement('div'); report.className = 'h-report';
@@ -1320,7 +1332,9 @@ function buildEditCard(item, ctx) {
     if (srcSel.value === '__custom__') { srcTxt.value = ''; srcTxt.style.display = 'block'; srcTxt.focus(); }
     else { srcTxt.value = srcSel.value; srcTxt.style.display = 'none'; }
   });
-  const srcWrap = document.createElement('div'); srcWrap.append(srcSel, srcTxt);
+  const srcSite = document.createElement('div'); showSiteLink(srcSite, item.source);
+  srcSel.addEventListener('change', () => showSiteLink(srcSite, srcSel.value));
+  const srcWrap = document.createElement('div'); srcWrap.append(srcSel, srcTxt, srcSite);
   f.sourceUrl = inp('text', item.sourceUrl, '숨고 채팅방 주소 붙여넣기 (선택)');
   f.status.addEventListener('change', () => { f.status.style.background = STAGE_COLORS[f.status.value] || '#fff'; });
   f.report = document.createElement('textarea'); f.report.className = 'field'; f.report.dataset.roleOk = ''; f.report.rows = 3; f.report.value = item.report || '';
@@ -1636,6 +1650,7 @@ $('sourceSel').addEventListener('change', () => {
   const v = $('sourceSel').value;
   if (v === '__custom__') { $('source').value = ''; $('source').style.display = 'block'; $('source').focus(); }
   else { $('source').value = v; $('source').style.display = 'none'; }
+  showSiteLink($('sourceSite'), v);
   scheduleDraft();
 });
 
@@ -1766,6 +1781,7 @@ function setForm(o) {
   });
   fillStageOptions($('stage'), o.status || STAGES[0], false);
   fillSourceSelect($('sourceSel'), $('source'), o.source);
+  showSiteLink($('sourceSite'), o.source);
   fillPartnerSelect($('partner'), o.partner);
   togglePay();
   syncEngSelect();
@@ -1951,7 +1967,8 @@ function render() {
     const srcTd = document.createElement('td'); srcTd.style.whiteSpace = 'nowrap';
     if (item.source) { const tg = srcTag(item.source); tg.style.marginLeft = '0'; tg.style.fontSize = '.78rem'; tg.style.padding = '3px 8px'; srcTd.appendChild(tg); }
     else srcTd.textContent = '-';
-    { const so = sourceOpenLink(item); if (so) { so.style.marginLeft = '0'; so.style.display = 'block'; so.style.marginTop = '4px'; so.textContent = item.sourceUrl ? '💬 채팅방' : '🔗 열기'; srcTd.appendChild(so); } }
+    { const sl = siteLinkEl(item.source); if (sl) { sl.style.display = 'block'; sl.style.fontSize = '.75rem'; srcTd.appendChild(sl); } }
+    { const so = sourceOpenLink(item); if (so) { so.style.marginLeft = '0'; so.style.display = 'block'; so.style.marginTop = '4px'; so.textContent = '💬 채팅방'; srcTd.appendChild(so); } }
     tr.appendChild(srcTd);
 
     ['customer', 'phone'].forEach(k => {
@@ -3028,7 +3045,7 @@ function renderDetail() {
     const commit = val => {
       const live = schedules.find(x => x.id === s.id); if (!live) return;
       if ((live.source || '') === val) return;
-      live.source = val; s.source = val; paint();
+      live.source = val; s.source = val; paint(); showSiteLink(site, val);
       save(); showSync(val ? `✅ 수주처를 '${val}'(으)로 저장했습니다` : '✅ 수주처를 비웠습니다');
     };
     sel.onchange = () => {
@@ -3037,7 +3054,8 @@ function renderDetail() {
     };
     txt.onkeydown = e => { if (e.key === 'Enter') { e.preventDefault(); txt.blur(); } };
     txt.onchange = () => { const t = txt.value.trim(); if (t) commit(t); };
-    v.append(sel, txt);
+    const site = document.createElement('div'); showSiteLink(site, s.source);
+    v.append(sel, txt, site);
     const so = sourceOpenLink(s, 'qbtn');
     if (so) { so.style.cssText = 'background:#f3f0ff;border-color:#b197fc;color:#5f3dc4;'; const q = document.createElement('div'); q.className = 'quick-btns'; q.appendChild(so); v.appendChild(q); }
   }
