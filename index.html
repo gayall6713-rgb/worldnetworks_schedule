@@ -282,7 +282,7 @@ body.locked #notifyBar{display:none!important}
     <button type="submit" class="btn btn-submit" id="loginBtn">로그인</button>
     <button type="button" class="btn btn-reset" id="loginOther" style="width:100%;margin-top:12px;font-size:.9rem;padding:10px;">👥 다른 사람으로 로그인</button>
     <div id="loginMsg"></div>
-    <div style="text-align:center;font-size:.7rem;color:#adb5bd;margin-top:10px;">앱 버전 1123-19</div>
+    <div style="text-align:center;font-size:.7rem;color:#adb5bd;margin-top:10px;">앱 버전 1123-20</div>
   </form>
 </div>
 <div id="expModal" class="modal" style="z-index:70;">
@@ -306,6 +306,29 @@ body.locked #notifyBar{display:none!important}
   </div>
 </div>
 <datalist id="expVendors"></datalist>
+<div id="reportModal" class="modal" style="z-index:65;">
+  <div class="modal-box" style="max-width:560px;">
+    <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:8px;gap:8px;">
+      <h4 style="margin:0;font-size:1.15rem;color:var(--primary);">📑 시공 사진대지 만들기</h4>
+      <button type="button" onclick="$('reportModal').classList.remove('show')" style="background:none;border:none;font-size:1.2rem;cursor:pointer;">✖</button>
+    </div>
+    <div id="rpInfo" class="hint" style="margin:0 0 10px;"></div>
+    <div class="grid">
+      <div class="form-group full"><label>공 사 명</label><input type="text" id="rpTitle"></div>
+      <div class="form-group"><label>시공일자</label><input type="date" id="rpDate"></div>
+      <div class="form-group"><label>작업비용</label><input type="text" id="rpCost" placeholder="예: 1,200,000원"></div>
+      <div class="form-group full"><label>현장주소</label><input type="text" id="rpAddr"></div>
+      <div class="form-group full"><label>공사위치 및 내용</label><input type="text" id="rpLoc"></div>
+      <div class="form-group"><label>점검 내용</label><input type="text" id="rpCheck"></div>
+      <div class="form-group"><label>조치 내용</label><input type="text" id="rpAction"></div>
+    </div>
+    <div id="rpLink" style="margin:6px 0;"></div>
+    <div class="btn-row" style="margin-top:10px;">
+      <button type="button" class="btn btn-excel" id="rpMake">📑 사진대지 만들기 (엑셀 저장)</button>
+      <button type="button" class="btn btn-reset" onclick="$('reportModal').classList.remove('show')">닫기</button>
+    </div>
+  </div>
+</div>
 <div id="statListModal" class="modal" style="z-index:52;">
   <div class="modal-box" style="max-width:1000px;width:100%;">
     <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:8px;gap:8px;">
@@ -372,7 +395,7 @@ body.locked #notifyBar{display:none!important}
     <div class="btn-row"><button type="submit" class="btn btn-submit">변경</button><button type="button" class="btn btn-reset" onclick="$('pwModal').classList.remove('show')">닫기</button></div>
   </form>
 </div>
-<div id="appVer" style="position:fixed;left:6px;bottom:4px;font-size:.65rem;color:#adb5bd;z-index:1;pointer-events:none;">앱 버전 1123-19</div>
+<div id="appVer" style="position:fixed;left:6px;bottom:4px;font-size:.65rem;color:#adb5bd;z-index:1;pointer-events:none;">앱 버전 1123-20</div>
 <div id="syncStatus">🔄 연동 중...</div>
 <div class="container">
   <h2>현장 방문 및 스케줄 관리</h2>
@@ -815,6 +838,7 @@ function updateServerState() {
 let schedules = [];
 try { schedules = JSON.parse(localStorage.getItem(STORE_KEY) || '[]'); } catch (e) { schedules = []; }
 if (!Array.isArray(schedules)) schedules = [];
+setTimeout(() => { try { if (!statusSnap) snapStatus(); } catch (e) {} }, 0);
 /* 구글 시트에서 '2026-11-13T04:00:00.000Z'처럼 세계표준시(UTC)로 돌아온 시간을 한국 시간으로 바꿈 */
 function normVisit(v) {
   if (typeof v !== 'string') return v ? String(v) : '';
@@ -1283,6 +1307,182 @@ $('slExcel').onclick = () => {
   XLSX.writeFile(wb, `내역_${slTitleText.replace(/[\\/:*?"<>|·\s]+/g, '_')}_${todayStr()}.xlsx`);
 };
 
+/* ===== 사진대지(시공 사진대지) 엑셀 만들기 — 올려 주신 양식(photo_report_template.xlsx)에 그대로 채움 ===== */
+async function buildPhotoReport(ExcelJS, templateBuf, info, photos) {
+  const wb = new ExcelJS.Workbook();
+  await wb.xlsx.load(templateBuf);
+  const ws = wb.worksheets[0];
+  ws.name = String(info.sheetName || '사진대지').replace(/[\\/?*[\]:]/g, '').slice(0, 30) || '사진대지';
+  const C = 'BCDEFGH'.split('');
+  // 양식 줄 모양 기억 (머리글·사진·내용·기타 머리글)
+  const grab = r => ({ h: ws.getRow(r).height, st: C.map(c => JSON.parse(JSON.stringify(ws.getCell(c + r).style || {}))) });
+  const S = { head: grab(12), photo: grab(13), note: grab(14), etcHead: grab(19), blank: grab(18) };
+  const txt = { head: [ws.getCell('B12').value, ws.getCell('E12').value], note: [ws.getCell('B14').value, ws.getCell('E14').value], etc: ws.getCell('B19').value };
+  // 기본정보
+  ws.getCell('C6').value = info.title || '';
+  ws.getCell('F6').value = info.dateText || '';
+  ws.getCell('C7').value = info.address || '';
+  ws.getCell('F7').value = info.customer || '';
+  ws.getCell('C8').value = info.location || '';
+  ws.getCell('F8').value = info.cost || '';
+  // 12행부터 아래를 새로 그림
+  const merged = Object.keys(ws._merges || {});
+  merged.forEach(k => { const m = ws._merges[k]; if (m && m.model && m.model.top >= 12) ws.unMergeCells(m.model.top, m.model.left, m.model.bottom, m.model.right); });
+  for (let r = 12; r <= Math.max(ws.rowCount, 40); r++) {
+    const row = ws.getRow(r);
+    C.forEach(c => { const cell = ws.getCell(c + r); cell.value = null; cell.style = {}; });
+    row.height = undefined;
+  }
+  const paint = (r, shape) => { ws.getRow(r).height = shape.h; C.forEach((c, i) => { ws.getCell(c + r).style = JSON.parse(JSON.stringify(shape.st[i])); }); };
+  // 열 너비(px) — 사진 위치 계산용
+  const colPx = ci => { const w = ws.getColumn(ci).width || ws.properties.defaultColWidth || 8.43; return Math.floor(w * 7 + 5); };
+  const place = (img, r, c1, c2) => {   // c1~c2(1부터) 칸, r행 안에 비율 유지해서 가운데
+    if (!img) return;
+    const areaW = Array.from({ length: c2 - c1 + 1 }, (_, i) => colPx(c1 + i)).reduce((a, b) => a + b, 0);
+    const areaH = (ws.getRow(r).height || 15) * 4 / 3;
+    const pad = 6, sc = Math.min((areaW - pad * 2) / img.w, (areaH - pad * 2) / img.h);
+    const w = Math.round(img.w * sc), h = Math.round(img.h * sc);
+    let x = (areaW - w) / 2, col = c1 - 1;
+    while (col < c2 - 1 && x >= colPx(col + 1)) { x -= colPx(col + 1); col++; }
+    const id = wb.addImage({ base64: img.base64, extension: img.ext });
+    const EMU = 9525;   // 1px
+    ws.addImage(id, { tl: { nativeCol: col, nativeColOff: Math.round(x * EMU), nativeRow: r - 1, nativeRowOff: Math.round((areaH - h) / 2 * EMU) }, ext: { width: w, height: h }, editAs: 'oneCell' });
+  };
+  const n = Math.max(1, photos.before.length, photos.after.length);
+  let r = 12;
+  for (let k = 0; k < n; k++) {
+    paint(r, S.head); ws.mergeCells(`B${r}:D${r}`); ws.mergeCells(`E${r}:H${r}`);
+    ws.getCell('B' + r).value = txt.head[0]; ws.getCell('E' + r).value = txt.head[1];
+    paint(r + 1, S.photo); ws.mergeCells(`B${r + 1}:D${r + 1}`); ws.mergeCells(`E${r + 1}:H${r + 1}`);
+    if (!photos.before[k]) ws.getCell('B' + (r + 1)).value = '[ 시공 전 사진 없음 ]';
+    if (!photos.after[k]) ws.getCell('E' + (r + 1)).value = '[ 시공 후 사진 없음 ]';
+    place(photos.before[k], r + 1, 2, 4); place(photos.after[k], r + 1, 5, 8);
+    paint(r + 2, S.note); ws.mergeCells(`C${r + 2}:D${r + 2}`); ws.mergeCells(`F${r + 2}:H${r + 2}`);
+    ws.getCell('B' + (r + 2)).value = txt.note[0]; ws.getCell('E' + (r + 2)).value = txt.note[1];
+    ws.getCell('C' + (r + 2)).value = info.check || ''; ws.getCell('F' + (r + 2)).value = info.action || '';
+    r += 3;
+  }
+  if (photos.etc.length) {
+    r += 1;
+    paint(r, S.etcHead); ws.mergeCells(`B${r}:G${r}`); ws.getCell('B' + r).value = txt.etc || '기타 작업사진';
+    r += 1;
+    for (let k = 0; k < photos.etc.length; k += 2) {
+      paint(r, S.photo); ws.mergeCells(`B${r}:D${r}`); ws.mergeCells(`E${r}:H${r}`);
+      place(photos.etc[k], r, 2, 4); place(photos.etc[k + 1], r, 5, 8);
+      r += 1;
+    }
+  }
+  ws.pageSetup = Object.assign({}, ws.pageSetup, { printArea: `A1:H${r}`, fitToPage: true, fitToWidth: 1, fitToHeight: 0, orientation: 'portrait', paperSize: 9 });
+  return await wb.xlsx.writeBuffer();
+}
+
+let excelJsLoading = null;
+function loadExcelJs() {
+  if (window.ExcelJS) return Promise.resolve();
+  if (excelJsLoading) return excelJsLoading;
+  excelJsLoading = new Promise((ok, no) => {
+    const sc = document.createElement('script'); sc.src = 'https://cdn.jsdelivr.net/npm/exceljs@4.4.0/dist/exceljs.min.js';
+    sc.onload = () => ok(); sc.onerror = () => { excelJsLoading = null; no(new Error('엑셀 도구를 불러오지 못했습니다.')); };
+    document.head.appendChild(sc);
+  });
+  return excelJsLoading;
+}
+/* 사진 → 엑셀에 넣을 JPG (최대 1400px) */
+function toReportImg(src) {
+  return new Promise((ok) => {
+    const im = new Image();
+    im.onload = () => {
+      const sc = Math.min(1, 1400 / Math.max(im.naturalWidth, im.naturalHeight));
+      const cv = document.createElement('canvas'); cv.width = Math.round(im.naturalWidth * sc); cv.height = Math.round(im.naturalHeight * sc);
+      const cx = cv.getContext('2d'); cx.fillStyle = '#fff'; cx.fillRect(0, 0, cv.width, cv.height); cx.drawImage(im, 0, 0, cv.width, cv.height);
+      ok({ base64: cv.toDataURL('image/jpeg', 0.85).split(',')[1], ext: 'jpeg', w: cv.width, h: cv.height });
+    };
+    im.onerror = () => ok(null);
+    im.src = src;
+  });
+}
+const reportDateText = d => { const m = String(d || '').match(/^(\d{4})-(\d{2})-(\d{2})/); return m ? `${m[1]}년 ${+m[2]} 월 ${+m[3]} 일` : ''; };
+let rpId = null;
+function openReport(id) {
+  if (!canEdit()) return;
+  const s = schedules.find(x => x.id === id); if (!s) return;
+  rpId = id;
+  const list = photoList(s), cnt = t => list.filter(p => (p.tag || '') === t).length;
+  $('rpInfo').textContent = `👤 ${s.customer || '이름 없음'} · 사진: 🔨 시공 전 ${cnt('전')}장 · ✅ 시공 후 ${cnt('후')}장 · 📁 기타 ${cnt('')}장` + (list.length ? '' : ' — 현장 사진이 없어 빈 양식으로 만들어집니다');
+  $('rpTitle').value = s.reportTitle || s.request || '';
+  $('rpDate').value = ((s.installDate || '') || visitDay(s) || '').slice(0, 10);
+  $('rpCost').value = won(s.total) || s.cost || '';
+  $('rpAddr').value = s.note || '';
+  $('rpLoc').value = s.reportLoc || s.request || '';
+  $('rpCheck').value = s.reportCheck || s.request || '';
+  $('rpAction').value = s.reportAction || (s.report || '').split('\n')[0] || s.request || '';
+  rpShowLink(s);
+  $('reportModal').classList.add('show');
+}
+function rpShowLink(s) {
+  const box = $('rpLink'); box.innerHTML = '';
+  if (s.photoReportUrl && safeUrl(s.photoReportUrl)) {
+    const a = document.createElement('a'); a.href = safeUrl(s.photoReportUrl); a.target = '_blank'; a.rel = 'noopener'; a.className = 'qbtn';
+    a.textContent = `📂 저장된 사진대지 열기${s.photoReportAt ? ' (' + s.photoReportAt + ')' : ''}`; box.appendChild(a);
+  }
+}
+$('rpMake').onclick = async () => {
+  const s = schedules.find(x => x.id === rpId); if (!s) return;
+  const btn = $('rpMake'), old = btn.textContent; btn.disabled = true;
+  const step = t => { btn.textContent = t; };
+  try {
+    step('🔄 엑셀 도구 준비 중...');
+    await loadExcelJs();
+    const tpl = await (await fetch('./photo_report_template.xlsx', { cache: 'no-cache' })).arrayBuffer();
+    const list = photoList(s);
+    const ids = list.filter(p => p.id).map(p => p.id), got = {};
+    if (ids.length && authToken) {
+      step(`🔄 드라이브에서 사진 ${ids.length}장 받는 중...`);
+      const j = await api('photoData', { id: s.id, ids });
+      if (j && j.photos) Object.assign(got, j.photos);
+    }
+    step('🔄 사진 정리 중...');
+    const imgs = await Promise.all(list.map(p => p.data ? toReportImg(p.data) : got[p.id] ? toReportImg(`data:${got[p.id].mime || 'image/jpeg'};base64,${got[p.id].data}`) : Promise.resolve(null)));
+    const photos = { before: [], after: [], etc: [] };
+    list.forEach((p, i) => { if (!imgs[i]) return; (p.tag === '전' ? photos.before : p.tag === '후' ? photos.after : photos.etc).push(imgs[i]); });
+    const missing = list.length - imgs.filter(Boolean).length;
+    step('🔄 엑셀 만드는 중...');
+    const info = { sheetName: s.customer || '사진대지', title: $('rpTitle').value.trim(), dateText: reportDateText($('rpDate').value), address: $('rpAddr').value.trim(),
+      customer: s.customer || '', location: $('rpLoc').value.trim(), cost: $('rpCost').value.trim(), check: $('rpCheck').value.trim(), action: $('rpAction').value.trim() };
+    const buf = await buildPhotoReport(window.ExcelJS, tpl, info, photos);
+    const fname = `사진대지_${(s.customer || '고객').replace(/[\\/:*?"<>|\s]+/g, '')}_${$('rpDate').value || todayStr()}`;
+    const blob = new Blob([buf], { type: 'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet' });
+    downloadBlob(blob, fname + '.xlsx');
+    // 입력한 문구는 다음에 다시 쓸 수 있게 일정에 보관
+    Object.assign(s, { reportTitle: info.title, reportLoc: info.location, reportCheck: info.check, reportAction: info.action });
+    if (authToken) {
+      step('🔄 구글 드라이브에 저장 중...');
+      const b64 = await new Promise(ok => { const fr = new FileReader(); fr.onload = () => ok(String(fr.result).split(',')[1]); fr.readAsDataURL(blob); });
+      const r = await api('saveReport', { id: s.id, fileName: fname, data: b64 });
+      if (r && r.ok && r.url) { s.photoReportUrl = r.url; s.photoReportAt = nowStr(); }
+      else throw new Error((r && r.error) || '드라이브 저장 실패');
+    }
+    save(); rpShowLink(s); if (detailId === s.id) renderDetail();
+    showSync(`✅ 사진대지를 만들었습니다${authToken ? ' · 드라이브 저장 완료' : ''}${missing ? ` (사진 ${missing}장은 불러오지 못함)` : ''}`);
+  } catch (err) {
+    console.error(err); alert('사진대지를 만들지 못했습니다.\n' + (err && err.message || err));
+  } finally { btn.disabled = false; btn.textContent = old; }
+};
+/* 진행 상태를 '처리완료'로 바꾸면 사진대지를 만들지 물어봄 */
+const reportAsked = new Set();
+var statusSnap = null;
+function snapStatus() { statusSnap = {}; schedules.forEach(x => { statusSnap[x.id] = x.status || ''; }); }
+function checkNewlyDone() {
+  if (!statusSnap) { snapStatus(); return; }
+  const done = schedules.filter(x => x.status === '처리완료' && statusSnap[x.id] !== '처리완료' && !reportAsked.has(x.id));
+  snapStatus();
+  if (!done.length || !canEdit()) return;
+  const s = done[0]; reportAsked.add(s.id);
+  setTimeout(() => {
+    if (confirm(`'${s.customer || '이름 없음'}' 일정을 처리완료로 바꿨습니다.\n시공 사진대지(엑셀)를 만들까요?`)) openReport(s.id);
+  }, 400);
+}
+
 /* ===== 모든 창의 💾 저장 버튼: 지금 내용을 구글 시트에 저장 ===== */
 async function saveNow(btn) {
   if (btn) { btn.disabled = true; btn.dataset.t = btn.dataset.t || btn.textContent; btn.textContent = '🔄 저장 중...'; }
@@ -1380,6 +1580,7 @@ async function boot() {
 
 async function save() {
   checkNotify();
+  try { checkNewlyDone(); } catch (e) {}
   try { localStorage.setItem(STORE_KEY, JSON.stringify(schedules)); } catch (e) {}
   renderCalendar();
   render();
@@ -1426,7 +1627,7 @@ async function loadFromServer() {
   try {
     const data = await api('list');
     if (Array.isArray(data) && (data.length > 0 || !schedules.length || isAdmin())) {
-      schedules = data; ensureIds(); takeNotifySnap();
+      schedules = data; ensureIds(); takeNotifySnap(); snapStatus();
       localStorage.setItem(STORE_KEY, JSON.stringify(schedules));
       renderCalendar(); render(); refreshPopups();
       showSync("✅ 최신 상태입니다");
@@ -3561,10 +3762,12 @@ function renderDetail() {
   if (s.partner) { const pe = employees.find(e => e.name === s.partner); row('🤝 협력업체', [s.partner, pe && pe.phone].filter(Boolean).join('  '), pe && tel(pe.phone) ? [qa('call', 'tel:' + tel(pe.phone), '📞 업체 전화')] : null); }
   if (s.updatedBy) row('최종 수정', `${s.updatedBy} · ${s.updatedAt || ''}`);
   row('방문 후 기록', s.report ? s.report + (s.reportAt ? `\n(${s.reportAt} 기록)` : '') : '');
+  if (s.photoReportUrl && safeUrl(s.photoReportUrl) && canEdit()) { const a = document.createElement('a'); a.className = 'qbtn'; a.href = safeUrl(s.photoReportUrl); a.target = '_blank'; a.rel = 'noopener'; a.textContent = '📂 사진대지 열기'; row('📑 사진대지', s.photoReportAt ? `${s.photoReportAt} 저장` : '저장됨', [a]); }
   lockView(body);
   const btns = $('detailBtns'); btns.innerHTML = '';
   const mkBtn = (cls, text, fn) => { const b = document.createElement('button'); b.type = 'button'; b.className = 'btn btn-sm ' + cls; b.textContent = text; b.onclick = fn; btns.appendChild(b); };
   btns.appendChild(saveNowBtn('btn-sm'));
+  if (canEdit()) mkBtn('btn-excel', '📑 사진대지', () => openReport(s.id));
   mkBtn('btn-edit', '✏️ 수정', () => { const id = s.id; detailReturn = id; closeDetail(); openEditModal(id); });
   mkBtn('btn-del', '🗑 삭제', async () => {
     const live = schedules.find(x => x.id === detailId);
