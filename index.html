@@ -268,7 +268,7 @@ body.locked #notifyBar{display:none!important}
     <button type="submit" class="btn btn-submit" id="loginBtn">로그인</button>
     <button type="button" class="btn btn-reset" id="loginOther" style="width:100%;margin-top:12px;font-size:.9rem;padding:10px;">👥 다른 사람으로 로그인</button>
     <div id="loginMsg"></div>
-    <div style="text-align:center;font-size:.7rem;color:#adb5bd;margin-top:10px;">앱 버전 1123-13</div>
+    <div style="text-align:center;font-size:.7rem;color:#adb5bd;margin-top:10px;">앱 버전 1123-14</div>
   </form>
 </div>
 <div id="statModal" class="modal">
@@ -315,7 +315,7 @@ body.locked #notifyBar{display:none!important}
     <div class="btn-row"><button type="submit" class="btn btn-submit">변경</button><button type="button" class="btn btn-reset" onclick="$('pwModal').classList.remove('show')">닫기</button></div>
   </form>
 </div>
-<div id="appVer" style="position:fixed;left:6px;bottom:4px;font-size:.65rem;color:#adb5bd;z-index:1;pointer-events:none;">앱 버전 1123-13</div>
+<div id="appVer" style="position:fixed;left:6px;bottom:4px;font-size:.65rem;color:#adb5bd;z-index:1;pointer-events:none;">앱 버전 1123-14</div>
 <div id="syncStatus">🔄 연동 중...</div>
 <div class="container">
   <h2>현장 방문 및 스케줄 관리</h2>
@@ -406,12 +406,14 @@ body.locked #notifyBar{display:none!important}
         <div class="form-group full"><label>요청 사항</label><input type="text" id="request" placeholder="예: 문틀 교체" required></div>
 
         <div id="payBox" class="full pay-box" style="display:none;">
-          <div class="pay-title">💰 계약금 / 잔금 관리</div>
+          <div class="pay-title">💰 계약금 / 중도금 / 잔금 관리</div>
           <div class="grid">
             <div class="form-group full"><label>최종 계약금액 (원)</label><input type="text" id="contractTotal" inputmode="numeric" placeholder="예: 1,200,000"></div>
             <div class="form-group"><label>계약금 (원)</label><input type="text" id="depositAmt" inputmode="numeric" placeholder="예: 300,000"><label class="chk"><input type="checkbox" id="depositPaid"> 계약금 입금 완료</label>
 <div class="pay-detail"><input type="date" id="depositDate" title="입금 날짜"><select id="depositMethod" title="결제수단"><option value="">결제수단</option><option value="현금">현금</option><option value="카드">카드</option><option value="계좌입금">계좌입금</option></select></div></div>
-            <div class="form-group"><label>잔금 (원) · 자동 계산</label><input type="text" id="balanceAmt" inputmode="numeric" placeholder="최종금액 - 계약금"><label class="chk"><input type="checkbox" id="balancePaid"> 잔금 입금 완료</label>
+            <div class="form-group"><label>중도금 (원) · 없으면 비워 두세요</label><input type="text" id="middleAmt" inputmode="numeric" placeholder="예: 500,000"><label class="chk"><input type="checkbox" id="middlePaid"> 중도금 입금 완료</label>
+<div class="pay-detail"><input type="date" id="middleDate" title="입금 날짜"><select id="middleMethod" title="결제수단"><option value="">결제수단</option><option value="현금">현금</option><option value="카드">카드</option><option value="계좌입금">계좌입금</option></select></div></div>
+            <div class="form-group"><label>잔금 (원) · 자동 계산</label><input type="text" id="balanceAmt" inputmode="numeric" placeholder="최종금액 - 계약금 - 중도금"><label class="chk"><input type="checkbox" id="balancePaid"> 잔금 입금 완료</label>
 <div class="pay-detail"><input type="date" id="balanceDate" title="입금 날짜"><select id="balanceMethod" title="결제수단"><option value="">결제수단</option><option value="현금">현금</option><option value="카드">카드</option><option value="계좌입금">계좌입금</option></select></div></div>
             <div class="form-group full" style="border-top:1px dashed #bfdbfe;padding-top:10px;margin-bottom:0;"><label>🧾 증빙 발급 (현금영수증 · 세금계산서)</label>
               <div class="pay-detail" style="margin-top:0;">
@@ -497,7 +499,7 @@ body.locked #notifyBar{display:none!important}
       <select id="filterEng" class="filter-sel" title="담당 기사"></select>
       <select id="filterPay" class="filter-sel" title="입금 상태">
         <option value="">입금 전체</option><option value="unpaid">미수금 있음</option><option value="done">완납</option>
-        <option value="depositNo">계약금 미입금</option><option value="balanceNo">잔금 미입금</option>
+        <option value="depositNo">계약금 미입금</option><option value="middleNo">중도금 미입금</option><option value="balanceNo">잔금 미입금</option>
         <option value="receiptNo">증빙 미발급</option><option value="cashReceipt">현금영수증 건</option><option value="taxInvoice">세금계산서 건</option>
       </select>
       <span class="filter-date">방문일 <input type="date" id="filterFrom"> ~ <input type="date" id="filterTo"></span>
@@ -609,7 +611,7 @@ function nowStr() {
 const uid = () => Date.now() + Math.random().toString(36).slice(2, 6);
 
 const STORE_KEY = 'siteSchedules_v3';
-const FIELD_IDS = { installDate:'installDate', receiptType:'receiptType', receiptDate:'receiptDate', status:'stage', source:'source', sourceUrl:'sourceUrl', customer:'customer', phone:'phone', visit:'visitDate', request:'request', cost:'cost', engineer:'engineer', engPhone:'engPhone', note:'note', report:'report', total:'contractTotal', deposit:'depositAmt', balance:'balanceAmt' };
+const FIELD_IDS = { installDate:'installDate', receiptType:'receiptType', receiptDate:'receiptDate', status:'stage', source:'source', sourceUrl:'sourceUrl', customer:'customer', phone:'phone', visit:'visitDate', request:'request', cost:'cost', engineer:'engineer', engPhone:'engPhone', note:'note', report:'report', total:'contractTotal', deposit:'depositAmt', middle:'middleAmt', balance:'balanceAmt' };
 const STAGES = ['방문실측','방문시공','견적제출','계약','공사진행','처리완료','보류 및 재방문'];
 const STAGE_COLORS = { '방문실측':'#d0ebff','방문시공':'#e5dbff','견적제출':'#fff3bf','계약':'#d3f9d8','공사진행':'#ffe8cc','처리완료':'#b2f2bb','보류 및 재방문':'#ffc9c9' };
 const STAGE_ACCENT = { '방문실측':'#339af0','방문시공':'#7950f2','견적제출':'#fab005','계약':'#40c057','공사진행':'#fd7e14','처리완료':'#2f9e44','보류 및 재방문':'#fa5252' };
@@ -945,10 +947,10 @@ $('pwForm').addEventListener('submit', async ev => {
 // 기준: 방문 일시의 날짜. 미수금은 방문시공·계약·공사진행·처리완료 건만 셈. 시공 예정일로 자동 생성된 [시공] 일정은 원래 일정과 같은 공사라서 빼고 셉니다.
 const statJobs = () => schedules.filter(x => !x.installFor);
 const statMoney = list => {
-  const m = { total:0, deposit:0, balance:0, paid:0, unpaid:0 };
+  const m = { total:0, deposit:0, middle:0, balance:0, paid:0, unpaid:0 };
   list.forEach(x => {
-    const t = toNum(x.total), dp = toNum(x.deposit), bl = toNum(x.balance), pd = (x.depositPaid ? dp : 0) + (x.balancePaid ? bl : 0);
-    m.total += t; m.deposit += dp; m.balance += bl; m.paid += pd;
+    const t = toNum(x.total), pd = paidSum(x);
+    m.total += t; m.deposit += toNum(x.deposit); m.middle += toNum(x.middle); m.balance += toNum(x.balance); m.paid += pd;
     if (PAY_STAGES.includes(x.status)) m.unpaid += Math.max(0, t - pd);   // 미수금은 계약 이후 단계만 (견적 금액은 빼고)
   });
   return m;
@@ -1008,8 +1010,8 @@ function renderStats() {
     card('미수금', statWon(D.all.unpaid) + '원', '#e03131');
   const num = v => `<td class="n${v ? '' : ' zero'}">${statWon(v)}</td>`;
   const cnum = v => `<td class="n${v ? '' : ' zero'}">${v}</td>`;
-  const moneyHead = '<th>공사 총금액</th><th>계약금</th><th>잔금</th><th>입금 완료</th><th>미수금</th>';
-  const moneyCells = r => num(r.total) + num(r.deposit) + num(r.balance) + num(r.paid) + num(r.unpaid);
+  const moneyHead = '<th>공사 총금액</th><th>계약금</th><th>중도금</th><th>잔금</th><th>입금 완료</th><th>미수금</th>';
+  const moneyCells = r => num(r.total) + num(r.deposit) + num(r.middle) + num(r.balance) + num(r.paid) + num(r.unpaid);
   $('statStage').innerHTML = `<thead><tr><th>진행 상태</th><th>건수</th>${moneyHead}</tr></thead><tbody>` +
     D.stageRows.map(r => `<tr><td><span style="display:inline-block;width:10px;height:10px;border-radius:2px;background:${STAGE_ACCENT[r.st] || '#adb5bd'};margin-right:6px;"></span>${escAttr(stName(r.st))}</td>${cnum(r.n)}${moneyCells(r)}</tr>`).join('') +
     `<tr class="sum"><td>합계</td>${cnum(D.all.n)}${moneyCells(D.all)}</tr></tbody>`;
@@ -1026,7 +1028,7 @@ $('statExcel').onclick = () => {
   if (!isAdmin()) return;
   if (typeof XLSX === 'undefined') { alert('엑셀 기능을 불러오지 못했습니다. 인터넷 연결을 확인해 주세요.'); return; }
   const D = statData(), stName = st => st || '상태 미지정';
-  const mh = ['공사 총금액', '계약금', '잔금', '입금 완료', '미수금'], mv = r => [r.total, r.deposit, r.balance, r.paid, r.unpaid];
+  const mh = ['공사 총금액', '계약금', '중도금', '잔금', '입금 완료', '미수금'], mv = r => [r.total, r.deposit, r.middle, r.balance, r.paid, r.unpaid];
   const a = [['진행 상태', '건수', ...mh], ...D.stageRows.map(r => [stName(r.st), r.n, ...mv(r)]), ['합계', D.all.n, ...mv(D.all)]];
   const b = [['기간', ...D.stages.map(stName), '합계', ...mh], ...D.periodRows.map(r => [r.label, ...D.stages.map(st => r.cnt[st]), r.n, ...mv(r)])];
   const wb = XLSX.utils.book_new();
@@ -1775,21 +1777,26 @@ const PAY_STAGES = ['방문시공', '계약', '공사진행', '처리완료'];
 /* 처리완료·취소된 일정은 글자에 줄을 그어 표시 */
 const isStruck = s => /취소|처리완료/.test((s && s.status) || '');
 const toNum = v => parseInt(String(v || '').replace(/[^\d]/g, ''), 10) || 0;
+/* 계약금·중도금·잔금 (입금 체크·날짜·결제수단을 같은 방식으로 관리) */
+const PAY_PARTS = ['deposit', 'middle', 'balance'];
+const PAY_LABEL = { deposit: '계약금', middle: '중도금', balance: '잔금' };
+const paidSum = s => PAY_PARTS.reduce((a, k) => a + (s[k + 'Paid'] ? toNum(s[k]) : 0), 0);
 const won = v => { const n = toNum(v); return n ? n.toLocaleString('ko-KR') + '원' : ''; };
 const todayStr = () => nowStr().slice(0, 10);
 function togglePay() { $('payBox').style.display = PAY_STAGES.includes($('stage').value) ? 'block' : 'none'; }
 function autoBalance() {
-  const t = toNum($('contractTotal').value), d = toNum($('depositAmt').value);
-  if (t > 0) $('balanceAmt').value = Math.max(t - d, 0).toLocaleString('ko-KR');
+  const t = toNum($('contractTotal').value), d = toNum($('depositAmt').value), m = toNum($('middleAmt').value);
+  if (t > 0) $('balanceAmt').value = Math.max(t - d - m, 0).toLocaleString('ko-KR');
   scheduleDraft();
 }
 $('contractTotal').addEventListener('input', autoBalance);
 $('depositAmt').addEventListener('input', autoBalance);
-['contractTotal', 'depositAmt', 'balanceAmt'].forEach(id => $(id).addEventListener('blur', () => {
+$('middleAmt').addEventListener('input', autoBalance);
+['contractTotal', 'depositAmt', 'middleAmt', 'balanceAmt'].forEach(id => $(id).addEventListener('blur', () => {
   const d = $(id).value.replace(/\D/g, '');
   if (d) $(id).value = Number(d).toLocaleString('ko-KR');
 }));
-['deposit', 'balance'].forEach(k => {
+PAY_PARTS.forEach(k => {
   $(k + 'Paid').addEventListener('change', () => {
     if ($(k + 'Paid').checked) { if (!$(k + 'Date').value) $(k + 'Date').value = todayStr(); }
     else $(k + 'Date').value = '';
@@ -1820,10 +1827,10 @@ $('sourceSel').addEventListener('change', () => {
 function payCell(item) {
   const td = document.createElement('td');
   td.style.minWidth = '170px';
-  if (!PAY_STAGES.includes(item.status) && !item.total && !item.deposit && !item.balance && !item.receiptType) { td.textContent = '-'; return td; }
+  if (!PAY_STAGES.includes(item.status) && !item.total && !item.deposit && !item.middle && !item.balance && !item.receiptType) { td.textContent = '-'; return td; }
   const line = (t, css) => { const d = document.createElement('div'); d.textContent = t; d.style.cssText = 'font-size:.78rem;' + (css || ''); td.appendChild(d); };
   if (item.total) line('최종 ' + won(item.total), 'font-weight:bold;');
-  [['deposit', '계약금'], ['balance', '잔금']].forEach(([k, lab]) => {
+  PAY_PARTS.filter(k => k !== 'middle' || toNum(item.middle) || item.middlePaid).map(k => [k, PAY_LABEL[k]]).forEach(([k, lab]) => {
     const row = document.createElement('div');
     row.style.cssText = 'margin:3px 0;font-size:.78rem;';
     const lb = document.createElement('label');
@@ -1883,7 +1890,7 @@ function payCell(item) {
   }
   const t = toNum(item.total);
   if (t) {
-    const paid = (item.depositPaid ? toNum(item.deposit) : 0) + (item.balancePaid ? toNum(item.balance) : 0);
+    const paid = paidSum(item);
     const remain = t - paid;
     if (remain <= 0) line('완납 ✅', 'color:#2f9e44;font-weight:bold;');
     else line('미수금 ' + remain.toLocaleString('ko-KR') + '원', 'color:#e03131;font-weight:bold;');
@@ -1903,7 +1910,7 @@ function getForm() {
   o.receiptIssued = $('receiptIssued').checked;
   o['reportImage'] = currentFormReportImage;
   o['reportImageLink'] = currentFormReportImageLink;
-  ['deposit', 'balance'].forEach(k => {
+  PAY_PARTS.forEach(k => {
     const cb = $(k + 'Paid');
     o[k + 'Paid'] = cb ? cb.checked : false;
     o[k + 'PaidAt'] = (cb && cb.checked) ? ($(k + 'Date').value || todayStr()) : '';
@@ -1937,7 +1944,7 @@ function setForm(o) {
   }
   $('formReportImage').value = '';
 
-  ['deposit', 'balance'].forEach(k => {
+  PAY_PARTS.forEach(k => {
     if ($(k + 'Paid')) $(k + 'Paid').checked = !!o[k + 'Paid'];
     if ($(k + 'Date')) $(k + 'Date').value = o[k + 'PaidAt'] || '';
     if ($(k + 'Method')) $(k + 'Method').value = o[k + 'Method'] || '';
@@ -2049,8 +2056,8 @@ function renderFilter() {
 }
 function isFiltered() { return !!(fSrc || filterStage || fQ || fEng || fPay || fFrom || fTo); }
 function payState(s) {
-  const t = toNum(s.total), paid = (s.depositPaid ? toNum(s.deposit) : 0) + (s.balancePaid ? toNum(s.balance) : 0);
-  return { unpaid: t > 0 && t - paid > 0, done: t > 0 && t - paid <= 0, depositNo: toNum(s.deposit) > 0 && !s.depositPaid, balanceNo: toNum(s.balance) > 0 && !s.balancePaid,
+  const t = toNum(s.total), paid = paidSum(s);
+  return { unpaid: t > 0 && t - paid > 0, done: t > 0 && t - paid <= 0, depositNo: toNum(s.deposit) > 0 && !s.depositPaid, middleNo: toNum(s.middle) > 0 && !s.middlePaid, balanceNo: toNum(s.balance) > 0 && !s.balancePaid,
     receiptNo: !!s.receiptType && !s.receiptIssued, cashReceipt: s.receiptType === '현금영수증', taxInvoice: s.receiptType === '세금계산서' };
 }
 function matchRow(s) {
@@ -2264,7 +2271,7 @@ document.addEventListener('keydown', e => { if (e.key === 'Escape' && $('editMod
 
 /* ===== 안내장 ===== */
 const G = {
-  total: i => won(i.total) || i.cost || '', dep: i => won(i.deposit), bal: i => won(i.balance),
+  total: i => won(i.total) || i.cost || '', dep: i => won(i.deposit), mid: i => won(i.middle), bal: i => won(i.balance),
   name: i => i.customer || '', phone: i => i.phone || '', visit: i => fmtCardDate(i.visit),
   addr: i => i.note || '', req: i => i.request || '', cost: i => i.cost || '',
   eng: i => i.engineer ? i.engineer + ' 엔지니어' : '', engTel: i => i.engPhone ? `[ ${i.engPhone} ]` : ''
@@ -2633,7 +2640,7 @@ function parseText(raw) {
 
 /* ===== 엑셀 읽기 ===== */
 const HEADER_RULES = [
-  ['skip', /기록일시|기록시각/], ['receiptIssued', /증빙발급|발급여부|발급완료/], ['receiptType', /증빙|현금영수증|세금계산서/], ['source', /수주처|수주|유입경로|유입|채널/], ['depositPaid', /계약금.*입금/], ['balancePaid', /잔금.*입금/], ['total', /^(최종)?계약금액$|^최종금액$|^총금액$/], ['deposit', /^계약금$/], ['balance', /^잔금$/], ['engPhone', /기사.*(연락|전화|번호)/], ['engineer', /담당|기사|엔지니어/],
+  ['skip', /기록일시|기록시각/], ['receiptIssued', /증빙발급|발급여부|발급완료/], ['receiptType', /증빙|현금영수증|세금계산서/], ['source', /수주처|수주|유입경로|유입|채널/], ['depositPaid', /계약금.*입금/], ['middlePaid', /중도금.*입금/], ['balancePaid', /잔금.*입금/], ['total', /^(최종)?계약금액$|^최종금액$|^총금액$/], ['deposit', /^계약금$/], ['middle', /^중도금$/], ['balance', /^잔금$/], ['engPhone', /기사.*(연락|전화|번호)/], ['engineer', /담당|기사|엔지니어/],
   ['phone', /연락처|전화|휴대/], ['visit', /일시|일자|날짜|방문일/], ['note', /주소/], ['report', /기록/],
   ['request', /요청|내용|작업/], ['cost', /비용|금액/], ['status', /상태/], ['customer', /고객|성함|이름/]
 ];
@@ -2676,9 +2683,9 @@ function phoneStr(v) {
 function cellVal(k, v) {
   if (k === 'visit') return toVisit(v);
   if (k === 'status') return normStage(cellStr(v));
-  if (k === 'depositPaid' || k === 'balancePaid' || k === 'receiptIssued') return /^(입금|완료|발급|y|o|true|1|✔|✅)/i.test(cellStr(v));
+  if (k === 'depositPaid' || k === 'middlePaid' || k === 'balancePaid' || k === 'receiptIssued') return /^(입금|완료|발급|y|o|true|1|✔|✅)/i.test(cellStr(v));
   if (k === 'phone' || k === 'engPhone') return phoneStr(v);
-  if ((k === 'cost' || k === 'total' || k === 'deposit' || k === 'balance') && typeof v === 'number') return v.toLocaleString('ko-KR');
+  if ((k === 'cost' || k === 'total' || k === 'deposit' || k === 'middle' || k === 'balance') && typeof v === 'number') return v.toLocaleString('ko-KR');
   return cellStr(v);
 }
 function tsvRows(text) { return text.replace(/\r/g, '').split('\n').filter(l => l.trim()).map(l => l.split('\t')); }
@@ -2797,15 +2804,15 @@ function downloadBlob(blob, name) {
 }
 function exportExcel() {
   if (!schedules.length) { alert('저장할 스케줄이 없습니다.'); return; }
-  const head = ['진행 상태','수주처','수주처 주소','고객명','연락처','방문 일시','시공 예정일','요청 사항','처리 비용','최종 계약금액','계약금','계약금 입금','잔금','잔금 입금','증빙 종류','증빙 발급','담당 기사','기사 연락처','방문 주소','방문 후 기록','기록 일시','현장 사진 링크'];
+  const head = ['진행 상태','수주처','수주처 주소','고객명','연락처','방문 일시','시공 예정일','요청 사항','처리 비용','최종 계약금액','계약금','계약금 입금','중도금','중도금 입금','잔금','잔금 입금','증빙 종류','증빙 발급','담당 기사','기사 연락처','방문 주소','방문 후 기록','기록 일시','현장 사진 링크'];
   const payTxt = (s, k) => s[k + 'Paid'] ? '입금완료' + ([s[k + 'PaidAt'], s[k + 'Method']].filter(Boolean).length ? ' (' + [s[k + 'PaidAt'], s[k + 'Method']].filter(Boolean).join(' · ') + ')' : '') : (s[k] ? '미입금' : '');
   const rows = [...schedules].sort((a, b) => (a.visit || '9999').localeCompare(b.visit || '9999'))
-    .map(s => [s.status, s.source, s.sourceUrl, s.customer, s.phone, fmtDate(s.visit), fmtDate(s.installDate), s.request, s.cost, s.total, s.deposit, payTxt(s,'deposit'), s.balance, payTxt(s,'balance'), s.receiptType, s.receiptType ? (s.receiptIssued ? '발급완료' + (s.receiptDate ? ' (' + s.receiptDate + ')' : '') : '미발급') : '', s.engineer, s.engPhone, s.note, s.report, s.reportAt, s.reportImageLink || ''].map(v => v || ''));
+    .map(s => [s.status, s.source, s.sourceUrl, s.customer, s.phone, fmtDate(s.visit), fmtDate(s.installDate), s.request, s.cost, s.total, s.deposit, payTxt(s,'deposit'), s.middle, payTxt(s,'middle'), s.balance, payTxt(s,'balance'), s.receiptType, s.receiptType ? (s.receiptIssued ? '발급완료' + (s.receiptDate ? ' (' + s.receiptDate + ')' : '') : '미발급') : '', s.engineer, s.engPhone, s.note, s.report, s.reportAt, s.reportImageLink || ''].map(v => v || ''));
   const name = '현장스케줄_' + todayStr();
   if (typeof XLSX !== 'undefined') {
     const wb = XLSX.utils.book_new();
     const ws = XLSX.utils.aoa_to_sheet([head, ...rows]);
-    ws['!cols'] = [12,10,24,10,15,17,17,36,22,14,12,18,12,18,12,18,10,15,36,50,17,30].map(w => ({ wch: w }));
+    ws['!cols'] = [12,10,24,10,15,17,17,36,22,14,12,18,12,18,12,18,12,18,10,15,36,50,17,30].map(w => ({ wch: w }));
     XLSX.utils.book_append_sheet(wb, ws, '스케줄');
     if (employees.length) {
       const we = XLSX.utils.aoa_to_sheet([['이름','연락처'], ...employees.map(e => [e.name, e.phone || ''])]);
@@ -3238,14 +3245,13 @@ function renderDetail() {
   const addr = (s.note || '').trim(), q = encodeURIComponent(addr);
   row('방문 주소', addr, addr ? [qa('naver', 'https://map.naver.com/p/search/' + q, '🗺 네이버지도', true), qa('kakao', 'https://map.kakao.com/link/search/' + q, '🗺 카카오맵', true)] : null);
   if (!isPartner()) row('처리 비용', s.cost);
-  if (!isPartner() && (s.total || s.deposit || s.balance || s.receiptType)) {
+  if (!isPartner() && (s.total || s.deposit || s.middle || s.balance || s.receiptType)) {
     const lines = [];
     if (s.total) lines.push('최종 ' + won(s.total));
-    if (s.deposit) lines.push(`계약금 ${won(s.deposit)} ${s.depositPaid ? '✅ 입금' + (s.depositPaidAt ? ' (' + s.depositPaidAt + ')' : '') : '⬜ 미입금'}`);
-    if (s.balance) lines.push(`잔금 ${won(s.balance)} ${s.balancePaid ? '✅ 입금' + (s.balancePaidAt ? ' (' + s.balancePaidAt + ')' : '') : '⬜ 미입금'}`);
+    PAY_PARTS.forEach(k => { if (s[k]) lines.push(`${PAY_LABEL[k]} ${won(s[k])} ${s[k + 'Paid'] ? '✅ 입금' + (s[k + 'PaidAt'] ? ' (' + s[k + 'PaidAt'] + ')' : '') : '⬜ 미입금'}`); });
     const t = toNum(s.total);
     if (t) {
-      const remain = t - ((s.depositPaid ? toNum(s.deposit) : 0) + (s.balancePaid ? toNum(s.balance) : 0));
+      const remain = t - paidSum(s);
       lines.push(remain <= 0 ? '완납 ✅' : '미수금 ' + remain.toLocaleString('ko-KR') + '원');
     }
     if (s.receiptType) lines.push('🧾 ' + receiptText(s));
