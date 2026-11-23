@@ -267,6 +267,7 @@ body.role-view #viewNotice{display:block}
     <div class="btn-row"><button type="submit" class="btn btn-submit">변경</button><button type="button" class="btn btn-reset" onclick="$('pwModal').classList.remove('show')">닫기</button></div>
   </form>
 </div>
+<div id="appVer" style="position:fixed;left:6px;bottom:4px;font-size:.65rem;color:#adb5bd;z-index:1;pointer-events:none;">앱 버전 1123-6</div>
 <div id="syncStatus">🔄 연동 중...</div>
 <div class="container">
   <h2>현장 방문 및 스케줄 관리</h2>
@@ -3079,7 +3080,10 @@ render();
 <script>
 // ===== 휴대폰 앱 설치 (PWA) =====
 if ('serviceWorker' in navigator) {
-  window.addEventListener('load', () => navigator.serviceWorker.register('sw.js').catch(() => {}));
+  window.addEventListener('load', () => navigator.serviceWorker.register('sw.js', { updateViaCache: 'none' }).then(r => r.update()).catch(() => {}));
+  // 새 버전이 설치되면 한 번 자동으로 새로고침
+  let swReloaded = false; const hadCtl = !!navigator.serviceWorker.controller;
+  navigator.serviceWorker.addEventListener('controllerchange', () => { if (swReloaded || !hadCtl || !document.body.classList.contains('locked') && $('editModal').classList.contains('show')) return; swReloaded = true; location.reload(); });
 }
 (function(){
   const btn = document.getElementById('installBtn');
