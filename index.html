@@ -394,7 +394,7 @@ body.role-partner .q-only{display:none!important}
     <button type="submit" class="btn btn-submit" id="loginBtn">로그인</button>
     <button type="button" class="btn btn-reset" id="loginOther" style="width:100%;margin-top:12px;font-size:.9rem;padding:10px;">👥 다른 사람으로 로그인</button>
     <div id="loginMsg"></div>
-    <div style="text-align:center;font-size:.7rem;color:#adb5bd;margin-top:10px;">앱 버전 1124-카톡알림</div>
+    <div style="text-align:center;font-size:.7rem;color:#adb5bd;margin-top:10px;">앱 버전 1124-자평</div>
   </form>
 </div>
 <div id="expModal" class="modal" style="z-index:70;">
@@ -527,7 +527,7 @@ body.role-partner .q-only{display:none!important}
     <div class="btn-row"><button type="submit" class="btn btn-submit">변경</button><button type="button" class="btn btn-reset" onclick="$('pwModal').classList.remove('show')">닫기</button></div>
   </form>
 </div>
-<div id="appVer" style="position:fixed;left:6px;bottom:4px;font-size:.65rem;color:#adb5bd;z-index:1;pointer-events:none;">앱 버전 1124-카톡알림</div>
+<div id="appVer" style="position:fixed;left:6px;bottom:4px;font-size:.65rem;color:#adb5bd;z-index:1;pointer-events:none;">앱 버전 1124-자평</div>
 <div id="syncStatus">🔄 연동 중...</div>
 <div class="container">
   <h2>현장 방문 및 스케줄 관리</h2>
@@ -836,7 +836,7 @@ body.role-partner .q-only{display:none!important}
         <div class="q-head"><b>📋 견적 품목</b>
           <span><button type="button" class="btn btn-sm btn-card" id="qPick">📒 단가표에서 고르기</button>
           <button type="button" class="btn btn-sm btn-excel" id="qAddLine">➕ 품목 추가</button></span></div>
-        <div class="hint" style="margin:4px 0 8px;">단위가 ㎡면 가로×세로(mm)×수량으로 면적을 계산하고, m·자는 가로 길이로 계산합니다. 금액 칸에 직접 쓰면 그 금액으로 고정됩니다.</div>
+        <div class="hint" style="margin:4px 0 8px;">단위가 ㎡·자평이면 가로×세로(mm)×수량으로 면적을 계산하고(1자평 = 1자×1자), m·자는 가로 길이로 계산합니다. 금액 칸에 직접 쓰면 그 금액으로 고정됩니다.</div>
         <div id="qLines"></div>
       </div>
       <div class="q-sec q-grid">
@@ -892,6 +892,7 @@ body.role-partner .q-only{display:none!important}
         <label>대표자<input type="text" id="coCeo"></label>
         <label>사업자등록번호<input type="text" id="coBiz"></label>
         <label>전화<input type="text" id="coTel"></label>
+        <label>자평·자 계산 기준 (1자 =)<select id="coJa"><option value="303">303mm (30.3cm)</option><option value="300">300mm (30cm)</option></select></label>
         <label class="full">주소<input type="text" id="coAddr"></label>
         <label class="full">입금 계좌 (선택)<input type="text" id="coBank" placeholder="예: OO은행 000-000-000000 예금주"></label>
         <label class="full">기본 비고 문구<textarea id="coMemo" rows="3"></textarea></label>
@@ -4470,7 +4471,8 @@ document.querySelectorAll('.modal:not(#editModal):not(#quoteModal):not(#priceMod
 
 /* ===== 견적 프로그램 (견적서 작성 · 단가표 · 일정 연결) ===== */
 const PB_KEY = 'quotePriceBook_v1', CO_KEY = 'quoteCompany_v1';
-const Q_UNITS = ['㎡', 'm', '자', '개', '세트', '식'];
+const Q_UNITS = ['㎡', '자평', 'm', '자', '개', '세트', '식'];
+const qJa = () => +company.ja || 303;   // 1자 = 303mm (회사 정보에서 300mm로 바꿀 수 있음)
 const PB_DEFAULT = [
   { cat: '샷시', name: '이중창 샷시 (PVC)', spec: '복층유리 포함', unit: '㎡', price: 0 },
   { cat: '샷시', name: '단창 샷시 (PVC)', spec: '', unit: '㎡', price: 0 },
@@ -4516,13 +4518,17 @@ function korMoney(n) {
 function qLineCalc(l) {
   const w = qNum(l.w), h = qNum(l.h), q = qNum(l.qty) || 0;
   let base = q, txt = '';
-  if (l.unit === '㎡') {
+  if (l.unit === '자평') {
+    const J = qJa();
+    if (w && h) { const a = Math.round(w / J * h / J * 100) / 100; base = Math.round(a * (q || 1) * 100) / 100; txt = `${w}×${h}mm = ${Math.round(w / J * 100) / 100}자 × ${Math.round(h / J * 100) / 100}자 = ${a}자평 × ${q || 1}개 = ${base}자평`; }
+    else txt = '가로·세로(mm)를 넣으면 자평을 계산합니다 (1자 = ' + J + 'mm)';
+  } else if (l.unit === '㎡') {
     if (w && h) { const a = Math.round(w * h / 1e4) / 100; base = Math.round(a * (q || 1) * 100) / 100; txt = `${w}×${h}mm = ${a}㎡ × ${q || 1}개 = ${base}㎡`; }
     else txt = '가로·세로(mm)를 넣으면 면적을 계산합니다 (없으면 수량을 ㎡로 봄)';
   } else if (l.unit === 'm') {
     if (w) { base = Math.round(w / 1000 * (q || 1) * 100) / 100; txt = `${w}mm × ${q || 1} = ${base}m`; }
   } else if (l.unit === '자') {
-    if (w) { base = Math.round(w / 303 * (q || 1) * 10) / 10; txt = `${w}mm ÷ 303 × ${q || 1} = ${base}자`; }
+    if (w) { base = Math.round(w / qJa() * (q || 1) * 10) / 10; txt = `${w}mm ÷ ${qJa()} × ${q || 1} = ${base}자`; }
   }
   const auto = Math.round(base * qNum(l.price));
   const amount = l.manual ? qNum(l.amount) : auto;
@@ -4670,7 +4676,7 @@ function qDrawLines() {
       if (!l.manual) a.value = c.auto ? qComma(c.auto) : '';
       a.classList.toggle('manual', !!l.manual);
       a.title = l.manual ? '직접 입력한 금액 (지우면 자동 계산으로 돌아감)' : '자동 계산';
-      w.disabled = h.disabled = !canEdit() || !['㎡', 'm', '자'].includes(l.unit);
+      w.disabled = h.disabled = !canEdit() || !['㎡', '자평', 'm', '자'].includes(l.unit);
       if (l.unit === 'm' || l.unit === '자') h.disabled = true;
       calc.textContent = (c.txt ? '📐 ' + c.txt + '  ' : '') + (l.manual ? '✍️ 금액 직접 입력' : (c.auto ? `= ${qComma(c.auto)}원` : ''));
       qDrawSum();
@@ -4765,10 +4771,10 @@ function qPaperHtml() {
   const t = qTotals(Q), c = company;
   const rows = Q.lines.filter(l => (l.name || '').trim() || qLineCalc(l).amount).map((l, i) => {
     const cc = qLineCalc(l);
-    const size = l.w && (l.unit === '㎡' && l.h) ? `${qNum(l.w)}×${qNum(l.h)}` : l.w && (l.unit === 'm' || l.unit === '자') ? `${qNum(l.w)}mm` : '';
-    const qty = ['㎡', 'm', '자'].includes(l.unit) && l.w ? `${cc.base}${l.unit}` : `${qNum(l.qty) || ''}${l.unit}`;
+    const size = l.w && ((l.unit === '㎡' || l.unit === '자평') && l.h) ? `${qNum(l.w)}×${qNum(l.h)}` : l.w && (l.unit === 'm' || l.unit === '자') ? `${qNum(l.w)}mm` : '';
+    const qty = ['㎡', '자평', 'm', '자'].includes(l.unit) && l.w ? `${cc.base}${l.unit}` : `${qNum(l.qty) || ''}${l.unit}`;
     return `<tr><td class="c">${i + 1}</td><td>${qEsc(l.name)}</td><td>${qEsc([l.spec, size].filter(Boolean).join(' / '))}</td>
-      <td class="c">${qEsc(qty)}${['㎡', 'm', '자'].includes(l.unit) && l.w && qNum(l.qty) > 1 ? `<br><small>(${qNum(l.qty)}개)</small>` : ''}</td>
+      <td class="c">${qEsc(qty)}${['㎡', '자평', 'm', '자'].includes(l.unit) && l.w && qNum(l.qty) > 1 ? `<br><small>(${qNum(l.qty)}개)</small>` : ''}</td>
       <td class="r">${l.manual ? '' : qComma(qNum(l.price))}</td><td class="r">${qComma(cc.amount)}</td></tr>`;
   });
   while (rows.length < 8) rows.push('<tr><td>&nbsp;</td><td></td><td></td><td></td><td></td><td></td></tr>');
@@ -4844,7 +4850,7 @@ function qExcel() {
     ['No', '품목', '규격·사양', '가로(mm)', '세로(mm)', '수량', '단위', '단가', '금액']];
   Q.lines.filter(l => (l.name || '').trim() || qLineCalc(l).amount).forEach((l, i) => {
     const cc = qLineCalc(l);
-    aoa.push([i + 1, l.name, l.spec, qNum(l.w) || '', qNum(l.h) || '', ['㎡', 'm', '자'].includes(l.unit) && l.w ? cc.base : qNum(l.qty), l.unit, l.manual ? '' : qNum(l.price), cc.amount]);
+    aoa.push([i + 1, l.name, l.spec, qNum(l.w) || '', qNum(l.h) || '', ['㎡', '자평', 'm', '자'].includes(l.unit) && l.w ? cc.base : qNum(l.qty), l.unit, l.manual ? '' : qNum(l.price), cc.amount]);
   });
   aoa.push([]);
   if (t.disc) aoa.push(['', '', '', '', '', '', '', '할인', -t.disc]);
@@ -4881,7 +4887,7 @@ function qDrawPick() {
       const line = qBlankLine(p);
       if (last && !(last.name || '').trim() && !qLineCalc(last).amount) Q.lines[Q.lines.length - 1] = line; else Q.lines.push(line);
       qDrawLines(); $('qPickModal').classList.remove('show');
-      showSync(`➕ ${p.name} 추가 — ${['㎡', 'm', '자'].includes(p.unit) ? '가로·세로(mm)와 수량을 넣으세요' : '수량을 확인하세요'}`);
+      showSync(`➕ ${p.name} 추가 — ${['㎡', '자평', 'm', '자'].includes(p.unit) ? '가로·세로(mm)와 수량을 넣으세요' : '수량을 확인하세요'}`);
     };
     box.appendChild(b);
   });
@@ -4893,7 +4899,7 @@ function openPriceBook() {
   pbDraft = priceBook.map(x => ({ ...x }));
   const c = company;
   $('coName').value = c.name || ''; $('coCeo').value = c.ceo || ''; $('coBiz').value = c.biz || ''; $('coTel').value = c.tel || '';
-  $('coAddr').value = c.addr || ''; $('coBank').value = c.bank || ''; $('coMemo').value = c.memo || '';
+  $('coAddr').value = c.addr || ''; $('coBank').value = c.bank || ''; $('coMemo').value = c.memo || ''; $('coJa').value = String(c.ja || 303);
   pbDraw(); $('priceModal').classList.add('show');
   const ro = !canEdit();
   $('priceModal').querySelectorAll('input,select,textarea,#pbAdd,#pmSave').forEach(el => { el.disabled = ro; });
@@ -4913,7 +4919,7 @@ function pbDraw() {
 }
 function pbSave() {
   priceBook = pbDraft.filter(p => (p.name || '').trim()).map(p => ({ cat: (p.cat || '').trim(), name: p.name.trim(), spec: (p.spec || '').trim(), unit: p.unit || '식', price: qNum(p.price) }));
-  company = { name: $('coName').value.trim(), ceo: $('coCeo').value.trim(), biz: $('coBiz').value.trim(), tel: $('coTel').value.trim(), addr: $('coAddr').value.trim(), bank: $('coBank').value.trim(), memo: $('coMemo').value };
+  company = { name: $('coName').value.trim(), ceo: $('coCeo').value.trim(), biz: $('coBiz').value.trim(), tel: $('coTel').value.trim(), addr: $('coAddr').value.trim(), bank: $('coBank').value.trim(), memo: $('coMemo').value, ja: +$('coJa').value || 303 };
   try { localStorage.setItem(PB_KEY, JSON.stringify(priceBook)); localStorage.setItem(CO_KEY, JSON.stringify(company)); } catch (e) {}
   $('priceModal').classList.remove('show');
   if ($('quoteModal').classList.contains('show') && Q && !qPreviewing) qDrawLines();
