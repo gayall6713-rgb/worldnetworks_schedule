@@ -96,6 +96,7 @@ tr.editing td{background:#fff3bf!important}
 select{width:100%;padding:10px;border:1px solid #ddd;border-radius:4px;box-sizing:border-box;font-size:.95rem;background:#fff}
 #empBox table{font-size:.85rem}
 .stage-sel{padding:6px 4px;font-size:.82rem;font-weight:bold;border:1px solid #adb5bd;border-radius:4px;min-width:104px;color:#222}
+.src-sel{min-width:96px}
 .filter-sel{width:auto;padding:6px 8px;font-size:.85rem}
 .list-tools{display:flex;align-items:center;gap:8px}
 /* 안내장 */
@@ -119,6 +120,21 @@ select{width:100%;padding:10px;border:1px solid #ddd;border-radius:4px;box-sizin
 .list-scroll{max-height:68vh;overflow:auto;border:1px solid #e5e7eb;border-radius:6px;cursor:grab}
 .list-scroll.dragging{cursor:grabbing;user-select:none}
 .list-scroll thead th{position:sticky;top:0;z-index:2;box-shadow:inset 0 -1px 0 #ddd}
+.hf-btn{margin-left:4px;border:1px solid #cbd5e1;background:#fff;color:#64748b;border-radius:4px;font-size:.7rem;line-height:1;padding:3px 5px;cursor:pointer;vertical-align:middle}
+.hf-btn:hover{background:#e0e7ff}
+.hf-btn.on{background:#2563eb;border-color:#2563eb;color:#fff}
+th.hf-on{background:#dbeafe}
+.hf-pop{position:fixed;z-index:3000;background:#fff;border:1px solid #cbd5e1;border-radius:8px;box-shadow:0 10px 28px rgba(0,0,0,.25);width:260px;max-width:92vw;padding:10px;font-size:.88rem;font-weight:normal;color:#222}
+.hf-pop .hf-sort{display:flex;gap:6px;margin-bottom:8px}
+.hf-pop .hf-sort button,.hf-pop .hf-foot button{flex:1;padding:7px 4px;border:1px solid #cbd5e1;background:#f8fafc;border-radius:6px;cursor:pointer;font-size:.82rem}
+.hf-pop .hf-sort button.on{background:#2563eb;color:#fff;border-color:#2563eb}
+.hf-pop input[type=text]{width:100%;padding:7px;border:1px solid #ddd;border-radius:6px;margin-bottom:6px;font-size:.85rem;box-sizing:border-box}
+.hf-list{max-height:240px;overflow:auto;border:1px solid #eee;border-radius:6px;padding:4px 6px}
+.hf-list label{display:flex;align-items:center;gap:6px;padding:4px 0;cursor:pointer;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+.hf-list label span.n{color:#888;font-size:.78rem;margin-left:auto;padding-left:6px}
+.hf-list label.all{border-bottom:1px solid #eee;font-weight:bold}
+.hf-foot{display:flex;gap:6px;margin-top:8px}
+.hf-foot .ok{background:#2563eb!important;color:#fff;border-color:#2563eb!important;font-weight:bold}
 .name-cell{cursor:pointer;color:var(--primary);font-weight:bold;text-decoration:underline;white-space:nowrap}
 body.locked .container,body.locked #syncStatus{display:none!important}
 #loginScreen{position:fixed;inset:0;background:linear-gradient(160deg,#1e3a8a,#2563eb);display:none;align-items:center;justify-content:center;padding:16px;z-index:500}
@@ -830,6 +846,27 @@ function renderSiteLinks() {
 function srcTag(v) {
   const t = document.createElement('span'); t.className = 'src-tag';
   t.textContent = v; t.style.background = srcColor(v); return t;
+}
+/* 목록 화면에서 바로 고르는 수주처 선택 상자 (고르면 바로 저장) */
+function sourceInlineSelect(item) {
+  const sel = document.createElement('select'); sel.className = 'stage-sel src-sel'; sel.title = '수주처 선택 (고르면 바로 저장)';
+  const add = (v, t) => { const o = document.createElement('option'); o.value = v; o.textContent = t; o.style.background = '#fff'; o.style.color = '#222'; sel.appendChild(o); };
+  const cur = (item.source || '').trim();
+  add('', '수주처 선택');
+  [...new Set([...SOURCES, ...schedules.map(x => (x.source || '').trim()).filter(Boolean)])].forEach(x => add(x, x));
+  add('__custom__', '✏️ 기타 (직접 입력)');
+  const paint = v => { sel.style.background = v ? srcColor(v) : '#fff'; sel.style.color = v ? '#fff' : '#222'; };
+  sel.value = cur; paint(cur);
+  sel.onchange = () => {
+    let v = sel.value;
+    if (v === '__custom__') {
+      v = (prompt('수주처 이름을 입력하세요', SOURCES.includes(cur) ? '' : cur) || '').trim();
+      if (!v) { sel.value = cur; paint(cur); return; }
+    }
+    if (v === cur) { paint(cur); return; }
+    item.source = v; paint(v); save();
+  };
+  return sel;
 }
 /* 수주처 선택 상자 채우기 (목록에 없는 값은 '직접 입력'으로) */
 function fillSourceSelect(sel, txt, val) {
@@ -2644,13 +2681,14 @@ function renderFilter() {
   es.value = fEng;
   if (es.value !== fEng) { fEng = ''; es.value = ''; }
 }
-function isFiltered() { return !!(fSrc || filterStage || fQ || fEng || fPay || fFrom || fTo); }
+function isFiltered() { return !!(fSrc || filterStage || fQ || fEng || fPay || fFrom || fTo || Object.keys(hf).length); }
 function payState(s) {
   const t = toNum(s.total), paid = paidSum(s);
   return { unpaid: t > 0 && t - paid > 0, done: t > 0 && t - paid <= 0, depositNo: toNum(s.deposit) > 0 && !s.depositPaid, middleNo: toNum(s.middle) > 0 && !s.middlePaid, balanceNo: toNum(s.balance) > 0 && !s.balancePaid,
     receiptNo: !!s.receiptType && !s.receiptIssued, cashReceipt: s.receiptType === '현금영수증', taxInvoice: s.receiptType === '세금계산서' };
 }
-function matchRow(s) {
+function matchRow(s, skipCol) {
+  for (const i in hf) { if (+i !== skipCol && !hf[i].has(HF_COLS[i].get(s))) return false; }
   if (filterStage && (filterStage === '__none__' ? s.status : s.status !== filterStage)) return false;
   if (fSrc && (fSrc === '__none__' ? s.source : s.source !== fSrc)) return false;
   if (fEng && (fEng === '__none__' ? s.engineer : s.engineer !== fEng)) return false;
@@ -2674,6 +2712,7 @@ $('filterFrom').addEventListener('change', () => { fFrom = $('filterFrom').value
 $('filterTo').addEventListener('change', () => { fTo = $('filterTo').value; render(); });
 $('filterReset').onclick = () => {
   filterStage = fSrc = fQ = fEng = fPay = fFrom = fTo = '';
+  hf = {}; hfSort = null; hfClose();
   ['filterQ', 'filterPay', 'filterFrom', 'filterTo'].forEach(id => { $(id).value = ''; });
   render();
 };
@@ -2693,20 +2732,135 @@ function fmtCardDate(v) {
   return `${y}년 [ ${m} ]월 [ ${d} ]일 ${timeStr}`;
 }
 
+/* ===== 목록 제목줄 필터 (엑셀처럼 ▼ 눌러서 항목 고르기 · 정렬) ===== */
+const HF_EMPTY = '(비어 있음)';
+const hfv = v => { v = String(v == null ? '' : v).trim(); return v || HF_EMPTY; };
+const HF_COLS = [
+  { label: '진행 상태', get: s => hfv(s.status) },
+  { label: '수주처', get: s => hfv(s.source) },
+  { label: '고객명', get: s => hfv(s.customer) },
+  { label: '연락처', get: s => hfv(s.phone) },
+  { label: '방문 일시', get: s => hfv((s.visit || '').slice(0, 10)), sortVal: s => s.visit || '9999', desc: true },
+  { label: '요청 사항', get: s => hfv(s.request) },
+  { label: '처리 비용', get: s => hfv(s.cost), sortVal: s => toNum(s.total) || toNum(s.cost), money: true },
+  { label: '입금 현황', get: s => { const p = payState(s); return !toNum(s.total) ? '금액 미입력' : p.done ? '완납' : '미수금 있음'; }, money: true },
+  { label: '담당 기사', get: s => hfv(s.engineer) },
+  { label: '기사 연락처', get: s => hfv(s.engPhone) },
+  { label: '방문 주소', get: s => hfv(s.note) },
+  { label: '방문 후 기록', get: s => (s.report || hasPhoto(s)) ? '기록 있음' : '기록 없음' }
+];
+let hf = {}, hfSort = null, hfPop = null;
+function hfCompare(a, b) {
+  if (hfSort) {
+    const c = HF_COLS[hfSort.i], f = c.sortVal || c.get;
+    let va = f(a), vb = f(b);
+    if (va === HF_EMPTY) va = ''; if (vb === HF_EMPTY) vb = '';
+    if (va === '' && vb !== '') return 1;
+    if (vb === '' && va !== '') return -1;
+    const r = typeof va === 'number' ? va - vb : String(va).localeCompare(String(vb), 'ko', { numeric: true });
+    if (r) return hfSort.dir * r;
+  }
+  return (a.visit || '9999').localeCompare(b.visit || '9999');
+}
+function hfMark() {
+  document.querySelectorAll('#listScroll thead th').forEach((th, i) => {
+    const b = th.querySelector('.hf-btn'); if (!b) return;
+    const on = !!hf[i] || (hfSort && hfSort.i === i);
+    b.classList.toggle('on', on); th.classList.toggle('hf-on', !!hf[i]);
+    b.textContent = hfSort && hfSort.i === i ? (hfSort.dir > 0 ? '▲' : '▼') : (hf[i] ? '▼✓' : '▼');
+    b.title = hf[i] ? `${HF_COLS[i].label}: ${hf[i].size}개 항목만 보는 중` : `${HF_COLS[i].label} 필터·정렬`;
+  });
+}
+function hfClose() { if (hfPop) { hfPop.remove(); hfPop = null; } }
+function hfOpen(i, btn) {
+  if (hfPop && hfPop.dataset.col == i) { hfClose(); return; }
+  hfClose();
+  const col = HF_COLS[i];
+  const base = schedules.filter(s => matchRow(s, i));          // 다른 필터는 적용한 상태에서 고를 항목 모으기
+  const cnt = new Map();
+  base.forEach(s => { const v = col.get(s); cnt.set(v, (cnt.get(v) || 0) + 1); });
+  if (hf[i]) hf[i].forEach(v => { if (!cnt.has(v)) cnt.set(v, 0); });
+  let vals = [...cnt.keys()].sort((a, b) => (a === HF_EMPTY) - (b === HF_EMPTY) || a.localeCompare(b, 'ko', { numeric: true }));
+  if (col.desc) vals = vals.filter(v => v !== HF_EMPTY).reverse().concat(vals.includes(HF_EMPTY) ? [HF_EMPTY] : []);
+  const pick = new Set(hf[i] ? [...hf[i]] : vals);
+  let sortDir = hfSort && hfSort.i === i ? hfSort.dir : 0;
+
+  const pop = document.createElement('div'); pop.className = 'hf-pop'; pop.dataset.col = i;
+  const asc = col.sortVal && col.money ? '낮은 금액순' : col.desc ? '빠른 날짜순' : '오름차순 (가→하)';
+  const dsc = col.sortVal && col.money ? '높은 금액순' : col.desc ? '늦은 날짜순' : '내림차순 (하→가)';
+  pop.innerHTML = `<div style="font-weight:bold;margin-bottom:8px;">🔽 ${escAttr(col.label)}</div>
+    <div class="hf-sort"><button type="button" data-d="1">${asc}</button><button type="button" data-d="-1">${dsc}</button></div>
+    <input type="text" placeholder="🔍 항목 검색">
+    <div class="hf-list"></div>
+    <div class="hf-foot"><button type="button" class="clr">이 칸 필터 해제</button><button type="button" class="ok">확인</button></div>`;
+  const list = pop.querySelector('.hf-list'), q = pop.querySelector('input');
+  const sortBtns = pop.querySelectorAll('.hf-sort button');
+  const markSort = () => sortBtns.forEach(b => b.classList.toggle('on', +b.dataset.d === sortDir));
+  sortBtns.forEach(b => b.onclick = () => { sortDir = sortDir === +b.dataset.d ? 0 : +b.dataset.d; markSort(); });
+  markSort();
+  const draw = () => {
+    const w = q.value.trim().toLowerCase();
+    const shown = vals.filter(v => !w || v.toLowerCase().includes(w));
+    list.innerHTML = '';
+    const mk = (txt, checked, n, cls) => {
+      const l = document.createElement('label'); if (cls) l.className = cls;
+      const c = document.createElement('input'); c.type = 'checkbox'; c.checked = checked;
+      const t = document.createElement('span'); t.textContent = txt.length > 40 ? txt.slice(0, 40) + '…' : txt; t.title = txt;
+      l.append(c, t);
+      if (n != null) { const k = document.createElement('span'); k.className = 'n'; k.textContent = n; l.appendChild(k); }
+      list.appendChild(l); return c;
+    };
+    if (!shown.length) { list.innerHTML = '<div style="color:#888;padding:6px 0;">맞는 항목이 없습니다</div>'; return; }
+    const all = mk(w ? '(검색된 항목 모두 선택)' : '(모두 선택)', shown.every(v => pick.has(v)), null, 'all');
+    all.onchange = () => { shown.forEach(v => all.checked ? pick.add(v) : pick.delete(v)); draw(); };
+    shown.forEach(v => { const c = mk(v, pick.has(v), cnt.get(v) + '건'); c.onchange = () => { c.checked ? pick.add(v) : pick.delete(v); all.checked = shown.every(x => pick.has(x)); }; });
+  };
+  q.oninput = draw; draw();
+  const apply = () => {
+    const w = q.value.trim().toLowerCase();
+    let sel = w ? vals.filter(v => v.toLowerCase().includes(w) && pick.has(v)) : vals.filter(v => pick.has(v));
+    if (!sel.length) { alert('최소 한 개 항목은 선택해 주세요.'); return; }
+    if (sel.length === vals.length && !w) delete hf[i]; else hf[i] = new Set(sel);
+    hfSort = sortDir ? { i, dir: sortDir } : (hfSort && hfSort.i === i ? null : hfSort);
+    hfClose(); render();
+  };
+  q.onkeydown = e => { if (e.key === 'Enter') { e.preventDefault(); apply(); } };
+  pop.querySelector('.ok').onclick = apply;
+  pop.querySelector('.clr').onclick = () => { delete hf[i]; if (hfSort && hfSort.i === i) hfSort = null; hfClose(); render(); };
+  pop.addEventListener('mousedown', e => e.stopPropagation());
+  document.body.appendChild(pop); hfPop = pop;
+  const r = btn.getBoundingClientRect(), pw = pop.offsetWidth, ph = pop.offsetHeight;
+  pop.style.left = Math.max(6, Math.min(r.left, innerWidth - pw - 6)) + 'px';
+  pop.style.top = (r.bottom + 4 + ph > innerHeight ? Math.max(6, innerHeight - ph - 6) : r.bottom + 4) + 'px';
+  if (matchMedia('(pointer:fine)').matches) q.focus();
+}
+document.querySelectorAll('#listScroll thead th').forEach((th, i) => {
+  if (!HF_COLS[i]) return;
+  const b = document.createElement('button'); b.type = 'button'; b.className = 'hf-btn' + (HF_COLS[i].money ? ' partner-hide' : '');
+  b.textContent = '▼';
+  b.onclick = e => { e.stopPropagation(); hfOpen(i, b); };
+  th.appendChild(b);
+});
+document.addEventListener('mousedown', e => { if (hfPop && !e.target.closest('.hf-btn')) hfClose(); });
+document.addEventListener('keydown', e => { if (e.key === 'Escape') hfClose(); });
+$('listScroll').addEventListener('scroll', hfClose);
+
 function render() {
   const body = $('scheduleTableBody');
   body.innerHTML = '';
   renderFilter();
-  const rows = schedules.filter(matchRow);
+  const rows = schedules.filter(s => matchRow(s));
   $('count').textContent = schedules.length ? (isFiltered() ? `(${rows.length}/${schedules.length}건)` : `(${schedules.length}건)`) : '';
   if (!rows.length) {
+    hfMark();
     const tr = document.createElement('tr'), td = document.createElement('td');
     td.colSpan = 13; td.className = 'empty';
     td.textContent = schedules.length ? '조건에 맞는 스케줄이 없습니다.' : '등록된 스케줄이 없습니다.';
     tr.appendChild(td); body.appendChild(tr);
     return;
   }
-  [...rows].sort((a, b) => (a.visit || '9999').localeCompare(b.visit || '9999')).forEach(item => {
+  hfMark();
+  [...rows].sort(hfCompare).forEach(item => {
     const tr = document.createElement('tr');
     if (item.id === editingId) tr.className = 'editing';
     else tr.style.background = STAGE_COLORS[item.status] || '';
@@ -2727,8 +2881,10 @@ function render() {
     }
     tr.appendChild(stTd);
     const srcTd = document.createElement('td'); srcTd.style.whiteSpace = 'nowrap';
-    if (item.source) { const tg = srcTag(item.source); tg.style.marginLeft = '0'; tg.style.fontSize = '.78rem'; tg.style.padding = '3px 8px'; srcTd.appendChild(tg); }
-    else srcTd.textContent = '-';
+    if (isPartner()) {
+      if (item.source) { const tg = srcTag(item.source); tg.style.marginLeft = '0'; tg.style.fontSize = '.78rem'; tg.style.padding = '3px 8px'; srcTd.appendChild(tg); }
+      else srcTd.textContent = '-';
+    } else srcTd.appendChild(sourceInlineSelect(item));
     { const sl = siteLinkEl(item.source); if (sl) { sl.style.display = 'block'; sl.style.fontSize = '.75rem'; srcTd.appendChild(sl); } }
     { const so = sourceOpenLink(item); if (so) { so.style.marginLeft = '0'; so.style.display = 'block'; so.style.marginTop = '4px'; so.textContent = '💬 채팅방'; srcTd.appendChild(so); } }
     tr.appendChild(srcTd);
