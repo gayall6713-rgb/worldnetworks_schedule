@@ -383,7 +383,7 @@ body.role-partner .q-only{display:none!important}
     <button type="submit" class="btn btn-submit" id="loginBtn">로그인</button>
     <button type="button" class="btn btn-reset" id="loginOther" style="width:100%;margin-top:12px;font-size:.9rem;padding:10px;">👥 다른 사람으로 로그인</button>
     <div id="loginMsg"></div>
-    <div style="text-align:center;font-size:.7rem;color:#adb5bd;margin-top:10px;">앱 버전 1124-안내장</div>
+    <div style="text-align:center;font-size:.7rem;color:#adb5bd;margin-top:10px;">앱 버전 1124-부가세</div>
   </form>
 </div>
 <div id="expModal" class="modal" style="z-index:70;">
@@ -516,7 +516,7 @@ body.role-partner .q-only{display:none!important}
     <div class="btn-row"><button type="submit" class="btn btn-submit">변경</button><button type="button" class="btn btn-reset" onclick="$('pwModal').classList.remove('show')">닫기</button></div>
   </form>
 </div>
-<div id="appVer" style="position:fixed;left:6px;bottom:4px;font-size:.65rem;color:#adb5bd;z-index:1;pointer-events:none;">앱 버전 1124-안내장</div>
+<div id="appVer" style="position:fixed;left:6px;bottom:4px;font-size:.65rem;color:#adb5bd;z-index:1;pointer-events:none;">앱 버전 1124-부가세</div>
 <div id="syncStatus">🔄 연동 중...</div>
 <div class="container">
   <h2>현장 방문 및 스케줄 관리</h2>
@@ -623,7 +623,9 @@ body.role-partner .q-only{display:none!important}
         <div id="payBox" class="full pay-box" style="display:none;">
           <div class="pay-title">💰 계약금 / 중도금 / 잔금 관리</div>
           <div class="grid">
-            <div class="form-group full"><label>최종 계약금액 (원)</label><input type="text" id="contractTotal" inputmode="numeric" placeholder="예: 1,200,000"></div>
+            <div class="form-group full"><label>최종 계약금액 (원)</label><input type="text" id="contractTotal" inputmode="numeric" placeholder="예: 1,200,000">
+              <select id="vatType" title="부가세" style="margin-top:6px;"><option value="">부가세 구분 안 함</option><option value="포함">부가세 포함 금액 (위 금액에 부가세 들어 있음)</option><option value="별도">부가세 별도 (위 금액 + 부가세 10%)</option><option value="없음">부가세 없음 (면세 · 미발행)</option></select>
+              <div id="vatInfo" class="hint" style="margin-top:4px;"></div></div>
             <div class="form-group"><label>계약금 (원)</label><input type="text" id="depositAmt" inputmode="numeric" placeholder="예: 300,000"><label class="chk"><input type="checkbox" id="depositPaid"> 계약금 입금 완료</label>
 <div class="pay-detail"><input type="date" id="depositDate" title="입금 날짜"><select id="depositMethod" title="결제수단"><option value="">결제수단</option><option value="현금">현금</option><option value="카드">카드</option><option value="계좌입금">계좌입금</option></select></div></div>
             <div class="form-group"><label>중도금 (원) · 없으면 비워 두세요</label><input type="text" id="middleAmt" inputmode="numeric" placeholder="예: 500,000"><label class="chk"><input type="checkbox" id="middlePaid"> 중도금 입금 완료</label>
@@ -929,7 +931,7 @@ function nowStr() {
 const uid = () => Date.now() + Math.random().toString(36).slice(2, 6);
 
 const STORE_KEY = 'siteSchedules_v3';
-const FIELD_IDS = { installDate:'installDate', receiptType:'receiptType', receiptDate:'receiptDate', status:'stage', source:'source', sourceUrl:'sourceUrl', customer:'customer', phone:'phone', visit:'visitDate', request:'request', cost:'cost', engineer:'engineer', engPhone:'engPhone', note:'note', report:'report', total:'contractTotal', deposit:'depositAmt', middle:'middleAmt', balance:'balanceAmt' };
+const FIELD_IDS = { installDate:'installDate', receiptType:'receiptType', receiptDate:'receiptDate', status:'stage', source:'source', sourceUrl:'sourceUrl', customer:'customer', phone:'phone', visit:'visitDate', request:'request', cost:'cost', engineer:'engineer', engPhone:'engPhone', note:'note', report:'report', total:'contractTotal', vatType:'vatType', deposit:'depositAmt', middle:'middleAmt', balance:'balanceAmt' };
 const STAGES = ['방문실측','방문시공','견적제출','계약','공사진행','처리완료','보류 및 재방문'];
 const STAGE_COLORS = { '방문실측':'#d0ebff','방문시공':'#e5dbff','견적제출':'#fff3bf','계약':'#d3f9d8','공사진행':'#ffe8cc','처리완료':'#b2f2bb','보류 및 재방문':'#ffc9c9' };
 const STAGE_ACCENT = { '방문실측':'#339af0','방문시공':'#7950f2','견적제출':'#fab005','계약':'#40c057','공사진행':'#fd7e14','처리완료':'#2f9e44','보류 및 재방문':'#fa5252' };
@@ -1339,7 +1341,7 @@ const isOutsource = e => /외주|협력/.test(e.type || '');
 const expList = s => Array.isArray(s && s.expenses) ? s.expenses : [];
 const expSum = s => expList(s).reduce((a, e) => a + toNum(e.amount), 0);
 const expOut = s => expList(s).filter(isOutsource).reduce((a, e) => a + toNum(e.amount), 0);
-const profitOf = s => toNum(s.total) - expSum(s);
+const profitOf = s => vatOf(s).supply - expSum(s);   // 순이익은 부가세를 뺀 공급가액 기준
 let expItemId = null, expDraft = [];
 function openExpense(id) {
   if (!isAdmin()) return;
@@ -1354,7 +1356,7 @@ function openExpense(id) {
 function expSummary() {
   const it = schedules.find(x => x.id === expItemId) || {};
   const tmp = { total: it.total, expenses: expDraft };
-  const sales = toNum(it.total), cost = expSum(tmp), out = expOut(tmp), pf = sales - cost;
+  const sales = vatOf(it).supply, cost = expSum(tmp), out = expOut(tmp), pf = sales - cost;
   const paidOut = expDraft.filter(e => e.paid).reduce((a, e) => a + toNum(e.amount), 0);
   const card = (t, v, c, sub) => `<div class="stat-card" style="border-left-color:${c}"><small>${t}</small><b>${v}</b>${sub ? `<small>${sub}</small>` : ''}</div>`;
   $('expSum').innerHTML = card('매출 (최종 계약금액)', sales ? statWon(sales) + '원' : '미입력', '#1c7ed6') +
@@ -1417,8 +1419,8 @@ const statJobs = () => schedules.filter(x => !x.installFor);
 const statMoney = list => {
   const m = { total:0, deposit:0, middle:0, balance:0, paid:0, unpaid:0, out:0, other:0, cost:0, profit:0 };
   list.forEach(x => {
-    const t = toNum(x.total), pd = paidSum(x), c = expSum(x), o = expOut(x);
-    m.cost += c; m.out += o; m.other += c - o; m.profit += t - c;
+    const t = grandOf(x), pd = paidSum(x), c = expSum(x), o = expOut(x);
+    m.cost += c; m.out += o; m.other += c - o; m.profit += vatOf(x).supply - c;
     m.total += t; m.deposit += toNum(x.deposit); m.middle += toNum(x.middle); m.balance += toNum(x.balance); m.paid += pd;
     if (PAY_STAGES.includes(x.status)) m.unpaid += Math.max(0, t - pd);   // 미수금은 계약 이후 단계만 (견적 금액은 빼고)
   });
@@ -1684,7 +1686,7 @@ function openReport(id) {
   renderRpPhotos();
   $('rpTitle').value = s.reportTitle || s.request || '';
   $('rpDate').value = ((s.installDate || '') || visitDay(s) || '').slice(0, 10);
-  $('rpCost').value = won(s.total) || s.cost || '';
+  $('rpCost').value = won(grandOf(s)) || s.cost || '';
   $('rpAddr').value = s.note || '';
   $('rpLoc').value = s.reportLoc || s.request || '';
   $('rpCheck').value = s.reportCheck || s.request || '';
@@ -1791,13 +1793,13 @@ function smsTemplates(s, who) {
   const eng = s.engineer ? `${s.engineer} 엔지니어${s.engPhone ? ' (' + s.engPhone + ')' : ''}` : '';
   const addr = s.note || '', when = smsWhen(s), nm = s.customer ? s.customer + ' 고객님' : '고객님';
   if (who === 'customer') {
-    const remain = toNum(s.total) ? toNum(s.total) - paidSum(s) : 0;
+    const remain = grandOf(s) ? grandOf(s) - paidSum(s) : 0;
     const t = [
       ['방문 안내', `${SMS_SIGN}\n안녕하세요 ${nm}.\n요청하신 [${s.request || '창호'}] 건으로 아래 일정에 방문 예정입니다.\n\n■ 일시: ${when}\n■ 주소: ${addr}${eng ? '\n■ 담당: ' + eng : ''}\n\n방문 전에 미리 연락드리겠습니다. 감사합니다.`],
       ['시공 안내', `${SMS_SIGN}\n안녕하세요 ${nm}.\n[${s.request || '창호'}] 시공 일정 안내드립니다.\n\n■ 시공일: ${s.installDate ? dateLabel(s.installDate.slice(0, 10)).replace(' · 오늘', '') + (s.installDate.length >= 16 ? ' ' + ampm(s.installDate.slice(11, 16)) : '') : when}\n■ 주소: ${addr}${eng ? '\n■ 담당: ' + eng : ''}\n\n작업 당일 연락드리고 방문하겠습니다. 감사합니다.`],
       ['일정 변경 안내', `${SMS_SIGN}\n안녕하세요 ${nm}.\n방문 일정이 아래와 같이 변경되었습니다.\n\n■ 변경 일시: ${when}\n■ 주소: ${addr}\n\n불편을 드려 죄송합니다. 문의 사항은 회신 부탁드립니다.`],
-      ['견적 안내', `${SMS_SIGN}\n안녕하세요 ${nm}.\n[${s.request || '창호'}] 견적 안내드립니다.\n\n■ 금액: ${won(s.total) || s.cost || '(금액 입력)'}\n\n궁금하신 점은 편하게 연락 주세요. 감사합니다.`],
-      ['입금 요청', `${SMS_SIGN}\n안녕하세요 ${nm}.\n[${s.request || '창호'}] 공사 대금 안내드립니다.\n\n■ 계약 금액: ${won(s.total) || '-'}\n■ 남은 금액: ${remain > 0 ? remain.toLocaleString('ko-KR') + '원' : '-'}\n\n입금 후 회신 주시면 확인하겠습니다. 감사합니다.`],
+      ['견적 안내', `${SMS_SIGN}\n안녕하세요 ${nm}.\n[${s.request || '창호'}] 견적 안내드립니다.\n\n■ 금액: ${won(grandOf(s)) ? won(grandOf(s)) + (vatLabel(s) ? ' (' + vatLabel(s) + ')' : '') : s.cost || '(금액 입력)'}\n\n궁금하신 점은 편하게 연락 주세요. 감사합니다.`],
+      ['입금 요청', `${SMS_SIGN}\n안녕하세요 ${nm}.\n[${s.request || '창호'}] 공사 대금 안내드립니다.\n\n■ 계약 금액: ${won(grandOf(s)) ? won(grandOf(s)) + (vatLabel(s) ? ' (' + vatLabel(s) + ')' : '') : '-'}\n■ 남은 금액: ${remain > 0 ? remain.toLocaleString('ko-KR') + '원' : '-'}\n\n입금 후 회신 주시면 확인하겠습니다. 감사합니다.`],
       ['완료 인사', `${SMS_SIGN}\n안녕하세요 ${nm}.\n[${s.request || '창호'}] 작업이 완료되었습니다.\n이용해 주셔서 감사합니다.\n\n사용 중 불편한 점이나 하자가 있으면 언제든 연락 주세요.`],
       ['직접 쓰기', `${SMS_SIGN}\n안녕하세요 ${nm}.\n`]
     ];
@@ -2614,14 +2616,37 @@ const toNum = v => parseInt(String(v || '').replace(/[^\d]/g, ''), 10) || 0;
 const PAY_PARTS = ['deposit', 'middle', 'balance'];
 const PAY_LABEL = { deposit: '계약금', middle: '중도금', balance: '잔금' };
 const paidSum = s => PAY_PARTS.reduce((a, k) => a + (s[k + 'Paid'] ? toNum(s[k]) : 0), 0);
+/* 부가세: 포함 → 금액 안에 10% 들어 있음 / 별도 → 금액 + 10% 를 받음 / 없음·구분 안 함 → 금액 그대로 */
+function vatOf(s) {
+  const t = toNum(s && s.total), k = (s && s.vatType) || '';
+  if (!t) return { supply: 0, vat: 0, grand: 0, k };
+  if (k === '포함') { const sp = Math.round(t / 1.1); return { supply: sp, vat: t - sp, grand: t, k }; }
+  if (k === '별도') { const v = Math.round(t * 0.1); return { supply: t, vat: v, grand: t + v, k }; }
+  return { supply: t, vat: 0, grand: t, k };
+}
+function grandOf(s) { return vatOf(s).grand; }
+function vatLabel(s) { const v = vatOf(s); return v.k === '포함' ? '부가세 포함' : v.k === '별도' ? '부가세 별도' : v.k === '없음' ? '부가세 없음' : ''; }
+function vatLines(s) {   // 공급가액 / 부가세 / 받을 총액 설명 줄
+  const v = vatOf(s); if (!v.grand) return [];
+  if (v.k === '포함') return [`공급가액 ${won(v.supply)} + 부가세 ${won(v.vat)} (부가세 포함)`];
+  if (v.k === '별도') return [`공급가액 ${won(v.supply)} + 부가세 ${won(v.vat)} = 받을 총액 ${won(v.grand)}`];
+  if (v.k === '없음') return ['부가세 없음 (면세·미발행)'];
+  return [];
+}
 const won = v => { const n = toNum(v); return n ? n.toLocaleString('ko-KR') + '원' : ''; };
 const todayStr = () => nowStr().slice(0, 10);
 function togglePay() { $('payBox').style.display = PAY_STAGES.includes($('stage').value) ? 'block' : 'none'; }
+function updVatInfo() {
+  const o = { total: $('contractTotal').value, vatType: $('vatType').value }, l = vatLines(o);
+  $('vatInfo').textContent = l.length ? '🧾 ' + l[0] + (o.vatType === '별도' ? ' — 잔금은 부가세까지 넣어서 계산됩니다' : '') : '';
+}
 function autoBalance() {
-  const t = toNum($('contractTotal').value), d = toNum($('depositAmt').value), m = toNum($('middleAmt').value);
+  const t = grandOf({ total: $('contractTotal').value, vatType: $('vatType').value }), d = toNum($('depositAmt').value), m = toNum($('middleAmt').value);
   if (t > 0) $('balanceAmt').value = Math.max(t - d - m, 0).toLocaleString('ko-KR');
+  updVatInfo();
   scheduleDraft();
 }
+$('vatType').addEventListener('change', autoBalance);
 $('contractTotal').addEventListener('input', autoBalance);
 $('depositAmt').addEventListener('input', autoBalance);
 $('middleAmt').addEventListener('input', autoBalance);
@@ -2662,7 +2687,7 @@ function payCell(item) {
   td.style.minWidth = '170px';
   if (!PAY_STAGES.includes(item.status) && !item.total && !item.deposit && !item.middle && !item.balance && !item.receiptType) { td.textContent = '-'; return td; }
   const line = (t, css) => { const d = document.createElement('div'); d.textContent = t; d.style.cssText = 'font-size:.78rem;' + (css || ''); td.appendChild(d); };
-  if (item.total) line('최종 ' + won(item.total), 'font-weight:bold;');
+  if (item.total) { line('최종 ' + won(grandOf(item)) + (vatLabel(item) ? ' · ' + vatLabel(item) : ''), 'font-weight:bold;'); const v = vatOf(item); if (v.vat) line(`(공급가 ${won(v.supply)} + 부가세 ${won(v.vat)})`, 'color:#666;'); }
   PAY_PARTS.filter(k => k !== 'middle' || toNum(item.middle) || item.middlePaid).map(k => [k, PAY_LABEL[k]]).forEach(([k, lab]) => {
     const row = document.createElement('div');
     row.style.cssText = 'margin:3px 0;font-size:.78rem;';
@@ -2721,7 +2746,7 @@ function payCell(item) {
     }
     td.appendChild(row);
   }
-  const t = toNum(item.total);
+  const t = grandOf(item);
   if (t) {
     const paid = paidSum(item);
     const remain = t - paid;
@@ -2782,6 +2807,7 @@ function setForm(o) {
   fillSourceSelect($('sourceSel'), $('source'), o.source);
   showSiteLink($('sourceSite'), o.source);
   fillPartnerSelect($('partner'), o.partner);
+  updVatInfo();
   togglePay();
   syncEngSelect();
 }
@@ -2874,7 +2900,7 @@ function renderFilter() {
 }
 function isFiltered() { return !!(fSrc || filterStage || fQ || fEng || fPay || fFrom || fTo || Object.keys(hf).length); }
 function payState(s) {
-  const t = toNum(s.total), paid = paidSum(s);
+  const t = grandOf(s), paid = paidSum(s);
   return { unpaid: t > 0 && t - paid > 0, done: t > 0 && t - paid <= 0, depositNo: toNum(s.deposit) > 0 && !s.depositPaid, middleNo: toNum(s.middle) > 0 && !s.middlePaid, balanceNo: toNum(s.balance) > 0 && !s.balancePaid,
     receiptNo: !!s.receiptType && !s.receiptIssued, cashReceipt: s.receiptType === '현금영수증', taxInvoice: s.receiptType === '세금계산서' };
 }
@@ -2933,8 +2959,8 @@ const HF_COLS = [
   { label: '연락처', get: s => hfv(s.phone) },
   { label: '방문 일시', get: s => hfv((s.visit || '').slice(0, 10)), sortVal: s => s.visit || '9999', desc: true },
   { label: '요청 사항', get: s => hfv(s.request) },
-  { label: '처리 비용', get: s => hfv(s.cost), sortVal: s => toNum(s.total) || toNum(s.cost), money: true },
-  { label: '입금 현황', get: s => { const p = payState(s); return !toNum(s.total) ? '금액 미입력' : p.done ? '완납' : '미수금 있음'; }, money: true },
+  { label: '처리 비용', get: s => hfv(s.cost), sortVal: s => grandOf(s) || toNum(s.cost), money: true },
+  { label: '입금 현황', get: s => { const p = payState(s); return !grandOf(s) ? '금액 미입력' : p.done ? '완납' : '미수금 있음'; }, money: true },
   { label: '담당 기사', get: s => hfv(s.engineer) },
   { label: '기사 연락처', get: s => hfv(s.engPhone) },
   { label: '방문 주소', get: s => hfv(s.note) },
@@ -3215,7 +3241,7 @@ document.addEventListener('keydown', e => { if (e.key === 'Escape' && $('editMod
 
 /* ===== 안내장 ===== */
 const G = {
-  total: i => won(i.total) || i.cost || '', dep: i => won(i.deposit), mid: i => won(i.middle), bal: i => won(i.balance),
+  total: i => won(grandOf(i)) ? won(grandOf(i)) + (vatLabel(i) ? ` (${vatLabel(i)})` : '') : i.cost || '', dep: i => won(i.deposit), mid: i => won(i.middle), bal: i => won(i.balance),
   name: i => i.customer || '', phone: i => i.phone || '', visit: i => fmtCardDate(i.visit),
   addr: i => i.note || '', req: i => i.request || '', cost: i => i.cost || '',
   eng: i => i.engineer ? i.engineer + ' 엔지니어' : '', engTel: i => i.engPhone ? `[ ${i.engPhone} ]` : ''
@@ -3237,7 +3263,7 @@ const cardShowPay = () => { try { return localStorage.getItem(CARD_PAY_KEY) !== 
 /* 안내장 아래 '공사금액 · 입금 현황' 표 */
 function renderCardPay(item) {
   const box = $('cardPay'); box.innerHTML = '';
-  const t = toNum(item.total), paid = paidSum(item);
+  const v = vatOf(item), t = v.grand, paid = paidSum(item);
   const tit = document.createElement('div'); tit.className = 'guide-pay-title'; tit.textContent = '■ 공사금액 · 입금 현황';
   const tb = document.createElement('table'); tb.className = 'guide-table guide-pay';
   const row = (label, amt, st, cls) => {
@@ -3250,7 +3276,9 @@ function renderCardPay(item) {
   };
   const span = (txt, cls) => { const e = document.createElement('span'); e.className = cls; e.textContent = txt; return e; };
   const md = d => d ? ` (${+d.slice(5, 7)}/${+d.slice(8, 10)})` : '';
-  row('총 공사금액', t ? won(t) : (item.cost || '-'), null);
+  if (v.vat) { row('공급가액', won(v.supply), null); row('부가세 (10%)', won(v.vat), null); }
+  const vs = document.createElement('span'); vs.textContent = vatLabel(item); vs.style.color = '#555';
+  row('총 공사금액', t ? won(t) : (item.cost || '-'), vatLabel(item) ? vs : null);
   PAY_PARTS.forEach(k => {
     const v = toNum(item[k]);
     if (!v && k === 'middle') return;          // 중도금은 금액이 있을 때만
@@ -3623,7 +3651,7 @@ function parseText(raw) {
 
 /* ===== 엑셀 읽기 ===== */
 const HEADER_RULES = [
-  ['skip', /기록일시|기록시각/], ['receiptIssued', /증빙발급|발급여부|발급완료/], ['receiptType', /증빙|현금영수증|세금계산서/], ['source', /수주처|수주|유입경로|유입|채널/], ['depositPaid', /계약금.*입금/], ['middlePaid', /중도금.*입금/], ['balancePaid', /잔금.*입금/], ['total', /^(최종)?계약금액$|^최종금액$|^총금액$/], ['deposit', /^계약금$/], ['middle', /^중도금$/], ['balance', /^잔금$/], ['engPhone', /기사.*(연락|전화|번호)/], ['engineer', /담당|기사|엔지니어/],
+  ['skip', /기록일시|기록시각/], ['vatType', /부가세구분/], ['skip', /부가세|공급가액|받을총액/], ['receiptIssued', /증빙발급|발급여부|발급완료/], ['receiptType', /증빙|현금영수증|세금계산서/], ['source', /수주처|수주|유입경로|유입|채널/], ['depositPaid', /계약금.*입금/], ['middlePaid', /중도금.*입금/], ['balancePaid', /잔금.*입금/], ['total', /^(최종)?계약금액$|^최종금액$|^총금액$/], ['deposit', /^계약금$/], ['middle', /^중도금$/], ['balance', /^잔금$/], ['engPhone', /기사.*(연락|전화|번호)/], ['engineer', /담당|기사|엔지니어/],
   ['phone', /연락처|전화|휴대/], ['visit', /일시|일자|날짜|방문일/], ['note', /주소/], ['report', /기록/],
   ['request', /요청|내용|작업/], ['cost', /비용|금액/], ['status', /상태/], ['customer', /고객|성함|이름/]
 ];
@@ -3787,10 +3815,10 @@ function downloadBlob(blob, name) {
 }
 function exportExcel() {
   if (!schedules.length) { alert('저장할 스케줄이 없습니다.'); return; }
-  const head = ['진행 상태','수주처','수주처 주소','고객명','연락처','방문 일시','시공 예정일','요청 사항','처리 비용','최종 계약금액','계약금','계약금 입금','중도금','중도금 입금','잔금','잔금 입금','지출 합계','순이익','증빙 종류','증빙 발급','담당 기사','기사 연락처','방문 주소','방문 후 기록','기록 일시','현장 사진 링크'];
+  const head = ['진행 상태','수주처','수주처 주소','고객명','연락처','방문 일시','시공 예정일','요청 사항','처리 비용','최종 계약금액','부가세 구분','공급가액','부가세 금액','받을 총액','계약금','계약금 입금','중도금','중도금 입금','잔금','잔금 입금','지출 합계','순이익','증빙 종류','증빙 발급','담당 기사','기사 연락처','방문 주소','방문 후 기록','기록 일시','현장 사진 링크'];
   const payTxt = (s, k) => s[k + 'Paid'] ? '입금완료' + ([s[k + 'PaidAt'], s[k + 'Method']].filter(Boolean).length ? ' (' + [s[k + 'PaidAt'], s[k + 'Method']].filter(Boolean).join(' · ') + ')' : '') : (s[k] ? '미입금' : '');
   const rows = [...schedules].sort((a, b) => (a.visit || '9999').localeCompare(b.visit || '9999'))
-    .map(s => [s.status, s.source, s.sourceUrl, s.customer, s.phone, fmtDate(s.visit), fmtDate(s.installDate), s.request, s.cost, s.total, s.deposit, payTxt(s,'deposit'), s.middle, payTxt(s,'middle'), s.balance, payTxt(s,'balance'), expSum(s) ? expSum(s).toLocaleString('ko-KR') : '', expSum(s) ? profitOf(s).toLocaleString('ko-KR') : '', s.receiptType, s.receiptType ? (s.receiptIssued ? '발급완료' + (s.receiptDate ? ' (' + s.receiptDate + ')' : '') : '미발급') : '', s.engineer, s.engPhone, s.note, s.report, s.reportAt, s.reportImageLink || ''].map(v => v || ''));
+    .map(s => [s.status, s.source, s.sourceUrl, s.customer, s.phone, fmtDate(s.visit), fmtDate(s.installDate), s.request, s.cost, s.total, s.vatType, vatOf(s).vat ? vatOf(s).supply.toLocaleString('ko-KR') : '', vatOf(s).vat ? vatOf(s).vat.toLocaleString('ko-KR') : '', grandOf(s) ? grandOf(s).toLocaleString('ko-KR') : '', s.deposit, payTxt(s,'deposit'), s.middle, payTxt(s,'middle'), s.balance, payTxt(s,'balance'), expSum(s) ? expSum(s).toLocaleString('ko-KR') : '', expSum(s) ? profitOf(s).toLocaleString('ko-KR') : '', s.receiptType, s.receiptType ? (s.receiptIssued ? '발급완료' + (s.receiptDate ? ' (' + s.receiptDate + ')' : '') : '미발급') : '', s.engineer, s.engPhone, s.note, s.report, s.reportAt, s.reportImageLink || ''].map(v => v || ''));
   const name = '현장스케줄_' + todayStr();
   if (typeof XLSX !== 'undefined') {
     const wb = XLSX.utils.book_new();
@@ -4285,9 +4313,9 @@ function renderDetail() {
   if (!isPartner()) row('처리 비용', s.cost);
   if (!isPartner() && (s.total || s.deposit || s.middle || s.balance || s.receiptType)) {
     const lines = [];
-    if (s.total) lines.push('최종 ' + won(s.total));
+    if (s.total) { lines.push('최종 ' + won(grandOf(s)) + (vatLabel(s) ? ' (' + vatLabel(s) + ')' : '')); lines.push(...vatLines(s).filter(() => vatOf(s).vat)); }
     PAY_PARTS.forEach(k => { if (s[k]) lines.push(`${PAY_LABEL[k]} ${won(s[k])} ${s[k + 'Paid'] ? '✅ 입금' + (s[k + 'PaidAt'] ? ' (' + s[k + 'PaidAt'] + ')' : '') : '⬜ 미입금'}`); });
-    const t = toNum(s.total);
+    const t = grandOf(s);
     if (t) {
       const remain = t - paidSum(s);
       lines.push(remain <= 0 ? '완납 ✅' : '미수금 ' + remain.toLocaleString('ko-KR') + '원');
@@ -4296,7 +4324,7 @@ function renderDetail() {
     row('입금 현황', lines.join('\n'));
   }
   if (isAdmin()) {
-    const ex = expList(s), t = toNum(s.total), c = expSum(s);
+    const ex = expList(s), t = vatOf(s).supply, c = expSum(s);
     const lines = ex.map(e => `${e.type} · ${e.vendor || '-'} ${won(e.amount) || '0원'} ${e.paid ? '✅ 지급' + (e.date ? ' (' + e.date + ')' : '') : '⬜ 미지급'}`);
     if (ex.length) lines.push(`지출 합계 ${statWon(c)}원 · 순이익 ${statWon(t - c)}원${t ? ' (이익률 ' + Math.round((t - c) / t * 1000) / 10 + '%)' : ''}`);
     const b = document.createElement('button'); b.type = 'button'; b.className = 'qbtn'; b.style.cssText = 'background:#fff9db;border:1px solid #f59f00;color:#a15c00;cursor:pointer;'; b.textContent = ex.length ? '💸 지출 수정' : '💸 지출·외주비 입력'; b.onclick = () => openExpense(s.id);
@@ -4577,7 +4605,7 @@ function qSave() {
   if (k >= 0) list[k] = rec; else list.push(rec);
   s.quotes = list;
   // 일정에 연결: 공사 총금액·처리 비용 반영, 진행 상태를 '견적제출'로
-  if (t.total) { s.total = String(t.total); s.cost = won(t.total); }
+  if (t.total) { s.total = String(t.total); s.cost = won(t.total); s.vatType = Q.vat === '없음' ? '없음' : '포함'; }
   if (!s.status || s.status === '방문실측' || s.status === '방문시공') s.status = '견적제출';
   save(); renderQuoteList();
   if (detailId === s.id) renderDetail();
