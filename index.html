@@ -336,7 +336,13 @@ body.role-partner .q-only{display:none!important}
 .q-hist-item.cur{background:#eef2ff;border-radius:6px;padding:6px}
 .q-hist-item button{border:1px solid #ccc;background:#fff;border-radius:5px;padding:4px 8px;font-size:.78rem;cursor:pointer;margin-left:3px}
 .q-link{display:flex;align-items:center;gap:8px;flex-wrap:wrap;font-size:.88rem}
-.q-link select{flex:1;min-width:200px;padding:7px;border:1px solid #ccc;border-radius:6px}
+.q-link-cur{flex:1;min-width:200px;font-size:.88rem}
+.q-link-un{margin-left:8px;border:1px solid #ccc;background:#fff;border-radius:5px;padding:3px 8px;font-size:.78rem;cursor:pointer}
+.q-link-q{width:100%;box-sizing:border-box;margin-top:8px;padding:8px;border:1px solid #ccc;border-radius:6px;font-size:.9rem}
+.q-link-res{max-height:240px;overflow:auto;margin-top:6px}
+.q-link-res button{display:flex;flex-direction:column;align-items:flex-start;width:100%;text-align:left;border:1px solid #e5e7eb;border-left:5px solid #adb5bd;background:#fff;border-radius:6px;padding:7px 10px;margin-bottom:5px;cursor:pointer}
+.q-link-res button:hover{background:#eef2ff}.q-link-res button span{font-size:.78rem;color:#666}
+.q-link-none{color:#888;padding:6px;font-size:.85rem}
 .q-paper-scroll{overflow:auto;background:#e9ecef;padding:10px;border-radius:8px}
 .q-paper{width:760px;margin:0 auto;background:#fff;padding:36px 38px;box-sizing:border-box;color:#111;font-family:'Malgun Gothic',sans-serif;font-size:13px;line-height:1.45}
 .q-paper h1{text-align:center;letter-spacing:18px;font-size:30px;margin:0 0 22px;padding-bottom:10px;border-bottom:3px double #111}
@@ -388,7 +394,7 @@ body.role-partner .q-only{display:none!important}
     <button type="submit" class="btn btn-submit" id="loginBtn">로그인</button>
     <button type="button" class="btn btn-reset" id="loginOther" style="width:100%;margin-top:12px;font-size:.9rem;padding:10px;">👥 다른 사람으로 로그인</button>
     <div id="loginMsg"></div>
-    <div style="text-align:center;font-size:.7rem;color:#adb5bd;margin-top:10px;">앱 버전 1124-견적첨부</div>
+    <div style="text-align:center;font-size:.7rem;color:#adb5bd;margin-top:10px;">앱 버전 1124-견적검색</div>
   </form>
 </div>
 <div id="expModal" class="modal" style="z-index:70;">
@@ -521,7 +527,7 @@ body.role-partner .q-only{display:none!important}
     <div class="btn-row"><button type="submit" class="btn btn-submit">변경</button><button type="button" class="btn btn-reset" onclick="$('pwModal').classList.remove('show')">닫기</button></div>
   </form>
 </div>
-<div id="appVer" style="position:fixed;left:6px;bottom:4px;font-size:.65rem;color:#adb5bd;z-index:1;pointer-events:none;">앱 버전 1124-견적첨부</div>
+<div id="appVer" style="position:fixed;left:6px;bottom:4px;font-size:.65rem;color:#adb5bd;z-index:1;pointer-events:none;">앱 버전 1124-견적검색</div>
 <div id="syncStatus">🔄 연동 중...</div>
 <div class="container">
   <h2>현장 방문 및 스케줄 관리</h2>
@@ -4559,21 +4565,49 @@ function qFill() {
   const s = qLinkId ? schedules.find(x => x.id === qLinkId) : null;
   $('qTitle').textContent = s && qQuoteList(s).some(x => x.qid === Q.qid) ? `📝 견적서 수정 (${Q.no})` : '📝 새 견적서';
   const box = $('qLinkBox'); box.innerHTML = '';
+  const cur = qLinkId ? schedules.find(x => x.id === qLinkId) : null;
+  const sdesc = x => [x.customer || '이름 없음', x.phone, (x.visit || '').slice(0, 10) || '방문일 미정', x.status, x.request && x.request.slice(0, 16)].filter(Boolean).join(' · ');
   const wrap = document.createElement('div'); wrap.className = 'q-link';
   const lb = document.createElement('b'); lb.textContent = '🔗 연결 일정';
-  const sel = document.createElement('select');
-  const add = (v, t) => { const o = document.createElement('option'); o.value = v; o.textContent = t; sel.appendChild(o); };
-  add('', '➕ 새 고객 (저장하면 새 일정이 생김)');
-  [...schedules].filter(x => !x.installFor).sort((a, b) => (b.visit || '').localeCompare(a.visit || ''))
-    .forEach(x => add(x.id, `${x.customer || '이름 없음'} · ${(x.visit || '').slice(0, 10) || '방문일 미정'} · ${x.status || ''}${x.request ? ' · ' + x.request.slice(0, 14) : ''}`));
-  sel.value = qLinkId || '';
-  sel.onchange = () => {
-    qReadForm(); qLinkId = sel.value || null;
-    const t = qLinkId ? schedules.find(x => x.id === qLinkId) : null;
-    if (t) { Q.customer = t.customer || ''; Q.phone = t.phone || ''; Q.addr = t.note || ''; if (!Q.job) Q.job = t.request || ''; }
+  const st = document.createElement('div'); st.className = 'q-link-cur';
+  if (cur) {
+    st.textContent = '✅ ' + sdesc(cur);
+    const un = document.createElement('button'); un.type = 'button'; un.textContent = '연결 풀기'; un.className = 'q-link-un';
+    un.onclick = () => { qReadForm(); qLinkId = null; qFill(); };
+    st.appendChild(un);
+  } else st.textContent = '➕ 새 고객 (저장하면 새 일정이 생김) — 아래에서 검색해 기존 일정에 연결할 수 있어요';
+  const q = document.createElement('input'); q.type = 'search'; q.className = 'q-link-q';
+  q.placeholder = '🔍 고객명·연락처·주소·요청사항으로 일정 검색'; q.autocomplete = 'off';
+  const res = document.createElement('div'); res.className = 'q-link-res';
+  const pick = t => {
+    qReadForm(); qLinkId = t.id;
+    Q.customer = t.customer || ''; Q.phone = t.phone || ''; Q.addr = t.note || ''; if (!Q.job) Q.job = t.request || '';
     qFill();
   };
-  wrap.append(lb, sel); box.appendChild(wrap);
+  const draw = () => {
+    const w = q.value.trim().toLowerCase(); res.innerHTML = '';
+    if (!w) { res.style.display = 'none'; return; }
+    const words = w.split(/\s+/).filter(Boolean);
+    const hits = schedules.filter(x => !x.installFor).filter(x => {
+      const hay = [x.customer, x.phone, (x.phone || '').replace(/\D/g, ''), x.note, x.request, x.source, x.engineer, (x.visit || '').slice(0, 10)].join(' ').toLowerCase();
+      return words.every(k => hay.includes(k));
+    }).sort((a, b) => (b.visit || '').localeCompare(a.visit || '')).slice(0, 30);
+    res.style.display = '';
+    if (!hits.length) { res.innerHTML = '<div class="q-link-none">맞는 일정이 없습니다</div>'; return; }
+    hits.forEach(x => {
+      const b = document.createElement('button'); b.type = 'button';
+      const n = document.createElement('b'); n.textContent = x.customer || '이름 없음';
+      const d = document.createElement('span'); d.textContent = [x.phone, (x.visit || '').slice(0, 10) || '방문일 미정', x.status, x.note && x.note.slice(0, 20), x.request && x.request.slice(0, 14)].filter(Boolean).join(' · ');
+      b.append(n, d); b.style.borderLeftColor = STAGE_ACCENT[x.status] || '#adb5bd';
+      b.onclick = () => pick(x);
+      res.appendChild(b);
+    });
+  };
+  q.oninput = draw;
+  q.onkeydown = e => { if (e.key === 'Enter') { e.preventDefault(); const f = res.querySelector('button'); if (f) f.click(); } };
+  wrap.append(lb, st); box.append(wrap, q, res);
+  $('qCustomer').oninput = () => { if (!qLinkId && $('qCustomer').value.trim().length >= 1) { q.value = $('qCustomer').value.trim(); draw(); } };   // 고객명을 쓰면 같은 이름의 기존 일정을 바로 보여 줌
+  const sel = q;
   $('qCustomer').value = Q.customer || ''; $('qPhone').value = Q.phone || ''; $('qAddr').value = Q.addr || '';
   $('qJob').value = Q.job || ''; $('qDate').value = Q.date || todayStr(); $('qNo').value = Q.no || '';
   $('qDiscount').value = Q.discount ? qComma(qNum(Q.discount)) : ''; $('qVat').value = Q.vat || '별도'; $('qCut').checked = !!Q.cut; $('qMemo').value = Q.memo || '';
