@@ -266,6 +266,11 @@ tr.stage-cancel td{text-decoration:line-through;text-decoration-thickness:2px;te
 .detail-row .dl{min-width:78px;color:#868e96;font-weight:bold;font-size:.82rem;padding-top:2px}
 .detail-row .dv{flex:1;min-width:0;word-break:break-all;white-space:pre-wrap}
 .quick-btns{display:flex;gap:6px;flex-wrap:wrap;margin-top:6px}
+.qf-item{display:flex;align-items:center;gap:8px;padding:5px 0;border-bottom:1px dashed #e5e7eb}
+.qf-thumb{width:54px;height:54px;object-fit:cover;border-radius:6px;border:1px solid #ddd;cursor:pointer;flex:0 0 auto}
+.qf-info{flex:1;min-width:0;display:flex;flex-direction:column}.qf-info a{color:#1c7ed6;font-weight:bold;word-break:break-all;text-decoration:none}.qf-info small{color:#888;font-size:.72rem}
+.qf-del{border:none;background:#ffe3e3;color:#c92a2a;border-radius:5px;padding:4px 8px;cursor:pointer}
+.qf-up{margin-top:6px;background:#e7f5ff!important;border-color:#74c0fc!important;color:#1864ab!important;cursor:pointer}
 .qbtn{display:inline-block;padding:7px 11px;border-radius:6px;font-size:.82rem;font-weight:bold;text-decoration:none;border:1px solid #ced4da;background:#f8f9fa;color:#222;white-space:nowrap}
 .qbtn.call{background:#e7f5ff;border-color:#74c0fc;color:#1864ab}
 .qbtn.sms{background:#f3f0ff;border-color:#b197fc;color:#5f3dc4}
@@ -383,7 +388,7 @@ body.role-partner .q-only{display:none!important}
     <button type="submit" class="btn btn-submit" id="loginBtn">로그인</button>
     <button type="button" class="btn btn-reset" id="loginOther" style="width:100%;margin-top:12px;font-size:.9rem;padding:10px;">👥 다른 사람으로 로그인</button>
     <div id="loginMsg"></div>
-    <div style="text-align:center;font-size:.7rem;color:#adb5bd;margin-top:10px;">앱 버전 1124-부가세</div>
+    <div style="text-align:center;font-size:.7rem;color:#adb5bd;margin-top:10px;">앱 버전 1124-견적첨부</div>
   </form>
 </div>
 <div id="expModal" class="modal" style="z-index:70;">
@@ -516,7 +521,7 @@ body.role-partner .q-only{display:none!important}
     <div class="btn-row"><button type="submit" class="btn btn-submit">변경</button><button type="button" class="btn btn-reset" onclick="$('pwModal').classList.remove('show')">닫기</button></div>
   </form>
 </div>
-<div id="appVer" style="position:fixed;left:6px;bottom:4px;font-size:.65rem;color:#adb5bd;z-index:1;pointer-events:none;">앱 버전 1124-부가세</div>
+<div id="appVer" style="position:fixed;left:6px;bottom:4px;font-size:.65rem;color:#adb5bd;z-index:1;pointer-events:none;">앱 버전 1124-견적첨부</div>
 <div id="syncStatus">🔄 연동 중...</div>
 <div class="container">
   <h2>현장 방문 및 스케줄 관리</h2>
@@ -851,6 +856,7 @@ body.role-partner .q-only{display:none!important}
         <button type="button" class="btn btn-sm btn-card" id="qImg">🖼️ 이미지 저장</button>
         <button type="button" class="btn btn-sm btn-excel" id="qShare">💬 카톡 공유</button>
         <button type="button" class="btn btn-sm btn-excel" id="qXlsx">📥 엑셀 저장</button>
+        <button type="button" class="btn btn-sm btn-submit" id="qAttach">📎 일정에 첨부</button>
       </div>
       <div class="q-paper-scroll"><div id="qPaper" class="q-paper"></div></div>
     </div>
@@ -3109,7 +3115,7 @@ function render() {
 
     ['customer', 'phone'].forEach(k => {
       const td = document.createElement('td'); td.textContent = item[k] || '';
-      if (k === 'customer') { td.className = 'name-cell'; td.title = '눌러서 상세 내용·현장 사진 보기'; td.onclick = () => openDetail(item.id); if (hasPhoto(item)) td.textContent += ' 📷'; }
+      if (k === 'customer') { td.className = 'name-cell'; td.title = '눌러서 상세 내용·현장 사진 보기'; td.onclick = () => openDetail(item.id); if (hasPhoto(item)) td.textContent += ' 📷'; if (!isPartner() && quoteFiles(item).length) td.textContent += ' 📎'; }
       tr.appendChild(td);
     });
 
@@ -4200,6 +4206,90 @@ document.addEventListener('keydown', e => {
   if (n > 1 && e.key === 'ArrowRight') { pmIdx = (pmIdx + 1) % n; showPhotoAt(); }
 });
 
+/* ===== 견적서 파일 첨부 (엑셀 · 캡처 사진 · PDF → 구글 드라이브) ===== */
+function quoteFiles(s) { return s && Array.isArray(s.quoteFiles) ? s.quoteFiles : []; }
+const QF_ICON = n => /\.(xlsx?|csv)$/i.test(n) ? '📊' : /\.pdf$/i.test(n) ? '📕' : /\.(png|jpe?g|gif|webp|bmp)$/i.test(n) ? '🖼️' : /\.hwpx?$/i.test(n) ? '📝' : '📄';
+function qfThumb(dataUrl) {
+  return new Promise(ok => {
+    const im = new Image();
+    im.onload = () => { const k = Math.min(1, 240 / Math.max(im.width, im.height)); const c = document.createElement('canvas'); c.width = Math.round(im.width * k); c.height = Math.round(im.height * k); c.getContext('2d').drawImage(im, 0, 0, c.width, c.height); ok(c.toDataURL('image/jpeg', 0.6)); };
+    im.onerror = () => ok('');
+    im.src = dataUrl;
+  });
+}
+/* 파일들을 드라이브에 올리고 일정에 붙임 */
+async function uploadQuoteFiles(id, files) {
+  files = [...(files || [])]; if (!files.length) return;
+  if (!canEdit()) { alert('견적서 파일은 관리자·직원만 올릴 수 있습니다.'); return; }
+  if (!SCRIPT_URL || !authToken) { alert('로그인한 상태에서 인터넷이 연결되어 있어야 올릴 수 있습니다.'); return; }
+  let ok = 0;
+  for (let f of files) {
+    try {
+      if (isHeic(f)) f = await normalizeImage(f);
+      if (f.size > 8 * 1024 * 1024) { alert(`'${f.name}' 파일이 8MB보다 커서 올릴 수 없습니다.`); continue; }
+      const s0 = schedules.find(x => x.id === id); if (!s0) return;
+      showSync(`📎 견적서 파일 올리는 중... (${ok + 1}/${files.length}) ${f.name}`);
+      const data = await fileToDataUrl(f);
+      const r = await api('uploadFile', { fileName: `견적_${s0.customer || '고객'}_${f.name}`, mimeType: f.type || 'application/octet-stream', data });
+      if (!r || !r.ok || !r.url) throw new Error((r && r.error) || '업로드 실패');
+      const thumb = /^image\//.test(f.type) ? await qfThumb(data) : '';
+      const s = schedules.find(x => x.id === id); if (!s) return;
+      s.quoteFiles = quoteFiles(s).concat([{ id: uid(), name: f.name, url: r.url, thumb, size: f.size, at: nowStr(), by: me ? me.name : '' }]);
+      ok++;
+    } catch (e) { console.error(e); alert(`'${f.name}' 파일을 올리지 못했습니다.\n${e.message || e}`); }
+  }
+  if (!ok) return;
+  const s = schedules.find(x => x.id === id);
+  if (s && (!s.status || s.status === '방문실측' || s.status === '방문시공') && confirm(`견적서 파일 ${ok}개를 올렸습니다.\n진행 상태를 '견적제출'로 바꿀까요?`)) s.status = '견적제출';
+  await save();
+  if (detailId === id) renderDetail();
+  showSync(`✅ 견적서 파일 ${ok}개를 저장했습니다`);
+}
+function pickQuoteFiles(id) {
+  const inp = document.createElement('input'); inp.type = 'file'; inp.multiple = true;
+  inp.accept = 'image/*,.heic,.heif,.xlsx,.xls,.csv,.pdf,.hwp,.hwpx';
+  inp.onchange = () => uploadQuoteFiles(id, inp.files);
+  inp.click();
+}
+/* 상세 화면의 '📎 견적서 파일' 칸 */
+function quoteFilesBox(s) {
+  const box = document.createElement('div');
+  const list = quoteFiles(s);
+  if (!list.length) { const e = document.createElement('div'); e.textContent = '올린 견적서 없음'; e.style.color = '#888'; box.appendChild(e); }
+  list.forEach(f => {
+    const r = document.createElement('div'); r.className = 'qf-item';
+    if (f.thumb) { const im = document.createElement('img'); im.src = f.thumb; im.className = 'qf-thumb'; im.alt = f.name; im.onclick = () => window.open(safeUrl(f.url), '_blank', 'noopener'); r.appendChild(im); }
+    const info = document.createElement('div'); info.className = 'qf-info';
+    const a = document.createElement('a'); a.href = safeUrl(f.url) || '#'; a.target = '_blank'; a.rel = 'noopener'; a.textContent = `${QF_ICON(f.name)} ${f.name}`;
+    const sub = document.createElement('small'); sub.textContent = [f.at, f.by].filter(Boolean).join(' · ');
+    info.append(a, sub); r.appendChild(info);
+    if (canEdit()) {
+      const d = document.createElement('button'); d.type = 'button'; d.className = 'qf-del'; d.textContent = '✕'; d.title = '목록에서 빼기';
+      d.onclick = () => {
+        if (!confirm(`'${f.name}'을(를) 이 일정의 견적서 목록에서 뺄까요?\n(구글 드라이브의 파일은 그대로 남습니다)`)) return;
+        const live = schedules.find(x => x.id === s.id); if (!live) return;
+        live.quoteFiles = quoteFiles(live).filter(x => x.id !== f.id); save(); if (detailId === s.id) renderDetail();
+      };
+      r.appendChild(d);
+    }
+    box.appendChild(r);
+  });
+  if (canEdit()) {
+    const b = document.createElement('button'); b.type = 'button'; b.className = 'qbtn qf-up'; b.textContent = '📎 견적서 올리기 (엑셀·사진·PDF)';
+    b.onclick = () => pickQuoteFiles(s.id);
+    box.appendChild(b);
+  }
+  return box;
+}
+/* 견적 프로그램에서 만든 견적서 이미지를 바로 일정에 첨부 */
+async function qAttachToSchedule() {
+  const s = qLinkId ? schedules.find(x => x.id === qLinkId) : null;
+  if (!s || !qQuoteList(s).some(x => x.qid === Q.qid)) { alert('먼저 [← 수정으로] 돌아가 [💾 저장]을 눌러 일정에 연결해 주세요.'); return; }
+  let canvas; try { canvas = await qCanvas(); } catch (e) { return; }
+  const blob = await new Promise(r => canvas.toBlob(r, 'image/png'));
+  await uploadQuoteFiles(s.id, [new File([blob], `${qFileBase()}.png`, { type: 'image/png' })]);
+}
+
 /* ===== 일정 상세 화면 ===== */
 function openDetail(id) {
   detailId = id;
@@ -4311,6 +4401,7 @@ function renderDetail() {
   const addr = (s.note || '').trim(), q = encodeURIComponent(addr);
   row('방문 주소', addr, addr ? [qa('naver', 'https://map.naver.com/p/search/' + q, '🗺 네이버지도', true), qa('kakao', 'https://map.kakao.com/link/search/' + q, '🗺 카카오맵', true)] : null);
   if (!isPartner()) row('처리 비용', s.cost);
+  if (!isPartner() && (quoteFiles(s).length || canEdit())) { const v = row('📎 견적서 파일', ''); v.textContent = ''; v.appendChild(quoteFilesBox(s)); }
   if (!isPartner() && (s.total || s.deposit || s.middle || s.balance || s.receiptType)) {
     const lines = [];
     if (s.total) { lines.push('최종 ' + won(grandOf(s)) + (vatLabel(s) ? ' (' + vatLabel(s) + ')' : '')); lines.push(...vatLines(s).filter(() => vatOf(s).vat)); }
@@ -4835,6 +4926,7 @@ $('qPrint').onclick = qPrint;
 $('qImg').onclick = () => qImage(false);
 $('qShare').onclick = () => qImage(true);
 $('qXlsx').onclick = qExcel;
+$('qAttach').onclick = qAttachToSchedule;
 $('pbAdd').onclick = () => { pbDraft.push({ cat: '', name: '', spec: '', unit: '㎡', price: 0 }); pbDraw(); const r = $('pbBody').lastElementChild; if (r) r.querySelectorAll('input')[1].focus(); };
 $('pmSave').onclick = pbSave;
 $('pmClose').onclick = $('pmClose2').onclick = () => $('priceModal').classList.remove('show');
