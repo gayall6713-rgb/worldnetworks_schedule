@@ -306,7 +306,7 @@ body.locked #notifyBar{display:none!important}
 
 /* ===== 견적 프로그램 ===== */
 body.role-partner .q-only{display:none!important}
-.q-box{max-width:900px}
+.q-box{max-width:1000px}
 .q-sec{border:1px solid #e5e7eb;border-radius:8px;padding:10px;margin-bottom:10px;background:#fcfcfd}
 .q-grid{display:grid;grid-template-columns:1fr 1fr;gap:8px 10px}
 .q-grid label{display:flex;flex-direction:column;font-size:.8rem;font-weight:bold;color:#555;gap:3px}
@@ -315,7 +315,7 @@ body.role-partner .q-only{display:none!important}
 .q-grid label.q-chk{flex-direction:row;align-items:center;gap:6px}.q-grid label.q-chk input{width:auto}
 .q-head{display:flex;justify-content:space-between;align-items:center;flex-wrap:wrap;gap:6px}
 .q-head .btn{margin:0 0 4px 4px}
-.q-line{display:grid;grid-template-columns:28px 2.2fr 1.4fr .8fr .9fr .9fr .7fr 1.1fr 1.2fr 34px;gap:5px;align-items:end;padding:8px 0;border-bottom:1px dashed #e5e7eb}
+.q-line{display:grid;grid-template-columns:24px 2fr 1.3fr .8fr .85fr .85fr .6fr 1fr 1.1fr 1.4fr 32px;gap:5px;align-items:end;padding:8px 0;border-bottom:1px dashed #e5e7eb}
 .q-line .lb{font-size:.7rem;color:#888;display:block;margin-bottom:2px}
 .q-line .no{font-weight:bold;color:#2563eb;text-align:center;padding-bottom:9px}
 .q-line .calc{font-size:.72rem;color:#0ca678;grid-column:2/-1;margin-top:-2px}
@@ -356,7 +356,7 @@ body.role-partner .q-only{display:none!important}
 .q-paper .sup th{width:1%;white-space:nowrap;font-size:12px;padding:5px 10px}.q-paper .sup td{font-size:12px}
 .q-paper .big{border:2px solid #111;padding:9px 12px;font-size:15px;font-weight:bold;margin-bottom:12px;display:flex;justify-content:space-between;flex-wrap:wrap;gap:6px}
 .q-paper .items th{font-size:12px}.q-paper .items td{font-size:12px}
-.q-paper .r{text-align:right}.q-paper .c{text-align:center}
+.q-paper .r{text-align:right}.q-paper td.nt{font-size:11px;color:#333}.q-paper .c{text-align:center}
 .q-paper .sumrow td{font-weight:bold;background:#f8f9fa}
 .q-paper .memo{margin-top:12px;border:1px solid #555;padding:8px 10px;white-space:pre-wrap;font-size:12px;min-height:40px}
 .q-paper .foot{margin-top:14px;text-align:right;font-size:12px;color:#333}
@@ -375,7 +375,7 @@ body.role-partner .q-only{display:none!important}
   .q-line .f-name{grid-column:2/7}
   .q-line .f-spec{grid-column:1/4}.q-line .f-unit{grid-column:4/7}
   .q-line .f-w{grid-column:1/3}.q-line .f-h{grid-column:3/5}.q-line .f-q{grid-column:5/7}
-  .q-line .f-p{grid-column:1/4}.q-line .f-a{grid-column:4/7}
+  .q-line .f-p{grid-column:1/4}.q-line .f-a{grid-column:4/7}.q-line .f-n{grid-column:1/-1}
   .q-line .del{grid-column:1/-1;height:30px}
   .q-line .calc{grid-column:1/-1}
 }
@@ -394,7 +394,7 @@ body.role-partner .q-only{display:none!important}
     <button type="submit" class="btn btn-submit" id="loginBtn">로그인</button>
     <button type="button" class="btn btn-reset" id="loginOther" style="width:100%;margin-top:12px;font-size:.9rem;padding:10px;">👥 다른 사람으로 로그인</button>
     <div id="loginMsg"></div>
-    <div style="text-align:center;font-size:.7rem;color:#adb5bd;margin-top:10px;">앱 버전 1124-자평</div>
+    <div style="text-align:center;font-size:.7rem;color:#adb5bd;margin-top:10px;">앱 버전 1124-비고</div>
   </form>
 </div>
 <div id="expModal" class="modal" style="z-index:70;">
@@ -527,7 +527,7 @@ body.role-partner .q-only{display:none!important}
     <div class="btn-row"><button type="submit" class="btn btn-submit">변경</button><button type="button" class="btn btn-reset" onclick="$('pwModal').classList.remove('show')">닫기</button></div>
   </form>
 </div>
-<div id="appVer" style="position:fixed;left:6px;bottom:4px;font-size:.65rem;color:#adb5bd;z-index:1;pointer-events:none;">앱 버전 1124-자평</div>
+<div id="appVer" style="position:fixed;left:6px;bottom:4px;font-size:.65rem;color:#adb5bd;z-index:1;pointer-events:none;">앱 버전 1124-비고</div>
 <div id="syncStatus">🔄 연동 중...</div>
 <div class="container">
   <h2>현장 방문 및 스케줄 관리</h2>
@@ -4675,6 +4675,7 @@ function qDrawLines() {
     const q = fld('f-q', '수량', inp('qty', '1', 'decimal'));
     const p = fld('f-p', '단가(원)', inp('price', '0', 'numeric')); p.value = l.price ? qComma(qNum(l.price)) : '';
     const a = fld('f-a', '금액(원)', inp('amount', '자동', 'numeric')); a.classList.add('amt');
+    const nt = fld('f-n', '비고', inp('note', '예: 유리포함, 시공비포함')); nt.oninput = () => { l.note = nt.value; };
     const del = document.createElement('button'); del.type = 'button'; del.className = 'del'; del.textContent = '✕'; del.title = '이 품목 삭제'; row.appendChild(del);
     const calc = document.createElement('div'); calc.className = 'calc'; row.appendChild(calc);
     const refresh = () => {
@@ -4781,9 +4782,9 @@ function qPaperHtml() {
     const qty = ['㎡', '자평', 'm', '자'].includes(l.unit) && l.w ? `${cc.base}${l.unit}` : `${qNum(l.qty) || ''}${l.unit}`;
     return `<tr><td class="c">${i + 1}</td><td>${qEsc(l.name)}</td><td>${qEsc([l.spec, size].filter(Boolean).join(' / '))}</td>
       <td class="c">${qEsc(qty)}${['㎡', '자평', 'm', '자'].includes(l.unit) && l.w && qNum(l.qty) > 1 ? `<br><small>(${qNum(l.qty)}개)</small>` : ''}</td>
-      <td class="r">${l.manual ? '' : qComma(qNum(l.price))}</td><td class="r">${qComma(cc.amount)}</td></tr>`;
+      <td class="r">${l.manual ? '' : qComma(qNum(l.price))}</td><td class="r">${qComma(cc.amount)}</td><td class="nt">${qEsc(l.note || '')}</td></tr>`;
   });
-  while (rows.length < 8) rows.push('<tr><td>&nbsp;</td><td></td><td></td><td></td><td></td><td></td></tr>');
+  while (rows.length < 8) rows.push('<tr><td>&nbsp;</td><td></td><td></td><td></td><td></td><td></td><td></td></tr>');
   const vatTxt = Q.vat === '별도' ? '부가세 포함' : Q.vat === '포함' ? '부가세 포함' : '부가세 없음';
   const sup = [['상호', c.name], ['대표자', c.ceo], ['사업자번호', c.biz], ['주소', c.addr], ['전화', c.tel], ['담당', Q.staff === undefined ? (me ? me.name : '') : [Q.staff, Q.staffPhone].filter(Boolean).join('  ')]]
     .filter(r => r[1]).map(r => `<tr><th>${r[0]}</th><td>${qEsc(r[1])}</td></tr>`).join('');
@@ -4801,13 +4802,13 @@ function qPaperHtml() {
     <div><table class="sup"><tr><th colspan="2" style="text-align:center;">공 급 자</th></tr>${sup}</table></div>
   </div>
   <div class="big"><span>합계금액 : 일금 ${korMoney(t.total)}원정</span><span>( ₩ ${qComma(t.total)} · ${vatTxt} )</span></div>
-  <table class="items"><thead><tr><th style="width:34px;">No</th><th>품목</th><th>규격·사양 / 크기(mm)</th><th style="width:76px;">수량</th><th style="width:90px;">단가</th><th style="width:100px;">금액</th></tr></thead>
+  <table class="items"><thead><tr><th style="width:28px;">No</th><th>품목</th><th style="width:118px;">규격·사양 / 크기(mm)</th><th style="width:62px;">수량</th><th style="width:72px;">단가</th><th style="width:82px;">금액</th><th style="width:118px;">비고</th></tr></thead>
   <tbody>${rows.join('')}
-    ${t.disc ? `<tr><td colspan="5" class="r">할인</td><td class="r">− ${qComma(t.disc)}</td></tr>` : ''}
-    <tr class="sumrow"><td colspan="5" class="r">공급가액</td><td class="r">${qComma(t.supply)}</td></tr>
-    ${Q.vat !== '없음' ? `<tr class="sumrow"><td colspan="5" class="r">부가세</td><td class="r">${qComma(t.vat)}</td></tr>` : ''}
-    ${t.cut ? `<tr><td colspan="5" class="r">천원 미만 절사</td><td class="r">− ${qComma(t.cut)}</td></tr>` : ''}
-    <tr class="sumrow"><td colspan="5" class="r">합 계</td><td class="r">${qComma(t.total)}</td></tr>
+    ${t.disc ? `<tr><td colspan="5" class="r">할인</td><td class="r">− ${qComma(t.disc)}</td><td></td></tr>` : ''}
+    <tr class="sumrow"><td colspan="5" class="r">공급가액</td><td class="r">${qComma(t.supply)}</td><td></td></tr>
+    ${Q.vat !== '없음' ? `<tr class="sumrow"><td colspan="5" class="r">부가세</td><td class="r">${qComma(t.vat)}</td><td></td></tr>` : ''}
+    ${t.cut ? `<tr><td colspan="5" class="r">천원 미만 절사</td><td class="r">− ${qComma(t.cut)}</td><td></td></tr>` : ''}
+    <tr class="sumrow"><td colspan="5" class="r">합 계</td><td class="r">${qComma(t.total)}</td><td></td></tr>
   </tbody></table>
   ${Q.memo || c.bank ? `<div class="memo">${qEsc(Q.memo || '')}${c.bank ? `${Q.memo ? '\n' : ''}※ 입금 계좌: ${qEsc(c.bank)}` : ''}</div>` : ''}
   <div class="foot">${qEsc(c.name || '')}${c.tel ? ' · ' + qEsc(c.tel) : ''}</div>`;
@@ -4853,10 +4854,10 @@ function qExcel() {
   const aoa = [['견 적 서'], [], ['수신', (Q.customer || '') + ' 귀하', '', '공급자', c.name], ['견적일', Q.date, '', '대표자', c.ceo], ['견적번호', Q.no, '', '사업자번호', c.biz],
     ['공사명', Q.job, '', '주소', c.addr], ['현장 주소', Q.addr, '', '전화', c.tel], ['연락처', Q.phone, '', '담당', Q.staff === undefined ? (me ? me.name : '') : [Q.staff, Q.staffPhone].filter(Boolean).join(' ')], [],
     ['합계금액', `일금 ${korMoney(t.total)}원정 (₩${qComma(t.total)}, ${Q.vat === '없음' ? '부가세 없음' : '부가세 포함'})`], [],
-    ['No', '품목', '규격·사양', '가로(mm)', '세로(mm)', '수량', '단위', '단가', '금액']];
+    ['No', '품목', '규격·사양', '가로(mm)', '세로(mm)', '수량', '단위', '단가', '금액', '비고']];
   Q.lines.filter(l => (l.name || '').trim() || qLineCalc(l).amount).forEach((l, i) => {
     const cc = qLineCalc(l);
-    aoa.push([i + 1, l.name, l.spec, qNum(l.w) || '', qNum(l.h) || '', ['㎡', '자평', 'm', '자'].includes(l.unit) && l.w ? cc.base : qNum(l.qty), l.unit, l.manual ? '' : qNum(l.price), cc.amount]);
+    aoa.push([i + 1, l.name, l.spec, qNum(l.w) || '', qNum(l.h) || '', ['㎡', '자평', 'm', '자'].includes(l.unit) && l.w ? cc.base : qNum(l.qty), l.unit, l.manual ? '' : qNum(l.price), cc.amount, l.note || '']);
   });
   aoa.push([]);
   if (t.disc) aoa.push(['', '', '', '', '', '', '', '할인', -t.disc]);
@@ -4866,8 +4867,8 @@ function qExcel() {
   aoa.push(['', '', '', '', '', '', '', '합계', t.total]);
   if (Q.memo || c.bank) { aoa.push([]); aoa.push(['비고', (Q.memo || '') + (c.bank ? `\n입금 계좌: ${c.bank}` : '')]); }
   const ws = XLSX.utils.aoa_to_sheet(aoa);
-  ws['!merges'] = [{ s: { r: 0, c: 0 }, e: { r: 0, c: 8 } }, { s: { r: 9, c: 1 }, e: { r: 9, c: 8 } }];
-  ws['!cols'] = [{ wch: 10 }, { wch: 24 }, { wch: 18 }, { wch: 10 }, { wch: 10 }, { wch: 9 }, { wch: 6 }, { wch: 12 }, { wch: 14 }];
+  ws['!merges'] = [{ s: { r: 0, c: 0 }, e: { r: 0, c: 9 } }, { s: { r: 9, c: 1 }, e: { r: 9, c: 9 } }];
+  ws['!cols'] = [{ wch: 10 }, { wch: 24 }, { wch: 18 }, { wch: 10 }, { wch: 10 }, { wch: 9 }, { wch: 6 }, { wch: 12 }, { wch: 14 }, { wch: 22 }];
   const wb = XLSX.utils.book_new(); XLSX.utils.book_append_sheet(wb, ws, '견적서');
   XLSX.writeFile(wb, qFileBase() + '.xlsx');
 }
