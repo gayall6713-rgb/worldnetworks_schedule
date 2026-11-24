@@ -321,6 +321,13 @@ body.role-partner .q-only{display:none!important}
 .q-line .calc{font-size:.72rem;color:#0ca678;grid-column:2/-1;margin-top:-2px}
 .q-line .amt.manual{background:#fff9db;border-color:#fab005}
 .q-line .del{border:none;background:#ffe3e3;color:#c92a2a;border-radius:6px;height:34px;cursor:pointer;font-weight:bold}
+.q-ghead{display:flex;align-items:center;gap:6px;flex-wrap:wrap;margin:12px 0 4px;padding:7px 8px;background:#e7f5ff;border-left:5px solid #1c7ed6;border-radius:6px}
+.q-ghead.on{background:#d0ebff}
+.q-ghead b{color:#1864ab;font-size:1rem}
+.q-ghead input{flex:1;min-width:140px;padding:6px;border:1px solid #ccc;border-radius:5px;font-size:.85rem}
+.q-ghead button{border:1px solid #74c0fc;background:#fff;border-radius:5px;padding:5px 8px;font-size:.78rem;cursor:pointer}
+.q-ghead button.x{border-color:#ffa8a8;color:#c92a2a}
+.q-gsum{text-align:right;font-size:.82rem;color:#1864ab;font-weight:bold;padding:6px 4px 2px}
 #qSum{background:#eef2ff;border-radius:8px;padding:10px;font-size:.9rem;line-height:1.7}
 #qSum b.tot{font-size:1.15rem;color:#1e3a8a}
 .q-btns{display:flex;flex-wrap:wrap;gap:8px;justify-content:flex-end;margin-top:8px}
@@ -358,6 +365,9 @@ body.role-partner .q-only{display:none!important}
 .q-paper .items th{font-size:12px}.q-paper .items td{font-size:12px}
 .q-paper .r{text-align:right}.q-paper td.nt{font-size:11px;color:#333}.q-paper .c{text-align:center}
 .q-paper .sumrow td{font-weight:bold;background:#f8f9fa}
+.q-paper tr.grp td{background:#1e3a8a;color:#fff;font-weight:bold;font-size:13px}
+.q-paper tr.gap td{border-left:none;border-right:none;height:10px;padding:0}
+.q-paper .big.multi{display:block}.q-paper .big.multi>div{display:flex;justify-content:space-between;flex-wrap:wrap;gap:6px;padding:2px 0}
 .q-paper .memo{margin-top:12px;border:1px solid #555;padding:8px 10px;white-space:pre-wrap;font-size:12px;min-height:40px}
 .q-paper .foot{margin-top:14px;text-align:right;font-size:12px;color:#333}
 #quotePrintArea{display:none}
@@ -394,7 +404,7 @@ body.role-partner .q-only{display:none!important}
     <button type="submit" class="btn btn-submit" id="loginBtn">로그인</button>
     <button type="button" class="btn btn-reset" id="loginOther" style="width:100%;margin-top:12px;font-size:.9rem;padding:10px;">👥 다른 사람으로 로그인</button>
     <div id="loginMsg"></div>
-    <div style="text-align:center;font-size:.7rem;color:#adb5bd;margin-top:10px;">앱 버전 1124-규격</div>
+    <div style="text-align:center;font-size:.7rem;color:#adb5bd;margin-top:10px;">앱 버전 1124-1안2안</div>
   </form>
 </div>
 <div id="expModal" class="modal" style="z-index:70;">
@@ -527,7 +537,7 @@ body.role-partner .q-only{display:none!important}
     <div class="btn-row"><button type="submit" class="btn btn-submit">변경</button><button type="button" class="btn btn-reset" onclick="$('pwModal').classList.remove('show')">닫기</button></div>
   </form>
 </div>
-<div id="appVer" style="position:fixed;left:6px;bottom:4px;font-size:.65rem;color:#adb5bd;z-index:1;pointer-events:none;">앱 버전 1124-규격</div>
+<div id="appVer" style="position:fixed;left:6px;bottom:4px;font-size:.65rem;color:#adb5bd;z-index:1;pointer-events:none;">앱 버전 1124-1안2안</div>
 <div id="syncStatus">🔄 연동 중...</div>
 <div class="container">
   <h2>현장 방문 및 스케줄 관리</h2>
@@ -835,7 +845,8 @@ body.role-partner .q-only{display:none!important}
       <div class="q-sec">
         <div class="q-head"><b>📋 견적 품목</b>
           <span><button type="button" class="btn btn-sm btn-card" id="qPick">📒 단가표에서 고르기</button>
-          <button type="button" class="btn btn-sm btn-excel" id="qAddLine">➕ 품목 추가</button></span></div>
+          <button type="button" class="btn btn-sm btn-excel" id="qAddLine">➕ 품목 추가</button>
+          <button type="button" class="btn btn-sm btn-submit" id="qAddGroup" style="flex:0 0 auto;">➕ 다른 안 추가 (1안·2안)</button></span></div>
         <div class="hint" style="margin:4px 0 8px;">단위가 ㎡·자평이면 가로×세로(mm)×수량으로 면적을 계산하고(1자평 = 1자×1자), m·자는 가로 길이로 계산합니다. 금액 칸에 직접 쓰면 그 금액으로 고정됩니다.</div>
         <div id="qLines"></div>
       </div>
@@ -4540,8 +4551,17 @@ function qLineCalc(l) {
   const amount = l.manual ? qNum(l.amount) : auto;
   return { base, auto, amount, txt };
 }
-function qTotals(Q) {
-  const sum = Q.lines.reduce((a, l) => a + qLineCalc(l).amount, 0);
+/* 1안·2안: 품목마다 g(안 번호)를 붙여 나눔. 안이 하나면 예전과 똑같음 */
+const qG = l => +l.g || 1;
+function qGroups(q) { q = q || Q; return [...new Set(q.lines.map(qG))].sort((a, b) => a - b); }
+function qMulti(q) { return qGroups(q).length > 1; }
+function qGName(g, q) { q = q || Q; const t = q.gt && q.gt[g]; return `${g}안` + (t ? ` · ${t}` : ''); }
+function qPickG(q) { q = q || Q; const gs = qGroups(q); return gs.includes(+q.pick) ? +q.pick : gs[0]; }
+let qActiveG = 1;
+function qTotals(Q, g) {
+  if (g === undefined && qMulti(Q)) g = qPickG(Q);           // 안이 여러 개면 '일정에 반영할 안'의 금액
+  const lines = g === undefined ? Q.lines : Q.lines.filter(l => qG(l) === g);
+  const sum = lines.reduce((a, l) => a + qLineCalc(l).amount, 0);
   const disc = qNum(Q.discount);
   let supply = Math.max(0, sum - disc), vat = 0, total;
   if (Q.vat === '별도') { vat = Math.round(supply * 0.1); total = supply + vat; }
@@ -4562,16 +4582,17 @@ function qBlank(s) {
   return { qid: uid(), no: qNewNo(), date: todayStr(), customer: s ? s.customer || '' : '', phone: s ? s.phone || '' : '', addr: s ? s.note || '' : '',
     job: s ? s.request || '' : '', lines: [qBlankLine()], discount: '', vat: '별도', cut: false, memo: company.memo || '' };
 }
-function qBlankLine(p) { return { name: p ? p.name : '', spec: p ? p.spec || '' : '', unit: p ? p.unit || '식' : '식', w: '', h: '', qty: '1', price: p ? String(p.price || '') : '', amount: '', manual: false }; }
+function qBlankLine(p) { return { g: qActiveG || 1, name: p ? p.name : '', spec: p ? p.spec || '' : '', unit: p ? p.unit || '식' : '식', w: '', h: '', qty: '1', price: p ? String(p.price || '') : '', amount: '', manual: false }; }
 
 /* 견적서 창 열기: id = 연결할 일정 (없으면 새 고객), qid = 불러올 견적 */
 function openQuote(id, qid) {
   if (isPartner()) return;
-  qLinkId = id || null;
+  qLinkId = id || null; qActiveG = 1;
   const s = qLinkId ? schedules.find(x => x.id === qLinkId) : null;
   const old = s && qid ? qQuoteList(s).find(x => x.qid === qid) : null;
   Q = old ? JSON.parse(JSON.stringify(old)) : qBlank(s);
   if (!Q.lines || !Q.lines.length) Q.lines = [qBlankLine()];
+  qActiveG = qGroups()[0] || 1;
   qShowEdit(); qFill(); $('quoteModal').classList.add('show');
 }
 /* 담당자 목록: 직원 관리에 등록된 사람(협력업체·접속안함 제외) + 일정에 적힌 담당 기사 */
@@ -4661,9 +4682,26 @@ function qDrawLines() {
   const dl = document.createElement('datalist'); dl.id = 'qPbList';
   priceBook.forEach(p => { const o = document.createElement('option'); o.value = p.name; o.label = `${p.spec ? p.spec + ' · ' : ''}${qComma(p.price)}원/${p.unit}`; dl.appendChild(o); });
   box.appendChild(dl);
+  const multi = qMulti(), gs = qGroups();
+  if (!gs.includes(qActiveG)) qActiveG = gs[gs.length - 1];
+  let num = 0;
+  gs.forEach(g => {
+  if (multi) {
+    const h = document.createElement('div'); h.className = 'q-ghead' + (g === qActiveG ? ' on' : '');
+    const b = document.createElement('b'); b.textContent = `${g}안`;
+    const t = document.createElement('input'); t.type = 'text'; t.placeholder = '안 이름 (예: 보수, 철거 후 교체)'; t.value = (Q.gt && Q.gt[g]) || '';
+    t.oninput = () => { Q.gt = Object.assign({}, Q.gt, { [g]: t.value }); };
+    const add = document.createElement('button'); add.type = 'button'; add.textContent = '➕ 이 안에 품목'; add.onclick = () => { qActiveG = g; Q.lines.push(qBlankLine()); qDrawLines(); };
+    const del = document.createElement('button'); del.type = 'button'; del.textContent = '🗑 이 안 삭제'; del.className = 'x';
+    del.onclick = () => { if (!confirm(`${g}안을 품목까지 모두 지울까요?`)) return; Q.lines = Q.lines.filter(l => qG(l) !== g); if (Q.gt) delete Q.gt[g]; qDrawLines(); };
+    if (!canEdit()) { t.disabled = true; add.style.display = del.style.display = 'none'; }
+    h.append(b, t, add, del); box.appendChild(h);
+  }
   Q.lines.forEach((l, i) => {
+    if (qG(l) !== g) return;
     const row = document.createElement('div'); row.className = 'q-line';
-    const no = document.createElement('div'); no.className = 'no'; no.textContent = i + 1; row.appendChild(no);
+    row.addEventListener('focusin', () => { if (qActiveG !== g) { qActiveG = g; box.querySelectorAll('.q-ghead').forEach(x => x.classList.toggle('on', x.querySelector('b').textContent === g + '안')); } });
+    const no = document.createElement('div'); no.className = 'no'; no.textContent = ++num; row.appendChild(no);
     const fld = (cls, lab, el) => { const d = document.createElement('div'); d.className = cls; const s = document.createElement('span'); s.className = 'lb'; s.textContent = lab; d.append(s, el); row.appendChild(d); return el; };
     const inp = (k, ph, mode) => { const e = document.createElement('input'); e.type = 'text'; e.value = l[k] || ''; if (ph) e.placeholder = ph; if (mode) e.inputMode = mode; return e; };
     const name = fld('f-name', '품목', inp('name', '품목 (단가표에서 검색)')); name.setAttribute('list', 'qPbList');
@@ -4706,11 +4744,22 @@ function qDrawLines() {
     del.disabled = !canEdit();
     box.appendChild(row); refresh();
   });
+  if (multi) { const sb = document.createElement('div'); sb.className = 'q-gsum'; sb.dataset.g = g; box.appendChild(sb); }
+  });
   qDrawSum();
 }
 function qDrawSum() {
   if (!Q) return;
   Q.discount = String(qNum($('qDiscount').value) || ''); Q.vat = $('qVat').value; Q.cut = $('qCut').checked;
+  if (qMulti()) {
+    const gs = qGroups(), pk = qPickG();
+    document.querySelectorAll('#qLines .q-gsum').forEach(el => { const t = qTotals(Q, +el.dataset.g); el.textContent = `${el.dataset.g}안 소계: 공급가액 ${qComma(t.supply)}원 · 부가세 ${Q.vat === '없음' ? '없음' : qComma(t.vat) + '원'} · 합계 ${qComma(t.total)}원`; });
+    $('qSum').innerHTML = gs.map(g => { const t = qTotals(Q, g); return `<div>${g === pk ? '✅' : '▫️'} <b>${qEsc(qGName(g))}</b> 합계 <b class="tot">${qComma(t.total)}원</b> <span style="color:#666;font-size:.8rem;">(공급가 ${qComma(t.supply)} + 부가세 ${qComma(t.vat)})</span></div>`; }).join('') +
+      `<div style="margin-top:6px;">일정 금액에 반영할 안: <select id="qPickSel">${gs.map(g => `<option value="${g}"${g === pk ? ' selected' : ''}>${g}안</option>`).join('')}</select> <span style="color:#666;font-size:.8rem;">(고객이 고른 안으로 바꿔 저장하면 공사 총금액이 그 금액이 됩니다)</span></div>`;
+    $('qPickSel').onchange = () => { Q.pick = +$('qPickSel').value; qDrawSum(); };
+    $('qPickSel').disabled = !canEdit();
+    return;
+  }
   const t = qTotals(Q);
   $('qSum').innerHTML = `품목 합계 ${qComma(t.sum)}원` + (t.disc ? ` − 할인 ${qComma(t.disc)}원` : '') +
     `<br>공급가액 ${qComma(t.supply)}원 · 부가세 ${Q.vat === '없음' ? '없음' : qComma(t.vat) + '원'}` + (t.cut ? ` · 절사 −${qComma(t.cut)}원` : '') +
@@ -4759,7 +4808,7 @@ function qSave() {
     if (!s.note && Q.addr) s.note = Q.addr;
     if (!s.request && Q.job) s.request = Q.job;
   }
-  const rec = Object.assign(JSON.parse(JSON.stringify(Q)), { total: t.total, supply: t.supply, vatAmt: t.vat, by: me ? me.name : '', at: new Date().toLocaleString('ko-KR') });
+  const rec = Object.assign(JSON.parse(JSON.stringify(Q)), { pick: qMulti() ? qPickG() : undefined, gTotals: qMulti() ? qGroups().map(g => ({ g, total: qTotals(Q, g).total })) : undefined, total: t.total, supply: t.supply, vatAmt: t.vat, by: me ? me.name : '', at: new Date().toLocaleString('ko-KR') });
   const list = qQuoteList(s).slice(); const k = list.findIndex(x => x.qid === rec.qid);
   if (k >= 0) list[k] = rec; else list.push(rec);
   s.quotes = list;
@@ -4775,7 +4824,8 @@ function qSave() {
 /* ----- 견적서 종이 (미리보기 · PDF · 이미지 · 엑셀) ----- */
 function qPaperHtml() {
   const t = qTotals(Q), c = company;
-  const rows = Q.lines.filter(l => (l.name || '').trim() || qLineCalc(l).amount).map((l, i) => {
+  const used = l => (l.name || '').trim() || qLineCalc(l).amount;
+  const itemRow = (l, i) => {
     const cc = qLineCalc(l);
     const sw = String(l.w || '').trim(), sh = String(l.h || '').trim();
     const size = sw && sh ? `${sw}×${sh}` : sw ? sw + (/^\d+$/.test(sw) ? 'mm' : '') : sh ? `세로 ${sh}` : '';
@@ -4783,8 +4833,21 @@ function qPaperHtml() {
     return `<tr><td class="c">${i + 1}</td><td>${qEsc(l.name)}</td><td>${qEsc([l.spec, size].filter(Boolean).join(' / '))}</td>
       <td class="c">${qEsc(qty)}${['㎡', '자평', 'm', '자'].includes(l.unit) && l.w && qNum(l.qty) > 1 ? `<br><small>(${qNum(l.qty)}개)</small>` : ''}</td>
       <td class="r">${l.manual ? '' : qComma(qNum(l.price))}</td><td class="r">${qComma(cc.amount)}</td><td class="nt">${qEsc(l.note || '')}</td></tr>`;
+  };
+  const sumRows = tt => `${tt.disc ? `<tr><td colspan="5" class="r">할인</td><td class="r">− ${qComma(tt.disc)}</td><td></td></tr>` : ''}
+    <tr class="sumrow"><td colspan="5" class="r">공급가액</td><td class="r">${qComma(tt.supply)}</td><td></td></tr>
+    ${Q.vat !== '없음' ? `<tr class="sumrow"><td colspan="5" class="r">부가세</td><td class="r">${qComma(tt.vat)}</td><td></td></tr>` : ''}
+    ${tt.cut ? `<tr><td colspan="5" class="r">천원 미만 절사</td><td class="r">− ${qComma(tt.cut)}</td><td></td></tr>` : ''}
+    <tr class="sumrow"><td colspan="5" class="r">합 계</td><td class="r">${qComma(tt.total)}</td><td></td></tr>`;
+  const multi = qMulti();
+  let n = 0;
+  const rows = multi ? [] : Q.lines.filter(used).map(l => itemRow(l, n++));
+  let groupHtml = '';
+  if (multi) qGroups().forEach((g, gi) => {
+    const ls = Q.lines.filter(l => qG(l) === g && used(l));
+    groupHtml += `${gi ? '<tr class="gap"><td colspan="7"></td></tr>' : ''}<tr class="grp"><td colspan="7">■ ${qEsc(qGName(g))}</td></tr>` + ls.map(l => itemRow(l, n++)).join('') + sumRows(qTotals(Q, g));
   });
-  while (rows.length < 8) rows.push('<tr><td>&nbsp;</td><td></td><td></td><td></td><td></td><td></td><td></td></tr>');
+  while (!multi && rows.length < 8) rows.push('<tr><td>&nbsp;</td><td></td><td></td><td></td><td></td><td></td><td></td></tr>');
   const vatTxt = Q.vat === '별도' ? '부가세 포함' : Q.vat === '포함' ? '부가세 포함' : '부가세 없음';
   const sup = [['상호', c.name], ['대표자', c.ceo], ['사업자번호', c.biz], ['주소', c.addr], ['전화', c.tel], ['담당', Q.staff === undefined ? (me ? me.name : '') : [Q.staff, Q.staffPhone].filter(Boolean).join('  ')]]
     .filter(r => r[1]).map(r => `<tr><th>${r[0]}</th><td>${qEsc(r[1])}</td></tr>`).join('');
@@ -4801,14 +4864,10 @@ function qPaperHtml() {
       <div style="margin-top:8px;font-size:12px;">아래와 같이 견적합니다.</div></div>
     <div><table class="sup"><tr><th colspan="2" style="text-align:center;">공 급 자</th></tr>${sup}</table></div>
   </div>
-  <div class="big"><span>합계금액 : 일금 ${korMoney(t.total)}원정</span><span>( ₩ ${qComma(t.total)} · ${vatTxt} )</span></div>
+  ${multi ? `<div class="big multi">${qGroups().map(g => { const tt = qTotals(Q, g); return `<div><span>${qEsc(qGName(g))} 합계 : 일금 ${korMoney(tt.total)}원정</span><span>( ₩ ${qComma(tt.total)} · ${vatTxt} )</span></div>`; }).join('')}</div>`
+    : `<div class="big"><span>합계금액 : 일금 ${korMoney(t.total)}원정</span><span>( ₩ ${qComma(t.total)} · ${vatTxt} )</span></div>`}
   <table class="items"><thead><tr><th style="width:28px;">No</th><th>품목</th><th style="width:118px;">규격·사양 / 크기(mm)</th><th style="width:62px;">수량</th><th style="width:72px;">단가</th><th style="width:82px;">금액</th><th style="width:118px;">비고</th></tr></thead>
-  <tbody>${rows.join('')}
-    ${t.disc ? `<tr><td colspan="5" class="r">할인</td><td class="r">− ${qComma(t.disc)}</td><td></td></tr>` : ''}
-    <tr class="sumrow"><td colspan="5" class="r">공급가액</td><td class="r">${qComma(t.supply)}</td><td></td></tr>
-    ${Q.vat !== '없음' ? `<tr class="sumrow"><td colspan="5" class="r">부가세</td><td class="r">${qComma(t.vat)}</td><td></td></tr>` : ''}
-    ${t.cut ? `<tr><td colspan="5" class="r">천원 미만 절사</td><td class="r">− ${qComma(t.cut)}</td><td></td></tr>` : ''}
-    <tr class="sumrow"><td colspan="5" class="r">합 계</td><td class="r">${qComma(t.total)}</td><td></td></tr>
+  <tbody>${multi ? groupHtml : rows.join('') + sumRows(t)}
   </tbody></table>
   ${Q.memo || c.bank ? `<div class="memo">${qEsc(Q.memo || '')}${c.bank ? `${Q.memo ? '\n' : ''}※ 입금 계좌: ${qEsc(c.bank)}` : ''}</div>` : ''}
   <div class="foot">${qEsc(c.name || '')}${c.tel ? ' · ' + qEsc(c.tel) : ''}</div>`;
@@ -4853,18 +4912,28 @@ function qExcel() {
   const t = qTotals(Q), c = company;
   const aoa = [['견 적 서'], [], ['수신', (Q.customer || '') + ' 귀하', '', '공급자', c.name], ['견적일', Q.date, '', '대표자', c.ceo], ['견적번호', Q.no, '', '사업자번호', c.biz],
     ['공사명', Q.job, '', '주소', c.addr], ['현장 주소', Q.addr, '', '전화', c.tel], ['연락처', Q.phone, '', '담당', Q.staff === undefined ? (me ? me.name : '') : [Q.staff, Q.staffPhone].filter(Boolean).join(' ')], [],
-    ['합계금액', `일금 ${korMoney(t.total)}원정 (₩${qComma(t.total)}, ${Q.vat === '없음' ? '부가세 없음' : '부가세 포함'})`], [],
+    ['합계금액', qMulti() ? qGroups().map(g => `${qGName(g)} ₩${qComma(qTotals(Q, g).total)}`).join('  /  ') : `일금 ${korMoney(t.total)}원정 (₩${qComma(t.total)}, ${Q.vat === '없음' ? '부가세 없음' : '부가세 포함'})`], [],
     ['No', '품목', '규격·사양', '가로(mm)', '세로(mm)', '수량', '단위', '단가', '금액', '비고']];
-  Q.lines.filter(l => (l.name || '').trim() || qLineCalc(l).amount).forEach((l, i) => {
+  const xUsed = l => (l.name || '').trim() || qLineCalc(l).amount;
+  const xSums = tt => {
+    if (tt.disc) aoa.push(['', '', '', '', '', '', '', '할인', -tt.disc]);
+    aoa.push(['', '', '', '', '', '', '', '공급가액', tt.supply]);
+    if (Q.vat !== '없음') aoa.push(['', '', '', '', '', '', '', '부가세', tt.vat]);
+    if (tt.cut) aoa.push(['', '', '', '', '', '', '', '절사', -tt.cut]);
+    aoa.push(['', '', '', '', '', '', '', '합계', tt.total]);
+  };
+  let xn = 0;
+  const xGroups = qMulti() ? qGroups() : [null];
+  xGroups.forEach((g, gi) => {
+  if (g !== null) { if (gi) aoa.push([]); aoa.push([`■ ${qGName(g)}`]); }
+  Q.lines.filter(l => xUsed(l) && (g === null || qG(l) === g)).forEach(l => {
+    const i = xn++;
     const cc = qLineCalc(l);
     aoa.push([i + 1, l.name, l.spec, qNum(l.w) || '', qNum(l.h) || '', ['㎡', '자평', 'm', '자'].includes(l.unit) && l.w ? cc.base : qNum(l.qty), l.unit, l.manual ? '' : qNum(l.price), cc.amount, l.note || '']);
   });
-  aoa.push([]);
-  if (t.disc) aoa.push(['', '', '', '', '', '', '', '할인', -t.disc]);
-  aoa.push(['', '', '', '', '', '', '', '공급가액', t.supply]);
-  if (Q.vat !== '없음') aoa.push(['', '', '', '', '', '', '', '부가세', t.vat]);
-  if (t.cut) aoa.push(['', '', '', '', '', '', '', '절사', -t.cut]);
-  aoa.push(['', '', '', '', '', '', '', '합계', t.total]);
+  if (g === null) aoa.push([]);
+  xSums(g === null ? t : qTotals(Q, g));
+  });
   if (Q.memo || c.bank) { aoa.push([]); aoa.push(['비고', (Q.memo || '') + (c.bank ? `\n입금 계좌: ${c.bank}` : '')]); }
   const ws = XLSX.utils.aoa_to_sheet(aoa);
   ws['!merges'] = [{ s: { r: 0, c: 0 }, e: { r: 0, c: 9 } }, { s: { r: 9, c: 1 }, e: { r: 9, c: 9 } }];
@@ -4890,9 +4959,10 @@ function qDrawPick() {
     const pr = document.createElement('span'); pr.textContent = p.price ? `${qComma(p.price)}원 / ${p.unit}` : `단가 미입력 / ${p.unit}`;
     b.append(n, pr);
     b.onclick = () => {
-      const last = Q.lines[Q.lines.length - 1];
       const line = qBlankLine(p);
-      if (last && !(last.name || '').trim() && !qLineCalc(last).amount) Q.lines[Q.lines.length - 1] = line; else Q.lines.push(line);
+      const li = Q.lines.map((l, k) => k).filter(k => qG(Q.lines[k]) === line.g).pop();
+      const last = li === undefined ? null : Q.lines[li];
+      if (last && !(last.name || '').trim() && !qLineCalc(last).amount) Q.lines[li] = line; else Q.lines.push(line);
       qDrawLines(); $('qPickModal').classList.remove('show');
       showSync(`➕ ${p.name} 추가 — ${['㎡', '자평', 'm', '자'].includes(p.unit) ? '가로·세로(mm)와 수량을 넣으세요' : '수량을 확인하세요'}`);
     };
@@ -4984,6 +5054,15 @@ function renderQuoteList() {
 $('qClose').onclick = $('qCancel').onclick = () => $('quoteModal').classList.remove('show');
 $('qAddLine').onclick = () => { Q.lines.push(qBlankLine()); qDrawLines(); const l = $('qLines').querySelectorAll('.f-name input'); if (l.length) l[l.length - 1].focus(); };
 $('qPick').onclick = qOpenPick;
+$('qAddGroup').onclick = () => {
+  const gs = qGroups(), g = Math.max(...gs) + 1;
+  const copy = gs.length === 1 && Q.lines.some(l => (l.name || '').trim()) && confirm(`${g}안을 만듭니다.\n\n[확인] ${gs[0]}안 품목을 복사해서 시작\n[취소] 빈 품목으로 시작`);
+  qActiveG = g;
+  if (copy) Q.lines.filter(l => qG(l) === gs[0]).forEach(l => Q.lines.push(Object.assign(JSON.parse(JSON.stringify(l)), { g })));
+  else Q.lines.push(qBlankLine());
+  qDrawLines();
+  showSync(`➕ ${g}안을 추가했습니다 — 품목을 넣으면 안마다 소계가 따로 계산됩니다`);
+};
 $('qPickQ').oninput = qDrawPick;
 ['qDiscount', 'qVat', 'qCut'].forEach(id => $(id).addEventListener(id === 'qDiscount' ? 'input' : 'change', qDrawSum));
 $('qDiscount').addEventListener('blur', () => { const n = qNum($('qDiscount').value); $('qDiscount').value = n ? qComma(n) : ''; });
