@@ -107,6 +107,13 @@ select{width:100%;padding:10px;border:1px solid #ddd;border-radius:4px;box-sizin
 .guide-table th{background:#1e3a8a;color:#fff;width:26%;font-weight:bold;white-space:normal}
 .guide-table td{background:#fff;color:#000;text-align:left}
 .guide-footer{text-align:center;margin-top:14px;color:#dc2626;font-weight:bold;font-size:.85rem}
+.guide-pay-title{margin:16px 0 6px;font-weight:bold;color:#1e3a8a;font-size:.95rem;text-align:left}
+.guide-pay td.amt{text-align:right;font-weight:bold;white-space:nowrap}
+.guide-pay td.st{text-align:center;font-size:.8rem;white-space:nowrap}
+.guide-pay .ok{color:#0ca678;font-weight:bold}.guide-pay .no{color:#e03131;font-weight:bold}
+.guide-pay tr.sum th{background:#334155}.guide-pay tr.sum td{background:#f1f5f9}
+.guide-pay tr.remain td{color:#e03131}.guide-pay tr.done td{color:#0ca678}
+.card-opt{display:flex;align-items:center;justify-content:center;gap:6px;font-size:.88rem;font-weight:bold;margin:-4px 0 12px;cursor:pointer}
 .pay-box{border:1px solid #bfdbfe;background:#eff6ff;border-radius:8px;padding:12px;margin-bottom:12px}
 .pay-title{font-weight:bold;margin-bottom:8px;color:#1e3a8a}
 .chk{display:flex;align-items:center;gap:6px;font-weight:normal;font-size:.85rem;margin-top:6px;cursor:pointer}
@@ -376,7 +383,7 @@ body.role-partner .q-only{display:none!important}
     <button type="submit" class="btn btn-submit" id="loginBtn">로그인</button>
     <button type="button" class="btn btn-reset" id="loginOther" style="width:100%;margin-top:12px;font-size:.9rem;padding:10px;">👥 다른 사람으로 로그인</button>
     <div id="loginMsg"></div>
-    <div style="text-align:center;font-size:.7rem;color:#adb5bd;margin-top:10px;">앱 버전 1124-견적</div>
+    <div style="text-align:center;font-size:.7rem;color:#adb5bd;margin-top:10px;">앱 버전 1124-안내장</div>
   </form>
 </div>
 <div id="expModal" class="modal" style="z-index:70;">
@@ -509,7 +516,7 @@ body.role-partner .q-only{display:none!important}
     <div class="btn-row"><button type="submit" class="btn btn-submit">변경</button><button type="button" class="btn btn-reset" onclick="$('pwModal').classList.remove('show')">닫기</button></div>
   </form>
 </div>
-<div id="appVer" style="position:fixed;left:6px;bottom:4px;font-size:.65rem;color:#adb5bd;z-index:1;pointer-events:none;">앱 버전 1124-견적</div>
+<div id="appVer" style="position:fixed;left:6px;bottom:4px;font-size:.65rem;color:#adb5bd;z-index:1;pointer-events:none;">앱 버전 1124-안내장</div>
 <div id="syncStatus">🔄 연동 중...</div>
 <div class="container">
   <h2>현장 방문 및 스케줄 관리</h2>
@@ -772,9 +779,11 @@ body.role-partner .q-only{display:none!important}
       <div id="captureArea" class="guide-preview-card">
         <h3 id="cardTitle">■ 방문 실측 안내</h3>
         <table class="guide-table"><tbody id="cardRows"></tbody></table>
+        <div id="cardPay"></div>
         <div class="guide-footer" id="cardFooter"></div>
       </div>
     </div>
+    <label class="card-opt" id="cardPayOpt"><input type="checkbox" id="cardPayChk"> 💰 공사금액 · 계약금 · 중도금 · 잔금 현황 함께 보이기</label>
     <div class="btn-row">
       <button type="button" class="btn btn-submit" id="downloadCardBtn" style="background:#10b981;">📥 이미지로 저장 (다운로드)</button>
       <button type="button" class="btn btn-reset" onclick="closeCardModal()">닫기</button>
@@ -3220,20 +3229,68 @@ const STAGE_GUIDE = {
   '처리완료': { title:'■ 처리 완료 안내', rows:[['고객명',G.name],['연락처',G.phone],['처리일시',G.visit],['처리주소',G.addr],['처리내용',G.req],['처리비용',G.cost],['담당기사',G.eng],['비고',G.engTel]], footer:'※ 이용해 주셔서 감사합니다. 하자 문의는 언제든 연락 주세요.' },
   '보류 및 재방문': { title:'■ 재방문 안내', rows:[['고객명',G.name],['연락처',G.phone],['재방문일시',G.visit],['방문주소',G.addr],['요청사항',G.req],['담당기사',G.eng],['비고',G.engTel]], footer:'※ 일정이 확정되면 다시 연락드리겠습니다.' }
 };
-let cardFile = '';
+let cardFile = '', cardId = null;
+const CARD_PAY_KEY = 'cardShowPay_v1';
+const CARD_MONEY_ROWS = ['처리비용', '견적금액', '최종 계약금액', '계약금', '중도금', '잔금'];
+const hasPayInfo = i => toNum(i.total) > 0 || PAY_PARTS.some(k => toNum(i[k]) > 0);
+const cardShowPay = () => { try { return localStorage.getItem(CARD_PAY_KEY) !== '0'; } catch (e) { return true; } };
+/* 안내장 아래 '공사금액 · 입금 현황' 표 */
+function renderCardPay(item) {
+  const box = $('cardPay'); box.innerHTML = '';
+  const t = toNum(item.total), paid = paidSum(item);
+  const tit = document.createElement('div'); tit.className = 'guide-pay-title'; tit.textContent = '■ 공사금액 · 입금 현황';
+  const tb = document.createElement('table'); tb.className = 'guide-table guide-pay';
+  const row = (label, amt, st, cls) => {
+    const tr = document.createElement('tr'); if (cls) tr.className = cls;
+    const th = document.createElement('th'); th.textContent = label;
+    const a = document.createElement('td'); a.className = 'amt'; a.textContent = amt; tr.append(th, a);
+    const s = document.createElement('td'); s.className = 'st';
+    if (st) { s.appendChild(st); } tr.appendChild(s);
+    tb.appendChild(tr);
+  };
+  const span = (txt, cls) => { const e = document.createElement('span'); e.className = cls; e.textContent = txt; return e; };
+  const md = d => d ? ` (${+d.slice(5, 7)}/${+d.slice(8, 10)})` : '';
+  row('총 공사금액', t ? won(t) : (item.cost || '-'), null);
+  PAY_PARTS.forEach(k => {
+    const v = toNum(item[k]);
+    if (!v && k === 'middle') return;          // 중도금은 금액이 있을 때만
+    row(PAY_LABEL[k], v ? won(v) : '-', v ? (item[k + 'Paid'] ? span('✅ 입금완료' + md(item[k + 'PaidAt']), 'ok') : span('⬜ 입금 전', 'no')) : null);
+  });
+  if (t) {
+    row('입금 합계', won(paid) || '0원', null, 'sum');
+    const remain = t - paid;
+    row(remain > 0 ? '남은 금액' : '결제 상태', remain > 0 ? won(remain) : '완납', remain > 0 ? null : span('✅ 완납', 'ok'), remain > 0 ? 'sum remain' : 'sum done');
+  }
+  box.append(tit, tb);
+}
+function drawCard() {
+  const item = schedules.find(s => s.id === cardId);
+  if (!item) return;
+  const g = STAGE_GUIDE[item.status];
+  if (!g) return;
+  const showPay = !isPartner() && hasPayInfo(item) && cardShowPay();
+  $('cardPayOpt').style.display = !isPartner() && hasPayInfo(item) ? '' : 'none';
+  $('cardPayChk').checked = cardShowPay();
+  const tb = $('cardRows'); tb.innerHTML = '';
+  g.rows.forEach(([label, fn]) => {
+    if (showPay && CARD_MONEY_ROWS.includes(label)) return;   // 금액은 아래 입금 현황 표에 모아서 보여 줌
+    if (isPartner() && CARD_MONEY_ROWS.includes(label)) return;
+    const tr = document.createElement('tr'), th = document.createElement('th'), td = document.createElement('td');
+    th.textContent = label; td.textContent = fn(item);
+    tr.appendChild(th); tr.appendChild(td); tb.appendChild(tr);
+  });
+  if (showPay) renderCardPay(item); else $('cardPay').innerHTML = '';
+}
+$('cardPayChk').onchange = () => { try { localStorage.setItem(CARD_PAY_KEY, $('cardPayChk').checked ? '1' : '0'); } catch (e) {} drawCard(); };
 function openCardModal(id) {
   const item = schedules.find(s => s.id === id);
   if (!item) return;
   const g = STAGE_GUIDE[item.status];
   if (!g) return;
+  cardId = id;
   $('cardTitle').textContent = g.title;
   $('cardModalTitle').textContent = '🖼️ ' + g.title.replace('■ ', '') + '장';
-  const tb = $('cardRows'); tb.innerHTML = '';
-  g.rows.forEach(([label, fn]) => {
-    const tr = document.createElement('tr'), th = document.createElement('th'), td = document.createElement('td');
-    th.textContent = label; td.textContent = fn(item);
-    tr.appendChild(th); tr.appendChild(td); tb.appendChild(tr);
-  });
+  drawCard();
   $('cardFooter').textContent = g.footer;
   cardFile = `${item.status}_${item.customer || '고객'}`;
   $('cardModal').classList.add('show');
