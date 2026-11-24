@@ -353,7 +353,7 @@ body.role-partner .q-only{display:none!important}
 .q-paper .top>div{flex:1}
 .q-paper .to{font-size:18px;font-weight:bold;border-bottom:1px solid #111;padding-bottom:4px;margin-bottom:8px}
 .q-paper .info td{border:none;padding:2px 0}
-.q-paper .sup th{width:22%;font-size:12px}.q-paper .sup td{font-size:12px}
+.q-paper .sup th{width:1%;white-space:nowrap;font-size:12px;padding:5px 10px}.q-paper .sup td{font-size:12px}
 .q-paper .big{border:2px solid #111;padding:9px 12px;font-size:15px;font-weight:bold;margin-bottom:12px;display:flex;justify-content:space-between;flex-wrap:wrap;gap:6px}
 .q-paper .items th{font-size:12px}.q-paper .items td{font-size:12px}
 .q-paper .r{text-align:right}.q-paper .c{text-align:center}
@@ -394,7 +394,7 @@ body.role-partner .q-only{display:none!important}
     <button type="submit" class="btn btn-submit" id="loginBtn">로그인</button>
     <button type="button" class="btn btn-reset" id="loginOther" style="width:100%;margin-top:12px;font-size:.9rem;padding:10px;">👥 다른 사람으로 로그인</button>
     <div id="loginMsg"></div>
-    <div style="text-align:center;font-size:.7rem;color:#adb5bd;margin-top:10px;">앱 버전 1124-견적검색</div>
+    <div style="text-align:center;font-size:.7rem;color:#adb5bd;margin-top:10px;">앱 버전 1124-담당자</div>
   </form>
 </div>
 <div id="expModal" class="modal" style="z-index:70;">
@@ -527,7 +527,7 @@ body.role-partner .q-only{display:none!important}
     <div class="btn-row"><button type="submit" class="btn btn-submit">변경</button><button type="button" class="btn btn-reset" onclick="$('pwModal').classList.remove('show')">닫기</button></div>
   </form>
 </div>
-<div id="appVer" style="position:fixed;left:6px;bottom:4px;font-size:.65rem;color:#adb5bd;z-index:1;pointer-events:none;">앱 버전 1124-견적검색</div>
+<div id="appVer" style="position:fixed;left:6px;bottom:4px;font-size:.65rem;color:#adb5bd;z-index:1;pointer-events:none;">앱 버전 1124-담당자</div>
 <div id="syncStatus">🔄 연동 중...</div>
 <div class="container">
   <h2>현장 방문 및 스케줄 관리</h2>
@@ -830,6 +830,7 @@ body.role-partner .q-only{display:none!important}
         <label class="full">공사명<input type="text" id="qJob" placeholder="예: 거실·안방 샷시 교체"></label>
         <label>견적일<input type="date" id="qDate"></label>
         <label>견적번호<input type="text" id="qNo"></label>
+        <label class="full">담당자 (견적서 공급자 칸에 표시)<select id="qStaff"></select></label>
       </div>
       <div class="q-sec">
         <div class="q-head"><b>📋 견적 품목</b>
@@ -4560,6 +4561,15 @@ function openQuote(id, qid) {
   if (!Q.lines || !Q.lines.length) Q.lines = [qBlankLine()];
   qShowEdit(); qFill(); $('quoteModal').classList.add('show');
 }
+/* 담당자 목록: 직원 관리에 등록된 사람(협력업체·접속안함 제외) + 일정에 적힌 담당 기사 */
+function qStaffList() {
+  const out = [], seen = new Set();
+  const add = (name, phone) => { name = (name || '').trim(); if (!name || seen.has(name)) return; seen.add(name); out.push({ name, phone: phone || '' }); };
+  (employees || []).filter(e => e && e.role !== '협력업체' && e.role !== '접속안함').forEach(e => add(e.name, e.phone));
+  schedules.forEach(x => add(x.engineer, x.engPhone));
+  return out;
+}
+function qStaffPhone(name) { const e = qStaffList().find(x => x.name === name); return e ? e.phone : ''; }
 function qShowEdit() { qPreviewing = false; $('qEdit').style.display = ''; $('qPreviewWrap').style.display = 'none'; }
 function qFill() {
   const s = qLinkId ? schedules.find(x => x.id === qLinkId) : null;
@@ -4582,6 +4592,7 @@ function qFill() {
   const pick = t => {
     qReadForm(); qLinkId = t.id;
     Q.customer = t.customer || ''; Q.phone = t.phone || ''; Q.addr = t.note || ''; if (!Q.job) Q.job = t.request || '';
+    if (t.engineer) Q.staff = t.engineer;
     qFill();
   };
   const draw = () => {
@@ -4611,6 +4622,15 @@ function qFill() {
   $('qCustomer').value = Q.customer || ''; $('qPhone').value = Q.phone || ''; $('qAddr').value = Q.addr || '';
   $('qJob').value = Q.job || ''; $('qDate').value = Q.date || todayStr(); $('qNo').value = Q.no || '';
   $('qDiscount').value = Q.discount ? qComma(qNum(Q.discount)) : ''; $('qVat').value = Q.vat || '별도'; $('qCut').checked = !!Q.cut; $('qMemo').value = Q.memo || '';
+  {
+    const ss = $('qStaff'); ss.innerHTML = '';
+    const list = qStaffList();
+    if (Q.staff && !list.some(x => x.name === Q.staff)) list.unshift({ name: Q.staff, phone: Q.staffPhone || '' });
+    const o0 = document.createElement('option'); o0.value = ''; o0.textContent = '담당자 표시 안 함'; ss.appendChild(o0);
+    list.forEach(x => { const o = document.createElement('option'); o.value = x.name; o.textContent = x.name + (x.phone ? '  ' + x.phone : ''); ss.appendChild(o); });
+    if (Q.staff === undefined) { const lk = qLinkId ? schedules.find(x => x.id === qLinkId) : null; Q.staff = (lk && lk.engineer) || (me ? me.name : ''); }
+    ss.value = Q.staff || '';
+  }
   qDrawLines(); qDrawHist();
   const ro = !canEdit();
   $('qSave').style.display = $('qPick').style.display = $('qAddLine').style.display = ro ? 'none' : '';
@@ -4621,6 +4641,7 @@ function qReadForm() {
   Q.customer = $('qCustomer').value.trim(); Q.phone = $('qPhone').value.trim(); Q.addr = $('qAddr').value.trim();
   Q.job = $('qJob').value.trim(); Q.date = $('qDate').value || todayStr(); Q.no = $('qNo').value.trim() || qNewNo(Q.date);
   Q.discount = String(qNum($('qDiscount').value) || ''); Q.vat = $('qVat').value; Q.cut = $('qCut').checked; Q.memo = $('qMemo').value;
+  Q.staff = $('qStaff').value; Q.staffPhone = Q.staff ? qStaffPhone(Q.staff) || Q.staffPhone || '' : '';
 }
 function qDrawLines() {
   const box = $('qLines'); box.innerHTML = '';
@@ -4751,7 +4772,7 @@ function qPaperHtml() {
   });
   while (rows.length < 8) rows.push('<tr><td>&nbsp;</td><td></td><td></td><td></td><td></td><td></td></tr>');
   const vatTxt = Q.vat === '별도' ? '부가세 포함' : Q.vat === '포함' ? '부가세 포함' : '부가세 없음';
-  const sup = [['상호', c.name], ['대표자', c.ceo], ['사업자번호', c.biz], ['주소', c.addr], ['전화', c.tel], ['담당', me ? me.name : '']]
+  const sup = [['상호', c.name], ['대표자', c.ceo], ['사업자번호', c.biz], ['주소', c.addr], ['전화', c.tel], ['담당', Q.staff === undefined ? (me ? me.name : '') : [Q.staff, Q.staffPhone].filter(Boolean).join('  ')]]
     .filter(r => r[1]).map(r => `<tr><th>${r[0]}</th><td>${qEsc(r[1])}</td></tr>`).join('');
   return `<h1>견 적 서</h1>
   <div class="top">
@@ -4817,7 +4838,7 @@ function qExcel() {
   if (typeof XLSX === 'undefined') { alert('엑셀 도구를 불러오지 못했습니다. 인터넷 연결을 확인해 주세요.'); return; }
   const t = qTotals(Q), c = company;
   const aoa = [['견 적 서'], [], ['수신', (Q.customer || '') + ' 귀하', '', '공급자', c.name], ['견적일', Q.date, '', '대표자', c.ceo], ['견적번호', Q.no, '', '사업자번호', c.biz],
-    ['공사명', Q.job, '', '주소', c.addr], ['현장 주소', Q.addr, '', '전화', c.tel], ['연락처', Q.phone, '', '담당', me ? me.name : ''], [],
+    ['공사명', Q.job, '', '주소', c.addr], ['현장 주소', Q.addr, '', '전화', c.tel], ['연락처', Q.phone, '', '담당', Q.staff === undefined ? (me ? me.name : '') : [Q.staff, Q.staffPhone].filter(Boolean).join(' ')], [],
     ['합계금액', `일금 ${korMoney(t.total)}원정 (₩${qComma(t.total)}, ${Q.vat === '없음' ? '부가세 없음' : '부가세 포함'})`], [],
     ['No', '품목', '규격·사양', '가로(mm)', '세로(mm)', '수량', '단위', '단가', '금액']];
   Q.lines.filter(l => (l.name || '').trim() || qLineCalc(l).amount).forEach((l, i) => {
