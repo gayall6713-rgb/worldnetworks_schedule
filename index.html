@@ -357,13 +357,20 @@ body.role-partner .q-only{display:none!important}
 .q-paper td,.q-paper th{border:1px solid #555;padding:5px 7px;white-space:normal}
 .q-paper th{background:#eef2f7;font-weight:bold}
 .q-paper .top{display:flex;gap:14px;margin-bottom:14px}
-.q-paper .top>div{flex:1}
+.q-paper .top>div{flex:1;min-width:0}.q-paper .top>div:last-child{flex:1.45}
 .q-paper .to{font-size:18px;font-weight:bold;border-bottom:1px solid #111;padding-bottom:4px;margin-bottom:8px}
 .q-paper .info td{border:none;padding:2px 0}
-.q-paper .sup th{width:1%;white-space:nowrap;font-size:12px;padding:5px 10px}.q-paper .sup td{font-size:12px}
+.q-paper .sup th{font-size:12px}.q-paper .sup td{font-size:12px}
 .q-paper .big{border:2px solid #111;padding:9px 12px;font-size:15px;font-weight:bold;margin-bottom:12px;display:flex;justify-content:space-between;flex-wrap:wrap;gap:6px}
 .q-paper .items th{font-size:12px}.q-paper .items td{font-size:12px}
-.q-paper .r{text-align:right}.q-paper td.nt{font-size:11px;color:#333}.q-paper .c{text-align:center}
+.q-paper .r{text-align:right}
+.q-paper .items{table-layout:fixed}
+.q-paper .items th,.q-paper .items td,.q-paper .sup th,.q-paper .sup td,.q-paper .info td{white-space:nowrap;overflow:hidden;vertical-align:middle}
+.q-paper .items th,.q-paper .items td{height:26px;padding:2px 6px;box-sizing:border-box}
+.q-paper .items th{text-align:center!important}
+.q-paper .items td.l{text-align:left}
+.q-paper .sup{table-layout:fixed}.q-paper .sup th,.q-paper .sup td{height:26px;padding:2px 8px}.q-paper .sup th{text-align:center}
+.q-paper .items tr.grp td{text-align:left}.q-paper td.nt{font-size:11px;color:#333}.q-paper .c{text-align:center}
 .q-paper .sumrow td{font-weight:bold;background:#f8f9fa}
 .q-paper tr.grp td{background:#1e3a8a;color:#fff;font-weight:bold;font-size:13px}
 .q-paper tr.gap td{border-left:none;border-right:none;height:10px;padding:0}
@@ -404,7 +411,7 @@ body.role-partner .q-only{display:none!important}
     <button type="submit" class="btn btn-submit" id="loginBtn">로그인</button>
     <button type="button" class="btn btn-reset" id="loginOther" style="width:100%;margin-top:12px;font-size:.9rem;padding:10px;">👥 다른 사람으로 로그인</button>
     <div id="loginMsg"></div>
-    <div style="text-align:center;font-size:.7rem;color:#adb5bd;margin-top:10px;">앱 버전 1124-1안2안</div>
+    <div style="text-align:center;font-size:.7rem;color:#adb5bd;margin-top:10px;">앱 버전 1124-견적정렬</div>
   </form>
 </div>
 <div id="expModal" class="modal" style="z-index:70;">
@@ -537,7 +544,7 @@ body.role-partner .q-only{display:none!important}
     <div class="btn-row"><button type="submit" class="btn btn-submit">변경</button><button type="button" class="btn btn-reset" onclick="$('pwModal').classList.remove('show')">닫기</button></div>
   </form>
 </div>
-<div id="appVer" style="position:fixed;left:6px;bottom:4px;font-size:.65rem;color:#adb5bd;z-index:1;pointer-events:none;">앱 버전 1124-1안2안</div>
+<div id="appVer" style="position:fixed;left:6px;bottom:4px;font-size:.65rem;color:#adb5bd;z-index:1;pointer-events:none;">앱 버전 1124-견적정렬</div>
 <div id="syncStatus">🔄 연동 중...</div>
 <div class="container">
   <h2>현장 방문 및 스케줄 관리</h2>
@@ -4831,7 +4838,7 @@ function qPaperHtml() {
     const size = sw && sh ? `${sw}×${sh}` : sw ? sw + (/^\d+$/.test(sw) ? 'mm' : '') : sh ? `세로 ${sh}` : '';
     const qty = ['㎡', '자평', 'm', '자'].includes(l.unit) && l.w ? `${cc.base}${l.unit}` : `${qNum(l.qty) || ''}${l.unit}`;
     return `<tr><td class="c">${i + 1}</td><td>${qEsc(l.name)}</td><td>${qEsc([l.spec, size].filter(Boolean).join(' / '))}</td>
-      <td class="c">${qEsc(qty)}${['㎡', '자평', 'm', '자'].includes(l.unit) && l.w && qNum(l.qty) > 1 ? `<br><small>(${qNum(l.qty)}개)</small>` : ''}</td>
+      <td class="c">${qEsc(qty)}${['㎡', '자평', 'm', '자'].includes(l.unit) && l.w && qNum(l.qty) > 1 ? ` (${qNum(l.qty)}개)` : ''}</td>
       <td class="r">${l.manual ? '' : qComma(qNum(l.price))}</td><td class="r">${qComma(cc.amount)}</td><td class="nt">${qEsc(l.note || '')}</td></tr>`;
   };
   const sumRows = tt => `${tt.disc ? `<tr><td colspan="5" class="r">할인</td><td class="r">− ${qComma(tt.disc)}</td><td></td></tr>` : ''}
@@ -4862,20 +4869,29 @@ function qPaperHtml() {
         ${Q.phone ? `<tr><td>연락처</td><td>${qEsc(Q.phone)}</td></tr>` : ''}
       </table>
       <div style="margin-top:8px;font-size:12px;">아래와 같이 견적합니다.</div></div>
-    <div><table class="sup"><tr><th colspan="2" style="text-align:center;">공 급 자</th></tr>${sup}</table></div>
+    <div><table class="sup"><colgroup><col style="width:72px"><col></colgroup><tr><th colspan="2" style="text-align:center;">공 급 자</th></tr>${sup}</table></div>
   </div>
   ${multi ? `<div class="big multi">${qGroups().map(g => { const tt = qTotals(Q, g); return `<div><span>${qEsc(qGName(g))} 합계 : 일금 ${korMoney(tt.total)}원정</span><span>( ₩ ${qComma(tt.total)} · ${vatTxt} )</span></div>`; }).join('')}</div>`
     : `<div class="big"><span>합계금액 : 일금 ${korMoney(t.total)}원정</span><span>( ₩ ${qComma(t.total)} · ${vatTxt} )</span></div>`}
-  <table class="items"><thead><tr><th style="width:28px;">No</th><th>품목</th><th style="width:118px;">규격·사양 / 크기(mm)</th><th style="width:62px;">수량</th><th style="width:72px;">단가</th><th style="width:82px;">금액</th><th style="width:118px;">비고</th></tr></thead>
+  <table class="items"><thead><tr><th style="width:32px;">No</th><th>품목</th><th style="width:150px;">규격 / 크기(mm)</th><th style="width:62px;">수량</th><th style="width:76px;">단가</th><th style="width:86px;">금액</th><th style="width:104px;">비고</th></tr></thead>
   <tbody>${multi ? groupHtml : rows.join('') + sumRows(t)}
   </tbody></table>
   ${Q.memo || c.bank ? `<div class="memo">${qEsc(Q.memo || '')}${c.bank ? `${Q.memo ? '\n' : ''}※ 입금 계좌: ${qEsc(c.bank)}` : ''}</div>` : ''}
   <div class="foot">${qEsc(c.name || '')}${c.tel ? ' · ' + qEsc(c.tel) : ''}</div>`;
 }
+/* 칸에 글자가 넘치면 글자 크기를 조금씩 줄여 한 줄에 맞춤 */
+function qFit(root) {
+  root.querySelectorAll('.items td, .items th, .sup td, .sup th, .info td').forEach(el => {
+    el.style.fontSize = '';
+    let fs = parseFloat(getComputedStyle(el).fontSize) || 12;
+    while (el.scrollWidth > el.clientWidth + 1 && fs > 7) { fs -= 0.5; el.style.fontSize = fs + 'px'; }
+  });
+}
 function qPreview() {
   qReadForm();
   $('qPaper').innerHTML = qPaperHtml();
   qPreviewing = true; $('qEdit').style.display = 'none'; $('qPreviewWrap').style.display = '';
+  qFit($('qPaper'));
   $('quoteModal').querySelector('.modal-box').scrollTop = 0;
 }
 const qFileBase = () => `견적서_${(Q.customer || '고객').replace(/[\\/:*?"<>|\s]/g, '')}_${(Q.date || '').replace(/-/g, '')}`;
@@ -4883,6 +4899,7 @@ function qPrint() {
   const area = $('quotePrintArea'); area.innerHTML = `<div class="q-paper">${qPaperHtml()}</div>`;
   const old = document.title; document.title = qFileBase();
   document.body.classList.add('print-quote');
+  qFit(area);
   const done = () => { document.body.classList.remove('print-quote'); document.title = old; window.removeEventListener('afterprint', done); };
   window.addEventListener('afterprint', done);
   setTimeout(() => { window.print(); setTimeout(done, 1500); }, 50);
