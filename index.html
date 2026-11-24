@@ -893,6 +893,7 @@ body.role-partner .q-only{display:none!important}
         <label>사업자등록번호<input type="text" id="coBiz"></label>
         <label>전화<input type="text" id="coTel"></label>
         <label>자평·자 계산 기준 (1자 =)<select id="coJa"><option value="300">300mm — 가로×세로÷90,000</option><option value="303">303mm — 가로×세로÷91,809</option></select></label>
+        <label>평 소수점 처리 (한 장마다)<select id="coPyRound"><option value="ceil">올림 — 24.01 → 25평</option><option value="round">반올림 — 24.49 → 24평, 24.51 → 25평</option><option value="none">그대로 — 24.51평</option></select></label>
         <label class="full">주소<input type="text" id="coAddr"></label>
         <label class="full">입금 계좌 (선택)<input type="text" id="coBank" placeholder="예: OO은행 000-000-000000 예금주"></label>
         <label class="full">기본 비고 문구<textarea id="coMemo" rows="3"></textarea></label>
@@ -4520,7 +4521,12 @@ function qLineCalc(l) {
   let base = q, txt = '';
   if (l.unit === '자평') {
     const J = qJa();
-    if (w && h) { const a = Math.round(w * h / (J * J) * 100) / 100; base = Math.round(a * (q || 1) * 100) / 100; txt = `${w}×${h} ÷ ${(J * J).toLocaleString('ko-KR')} = ${a.toFixed(2)}평 × ${q || 1}개 = ${base.toFixed(2)}평`; }
+    if (w && h) {
+      const raw = Math.round(w * h / (J * J) * 100) / 100, mode = company.pyRound || 'ceil';
+      const a = mode === 'ceil' ? Math.ceil(raw - 1e-9) : mode === 'round' ? Math.round(raw) : raw;   // 한 장마다 평 단위로 올림·반올림
+      base = Math.round(a * (q || 1) * 100) / 100;
+      txt = `${w}×${h} ÷ ${(J * J).toLocaleString('ko-KR')} = ${raw.toFixed(2)}평` + (a !== raw ? ` → ${a}평 (${mode === 'ceil' ? '올림' : '반올림'})` : '') + ` × ${q || 1}개 = ${base}평`;
+    }
     else txt = '가로·세로(mm)를 넣으면 자평을 계산합니다 (1자 = ' + J + 'mm)';
   } else if (l.unit === '㎡') {
     if (w && h) { const a = Math.round(w * h / 1e4) / 100; base = Math.round(a * (q || 1) * 100) / 100; txt = `${w}×${h}mm = ${a}㎡ × ${q || 1}개 = ${base}㎡`; }
@@ -4899,7 +4905,7 @@ function openPriceBook() {
   pbDraft = priceBook.map(x => ({ ...x }));
   const c = company;
   $('coName').value = c.name || ''; $('coCeo').value = c.ceo || ''; $('coBiz').value = c.biz || ''; $('coTel').value = c.tel || '';
-  $('coAddr').value = c.addr || ''; $('coBank').value = c.bank || ''; $('coMemo').value = c.memo || ''; $('coJa').value = String(c.ja || 300);
+  $('coAddr').value = c.addr || ''; $('coBank').value = c.bank || ''; $('coMemo').value = c.memo || ''; $('coJa').value = String(c.ja || 300); $('coPyRound').value = c.pyRound || 'ceil';
   pbDraw(); $('priceModal').classList.add('show');
   const ro = !canEdit();
   $('priceModal').querySelectorAll('input,select,textarea,#pbAdd,#pmSave').forEach(el => { el.disabled = ro; });
@@ -4919,7 +4925,7 @@ function pbDraw() {
 }
 function pbSave() {
   priceBook = pbDraft.filter(p => (p.name || '').trim()).map(p => ({ cat: (p.cat || '').trim(), name: p.name.trim(), spec: (p.spec || '').trim(), unit: p.unit || '식', price: qNum(p.price) }));
-  company = { name: $('coName').value.trim(), ceo: $('coCeo').value.trim(), biz: $('coBiz').value.trim(), tel: $('coTel').value.trim(), addr: $('coAddr').value.trim(), bank: $('coBank').value.trim(), memo: $('coMemo').value, ja: +$('coJa').value || 300 };
+  company = { name: $('coName').value.trim(), ceo: $('coCeo').value.trim(), biz: $('coBiz').value.trim(), tel: $('coTel').value.trim(), addr: $('coAddr').value.trim(), bank: $('coBank').value.trim(), memo: $('coMemo').value, ja: +$('coJa').value || 300, pyRound: $('coPyRound').value || 'ceil' };
   try { localStorage.setItem(PB_KEY, JSON.stringify(priceBook)); localStorage.setItem(CO_KEY, JSON.stringify(company)); } catch (e) {}
   $('priceModal').classList.remove('show');
   if ($('quoteModal').classList.contains('show') && Q && !qPreviewing) qDrawLines();
