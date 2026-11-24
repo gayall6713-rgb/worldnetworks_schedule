@@ -394,7 +394,7 @@ body.role-partner .q-only{display:none!important}
     <button type="submit" class="btn btn-submit" id="loginBtn">로그인</button>
     <button type="button" class="btn btn-reset" id="loginOther" style="width:100%;margin-top:12px;font-size:.9rem;padding:10px;">👥 다른 사람으로 로그인</button>
     <div id="loginMsg"></div>
-    <div style="text-align:center;font-size:.7rem;color:#adb5bd;margin-top:10px;">앱 버전 1124-비고</div>
+    <div style="text-align:center;font-size:.7rem;color:#adb5bd;margin-top:10px;">앱 버전 1124-규격</div>
   </form>
 </div>
 <div id="expModal" class="modal" style="z-index:70;">
@@ -527,7 +527,7 @@ body.role-partner .q-only{display:none!important}
     <div class="btn-row"><button type="submit" class="btn btn-submit">변경</button><button type="button" class="btn btn-reset" onclick="$('pwModal').classList.remove('show')">닫기</button></div>
   </form>
 </div>
-<div id="appVer" style="position:fixed;left:6px;bottom:4px;font-size:.65rem;color:#adb5bd;z-index:1;pointer-events:none;">앱 버전 1124-비고</div>
+<div id="appVer" style="position:fixed;left:6px;bottom:4px;font-size:.65rem;color:#adb5bd;z-index:1;pointer-events:none;">앱 버전 1124-규격</div>
 <div id="syncStatus">🔄 연동 중...</div>
 <div class="container">
   <h2>현장 방문 및 스케줄 관리</h2>
@@ -4683,8 +4683,7 @@ function qDrawLines() {
       if (!l.manual) a.value = c.auto ? qComma(c.auto) : '';
       a.classList.toggle('manual', !!l.manual);
       a.title = l.manual ? '직접 입력한 금액 (지우면 자동 계산으로 돌아감)' : '자동 계산';
-      w.disabled = h.disabled = !canEdit() || !['㎡', '자평', 'm', '자'].includes(l.unit);
-      if (l.unit === 'm' || l.unit === '자') h.disabled = true;
+      w.disabled = h.disabled = !canEdit();   // 가로·세로는 단위와 상관없이 규격으로 자유롭게 입력 (㎡·자평·m·자일 때만 계산에 사용)
       calc.textContent = (c.txt ? '📐 ' + c.txt + '  ' : '') + (l.manual ? '✍️ 금액 직접 입력' : (c.auto ? `= ${qComma(c.auto)}원` : ''));
       qDrawSum();
     };
@@ -4778,7 +4777,8 @@ function qPaperHtml() {
   const t = qTotals(Q), c = company;
   const rows = Q.lines.filter(l => (l.name || '').trim() || qLineCalc(l).amount).map((l, i) => {
     const cc = qLineCalc(l);
-    const size = l.w && ((l.unit === '㎡' || l.unit === '자평') && l.h) ? `${qNum(l.w)}×${qNum(l.h)}` : l.w && (l.unit === 'm' || l.unit === '자') ? `${qNum(l.w)}mm` : '';
+    const sw = String(l.w || '').trim(), sh = String(l.h || '').trim();
+    const size = sw && sh ? `${sw}×${sh}` : sw ? sw + (/^\d+$/.test(sw) ? 'mm' : '') : sh ? `세로 ${sh}` : '';
     const qty = ['㎡', '자평', 'm', '자'].includes(l.unit) && l.w ? `${cc.base}${l.unit}` : `${qNum(l.qty) || ''}${l.unit}`;
     return `<tr><td class="c">${i + 1}</td><td>${qEsc(l.name)}</td><td>${qEsc([l.spec, size].filter(Boolean).join(' / '))}</td>
       <td class="c">${qEsc(qty)}${['㎡', '자평', 'm', '자'].includes(l.unit) && l.w && qNum(l.qty) > 1 ? `<br><small>(${qNum(l.qty)}개)</small>` : ''}</td>
