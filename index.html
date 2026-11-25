@@ -242,6 +242,17 @@ tr.stage-cancel td{text-decoration:line-through;text-decoration-thickness:2px;te
 .history-item.struck .h-title>span:first-child,.history-item.struck .h-detail{text-decoration:line-through;text-decoration-thickness:2px;color:#868e96}
 .ag-empty{text-align:center;color:#999;padding:20px;font-size:.9rem}
 #dayPanel{margin-top:16px}
+.cal-stat{margin-top:14px;background:#fff;border:1px solid #e9ecef;border-radius:10px;padding:10px 12px;box-shadow:0 1px 3px rgba(0,0,0,.05)}
+.cal-stat-h{display:flex;justify-content:space-between;align-items:center;gap:8px;margin-bottom:8px;flex-wrap:wrap}
+.cal-stat-h b{font-size:.95rem;color:#343a40}.cal-stat-h small{color:#868e96;font-size:.75rem}
+.cal-stat table{width:100%;min-width:560px;border-collapse:collapse;font-size:.82rem}
+.cal-stat th,.cal-stat td{border:1px solid #e9ecef;padding:6px 6px;text-align:center;white-space:nowrap}
+.cal-stat thead th{background:#f8f9fa;font-weight:bold}
+.cal-stat tbody th{background:#f8f9fa;text-align:left;font-weight:bold;color:#495057}
+.cal-stat td.n{font-variant-numeric:tabular-nums}.cal-stat td.zero{color:#ced4da}
+.cal-stat td.sum,.cal-stat th.sum{background:#f1f3f5;font-weight:bold}
+.cal-stat td.go{cursor:pointer;color:#1c7ed6;font-weight:bold}.cal-stat td.go:hover{background:#e7f5ff}
+.cal-stat .dot{display:inline-block;width:9px;height:9px;border-radius:2px;margin-right:4px;vertical-align:middle}
 .dp-head{display:flex;justify-content:space-between;align-items:center;margin-bottom:8px;gap:8px}
 .dp-head b{font-size:1rem}
 #detailModal{z-index:55}
@@ -411,7 +422,7 @@ body.role-partner .q-only{display:none!important}
     <button type="submit" class="btn btn-submit" id="loginBtn">로그인</button>
     <button type="button" class="btn btn-reset" id="loginOther" style="width:100%;margin-top:12px;font-size:.9rem;padding:10px;">👥 다른 사람으로 로그인</button>
     <div id="loginMsg"></div>
-    <div style="text-align:center;font-size:.7rem;color:#adb5bd;margin-top:10px;">앱 버전 1125-주소한줄</div>
+    <div style="text-align:center;font-size:.7rem;color:#adb5bd;margin-top:10px;">앱 버전 1125-현황표</div>
   </form>
 </div>
 <div id="expModal" class="modal" style="z-index:70;">
@@ -544,7 +555,7 @@ body.role-partner .q-only{display:none!important}
     <div class="btn-row"><button type="submit" class="btn btn-submit">변경</button><button type="button" class="btn btn-reset" onclick="$('pwModal').classList.remove('show')">닫기</button></div>
   </form>
 </div>
-<div id="appVer" style="position:fixed;left:6px;bottom:4px;font-size:.65rem;color:#adb5bd;z-index:1;pointer-events:none;">앱 버전 1125-주소한줄</div>
+<div id="appVer" style="position:fixed;left:6px;bottom:4px;font-size:.65rem;color:#adb5bd;z-index:1;pointer-events:none;">앱 버전 1125-현황표</div>
 <div id="syncStatus">🔄 연동 중...</div>
 <div class="container">
   <h2>현장 방문 및 스케줄 관리</h2>
@@ -582,6 +593,7 @@ body.role-partner .q-only{display:none!important}
       <div class="cal-day-name" style="color:#ef4444;">일</div><div class="cal-day-name">월</div><div class="cal-day-name">화</div><div class="cal-day-name">수</div><div class="cal-day-name">목</div><div class="cal-day-name">금</div><div class="cal-day-name" style="color:#3b82f6;">토</div>
     </div>
     <div class="calendar-grid" id="calBody"></div>
+    <div id="calStat" class="cal-stat"></div>
     <p class="hint desk-only" style="text-align:center;margin-top:12px;">💡 <b>날짜 숫자(예: 16)</b>를 누르면 그날 일정 목록이 나오고, <b>일정(배지)</b>을 누르면 상세 내용을 볼 수 있습니다.<br>빈 칸을 누르면 새 일정을 등록할 수 있습니다.</p>
     <div id="dayPanel"></div>
     </div>
@@ -2105,7 +2117,37 @@ function renderCalendar() {
     });
     calBody.appendChild(cell);
   }
+  renderCalStat();
   renderViews();
+}
+
+/* ===== 달력 아래: 진행 상태별 현황표 (보고 있는 달 + 전체) =====
+   기준은 방문 일시. 시공 예정일로 자동 생성된 [시공] 일정은 원래 일정과 같은 공사라 빼고 셉니다.
+   금액 줄은 관리자에게만 보이고, 관리자는 숫자를 누르면 해당 내역이 열립니다. */
+function renderCalStat() {
+  const box = $('calStat'); if (!box) return;
+  const ym = `${currentYear}-${String(currentMonth + 1).padStart(2, '0')}`;
+  const jobs = schedules.filter(x => !x.installFor);
+  const month = jobs.filter(x => (visitDay(x) || '').startsWith(ym));
+  const stages = [...STAGES]; if (jobs.some(x => !x.status)) stages.push('');
+  const by = (list, st) => list.filter(x => (x.status || '') === st);
+  const admin = isAdmin(), won = n => n ? n.toLocaleString('ko-KR') : '0';
+  const mLbl = `${currentMonth + 1}월`;
+  const cell = (list, key, val, txt) => `<td class="n${val ? '' : ' zero'}${admin && list.length ? ' go' : ''}" data-k="${key}">${txt}</td>`;
+  const groups = {};
+  const row = (label, list, fn, isMoney, prefix) => {
+    const cells = stages.map((st, i) => { const l = by(list, st), v = fn(l); groups[prefix + i] = [label + ' · ' + (st || '상태 미지정'), l]; return cell(l, prefix + i, v, isMoney ? won(v) : v); }).join('');
+    const tv = fn(list); groups[prefix + 's'] = [label, list];
+    return `<tr><th>${label}</th>${cells}<td class="sum n${admin && list.length ? ' go' : ''}" data-k="${prefix}s">${isMoney ? won(tv) : tv}</td></tr>`;
+  };
+  const cnt = l => l.length, money = l => (typeof statMoney === 'function' ? statMoney(l).total : 0), unpaid = l => statMoney(l).unpaid;
+  box.innerHTML = `<div class="cal-stat-h"><b>📊 진행 상태별 현황</b><small>방문 일시 기준${admin ? ' · 숫자를 누르면 내역이 열려요 · 금액 단위: 원' : ''}</small></div>
+    <div class="table-responsive"><table><thead><tr><th style="width:110px;">구분</th>${stages.map(st => `<th><span class="dot" style="background:${STAGE_ACCENT[st] || '#adb5bd'}"></span>${escAttr(st || '미지정')}</th>`).join('')}<th class="sum">합계</th></tr></thead><tbody>
+    ${row(`${mLbl} 건수`, month, cnt, false, 'mc')}
+    ${admin ? row(`${mLbl} 공사금액`, month, money, true, 'mm') + row(`${mLbl} 미수금`, month, unpaid, true, 'mu') : ''}
+    ${row('전체 건수', jobs, cnt, false, 'ac')}
+    </tbody></table></div>`;
+  if (admin) box.querySelectorAll('td.go').forEach(td => td.onclick = () => { const g = groups[td.dataset.k]; if (g) openStatList(g[0], g[1]); });
 }
 
 function moveMonth(dir) {
