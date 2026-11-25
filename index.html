@@ -359,7 +359,7 @@ body.role-partner .q-only{display:none!important}
 .q-paper .top{display:flex;gap:14px;margin-bottom:14px}
 .q-paper .top>div{flex:1;min-width:0}.q-paper .top>div:last-child{flex:1.45}
 .q-paper .to{font-size:18px;font-weight:bold;border-bottom:1px solid #111;padding-bottom:4px;margin-bottom:8px}
-.q-paper .info td{border:none;padding:2px 0}
+.q-paper .info{table-layout:fixed}.q-paper .info td{border:none;padding:2px 0}.q-paper .info td:first-child{width:70px}
 .q-paper .sup th{font-size:12px}.q-paper .sup td{font-size:12px}
 .q-paper .big{border:2px solid #111;padding:9px 12px;font-size:15px;font-weight:bold;margin-bottom:12px;display:flex;justify-content:space-between;flex-wrap:wrap;gap:6px}
 .q-paper .items th{font-size:12px}.q-paper .items td{font-size:12px}
@@ -411,7 +411,7 @@ body.role-partner .q-only{display:none!important}
     <button type="submit" class="btn btn-submit" id="loginBtn">로그인</button>
     <button type="button" class="btn btn-reset" id="loginOther" style="width:100%;margin-top:12px;font-size:.9rem;padding:10px;">👥 다른 사람으로 로그인</button>
     <div id="loginMsg"></div>
-    <div style="text-align:center;font-size:.7rem;color:#adb5bd;margin-top:10px;">앱 버전 1124-견적정렬</div>
+    <div style="text-align:center;font-size:.7rem;color:#adb5bd;margin-top:10px;">앱 버전 1125-주소한줄</div>
   </form>
 </div>
 <div id="expModal" class="modal" style="z-index:70;">
@@ -544,7 +544,7 @@ body.role-partner .q-only{display:none!important}
     <div class="btn-row"><button type="submit" class="btn btn-submit">변경</button><button type="button" class="btn btn-reset" onclick="$('pwModal').classList.remove('show')">닫기</button></div>
   </form>
 </div>
-<div id="appVer" style="position:fixed;left:6px;bottom:4px;font-size:.65rem;color:#adb5bd;z-index:1;pointer-events:none;">앱 버전 1124-견적정렬</div>
+<div id="appVer" style="position:fixed;left:6px;bottom:4px;font-size:.65rem;color:#adb5bd;z-index:1;pointer-events:none;">앱 버전 1125-주소한줄</div>
 <div id="syncStatus">🔄 연동 중...</div>
 <div class="container">
   <h2>현장 방문 및 스케줄 관리</h2>
@@ -4862,10 +4862,10 @@ function qPaperHtml() {
   <div class="top">
     <div><div class="to">${qEsc(Q.customer || '')} 귀하</div>
       <table class="info">
-        <tr><td style="width:70px;">견적일</td><td>${qEsc(Q.date)}</td></tr>
+        <tr><td>견적일</td><td>${qEsc(Q.date)}</td></tr>
         <tr><td>견적번호</td><td>${qEsc(Q.no)}</td></tr>
         ${Q.job ? `<tr><td>공사명</td><td>${qEsc(Q.job)}</td></tr>` : ''}
-        ${Q.addr ? `<tr><td>현장 주소</td><td>${qEsc(Q.addr)}</td></tr>` : ''}
+        ${Q.addr ? `<tr><td>현장 주소</td><td class="wrapfit">${qEsc(Q.addr)}</td></tr>` : ''}
         ${Q.phone ? `<tr><td>연락처</td><td>${qEsc(Q.phone)}</td></tr>` : ''}
       </table>
       <div style="margin-top:8px;font-size:12px;">아래와 같이 견적합니다.</div></div>
@@ -4884,7 +4884,10 @@ function qFit(root) {
   root.querySelectorAll('.items td, .items th, .sup td, .sup th, .info td').forEach(el => {
     el.style.fontSize = '';
     let fs = parseFloat(getComputedStyle(el).fontSize) || 12;
-    while (el.scrollWidth > el.clientWidth + 1 && fs > 7) { fs -= 0.5; el.style.fontSize = fs + 'px'; }
+    const min = el.classList.contains('wrapfit') ? 10 : 7;   // 주소는 10px까지만 줄이고, 그래도 길면 칸 안에서 두 줄로
+    el.style.whiteSpace = '';
+    while (el.scrollWidth > el.clientWidth + 1 && fs > min) { fs -= 0.5; el.style.fontSize = fs + 'px'; }
+    if (el.scrollWidth > el.clientWidth + 1 && el.classList.contains('wrapfit')) { el.style.whiteSpace = 'normal'; el.style.wordBreak = 'keep-all'; el.style.lineHeight = '1.3'; }
   });
 }
 function qPreview() {
