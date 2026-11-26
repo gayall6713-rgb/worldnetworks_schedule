@@ -96,6 +96,16 @@ tr.editing td{background:#fff3bf!important}
 select{width:100%;padding:10px;border:1px solid #ddd;border-radius:4px;box-sizing:border-box;font-size:.95rem;background:#fff}
 #empBox table,#ptnBox table{font-size:.85rem}
 #ptnBody td.memo{max-width:180px;white-space:normal;color:#666;font-size:.78rem}
+#ptnBody td.ptn-name{cursor:pointer;color:#e67700;text-decoration:underline}
+#ptnExpModal table{width:100%;border-collapse:collapse;font-size:.84rem}
+#ptnExpModal th,#ptnExpModal td{border-bottom:1px solid #eee;padding:7px 6px;text-align:left;vertical-align:top}
+#ptnExpModal th{background:#fff4e6;white-space:nowrap}
+#ptnExpModal td.n{text-align:right;white-space:nowrap}
+#ptnExpModal tbody tr{cursor:pointer}
+#ptnExpModal tbody tr:hover{background:#fffaf3}
+.pe-sum{display:flex;gap:8px;flex-wrap:wrap;margin:10px 0}
+.pe-sum div{flex:1;min-width:110px;background:#f8f9fa;border-radius:8px;padding:8px 10px;font-size:.8rem;color:#666}
+.pe-sum b{display:block;font-size:1.05rem;color:#222;margin-top:2px}
 .stage-sel{padding:6px 4px;font-size:.82rem;font-weight:bold;border:1px solid #adb5bd;border-radius:4px;min-width:104px;color:#222}
 .src-sel{min-width:96px}
 .filter-sel{width:auto;padding:6px 8px;font-size:.85rem}
@@ -161,7 +171,7 @@ body.locked #loginScreen{display:flex}
 .ub-btn.switch{background:#fff3bf;border-color:#fcc419;color:#7c5800}
 .ub-btn.out{background:#ffe3e3;border-color:#ffa8a8;color:#c92a2a}
 /* 권한별 화면 제한 */
-body:not(.role-admin) .btn-del:not(.keep),body:not(.role-admin) #clearAll,body:not(.role-admin) #empBox,body:not(.role-admin) #ptnBox,body:not(.role-admin) .admin-only{display:none!important}
+body:not(.role-admin) .btn-del:not(.keep),body:not(.role-admin) #clearAll,body:not(.role-admin) #empBox,body:not(.role-admin) #ptnForm,body:not(.role-admin) #ptnBox .act,body:not(.role-admin):not(.role-staff) .admin-only{display:none!important}
 body.role-view .upload-box,body.role-view #addScheduleFromDayBtn,body.role-view #addScheduleFromHistoryBtn,body.role-view .dp-add,body.role-view #draftBtn,body.role-view #resetForm,body.role-view .view-hide{display:none!important}
 body.role-view #tab-manage>#scheduleForm{display:none}
 body.role-partner #filterSource,body.role-partner #filterPay,body.role-partner .partner-hide{display:none!important}
@@ -652,7 +662,7 @@ body.role-partner .q-only{display:none!important}
 
     <details id="ptnBox" open style="margin-top:14px;border:1px solid #ffd8a8;border-radius:6px;padding:10px 14px;background:#fffaf3;">
       <summary style="cursor:pointer;font-weight:bold;">🤝 협력업체 관리 <span id="ptnCount" style="font-weight:normal;color:#666;font-size:.85rem;"></span></summary>
-      <div class="hint" style="margin:8px 0 0;">협력업체로 로그인하면 <b>배정된 일정만</b> 보이고 금액은 보이지 않습니다. 고객 안내장에는 업체 이름·연락처가 나갑니다.</div>
+      <div class="hint" style="margin:8px 0 0;">업체명을 누르면 <b>외주비 내역</b>이 열립니다 (관리자·직원만). 협력업체로 로그인하면 <b>자기에게 배정된 일정만</b> 보이고 금액·외주비·다른 업체 정보는 보이지 않습니다.</div>
       <form id="ptnForm" style="margin-top:10px;">
         <div class="grid">
           <div class="form-group"><label>업체명</label><input type="text" id="ptnName" placeholder="예: 한빛창호" required></div>
@@ -669,7 +679,7 @@ body.role-partner .q-only{display:none!important}
       </form>
       <div class="table-responsive" style="margin-top:12px;">
         <table class="schedule-table" style="min-width:640px;">
-          <thead><tr><th>업체명</th><th>담당자</th><th>연락처</th><th>주력 공종</th><th>배정 일정</th><th>외주비</th><th>로그인</th><th>메모</th><th>관리</th></tr></thead>
+          <thead><tr><th>업체명</th><th>담당자</th><th>연락처</th><th>주력 공종</th><th>배정 일정</th><th>외주비</th><th>로그인</th><th>메모</th><th class="act">관리</th></tr></thead>
           <tbody id="ptnBody"></tbody>
         </table>
       </div>
@@ -862,6 +872,18 @@ body.role-partner .q-only{display:none!important}
   </div>
 </div>
 
+<div id="ptnExpModal" class="modal" style="z-index:54;">
+  <div class="modal-box" style="max-width:760px;">
+    <div style="display:flex;justify-content:space-between;align-items:center;gap:8px;">
+      <h4 id="peTitle" style="margin:0;">🤝 외주비 내역</h4>
+      <button type="button" class="btn btn-reset" onclick="$('ptnExpModal').classList.remove('show')">닫기</button>
+    </div>
+    <div id="peInfo" class="hint" style="margin-top:4px;"></div>
+    <div class="pe-sum" id="peSum"></div>
+    <div class="table-responsive"><table><thead><tr><th>날짜</th><th>고객</th><th>작업 내용</th><th>구분</th><th>금액</th><th>지급</th><th>메모</th></tr></thead><tbody id="peBody"></tbody></table></div>
+    <div class="hint" style="margin-top:8px;">줄을 누르면 그 일정의 상세 화면이 열립니다. 외주비 입력·수정은 상세 화면의 💸 지출·외주비에서 (관리자).</div>
+  </div>
+</div>
 <div id="detailModal" class="modal">
   <div class="modal-box" style="max-width:520px;">
     <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:10px;">
@@ -1330,7 +1352,7 @@ function applyRole() {
   }
   box.append(sw, pw, lo);
   lockView(document);
-  if (!isAdmin() && document.querySelector('#tab-people.active')) switchTab('calendar');
+  if (!canEdit() && document.querySelector('#tab-people.active')) switchTab('calendar');
 }
 /* 보기 권한: 방문 후 기록·사진 칸 말고는 입력 막기 */
 function lockView(root) {
@@ -2793,7 +2815,7 @@ function renderPartners() {
     const tr = document.createElement('tr');
     if (p.id === editingPtnId) tr.className = 'editing';
     const cell = (t, cls) => { const td = document.createElement('td'); td.textContent = t; if (cls) td.className = cls; tr.appendChild(td); return td; };
-    cell(p.name).style.fontWeight = 'bold';
+    const nc = cell(p.name, 'ptn-name'); nc.style.fontWeight = 'bold'; nc.title = '외주비 내역 보기'; nc.onclick = () => openPartnerExp(p.name);
     cell(p.manager || '-'); cell(p.phone || '-'); cell(p.trade || '-');
     cell(st.total ? `${st.total}건 (진행 ${st.open})` : '-');
     const wn = n => n.toLocaleString('ko-KR');
@@ -2846,6 +2868,45 @@ $('ptnForm').addEventListener('submit', ev => {
   saveEmp(); resetPtnForm(); renderEmp();
 });
 $('ptnCancel').onclick = () => { resetPtnForm(); renderPartners(); };
+
+/* 협력업체 외주비 내역 (관리자·직원만) */
+function openPartnerExp(name) {
+  if (!canEdit()) return;
+  const p = employees.find(e => e.name === name && e.role === '협력업체') || { name };
+  const wn = n => n ? n.toLocaleString('ko-KR') + '원' : '-';
+  const num = v => parseInt(String(v || '').replace(/[^\d]/g, ''), 10) || 0;
+  const rows = [];
+  schedules.forEach(x => {
+    const ex = (Array.isArray(x.expenses) ? x.expenses : []).filter(e => (e.vendor || '') === name);
+    ex.forEach(e => rows.push({ x, e }));
+    if (!ex.length && x.partner === name) rows.push({ x, e: null });   // 배정됐는데 외주비가 아직 없음
+  });
+  rows.sort((a, b) => ((b.e && b.e.date) || b.x.visit || '').localeCompare((a.e && a.e.date) || a.x.visit || ''));
+  let total = 0, paid = 0; rows.forEach(r => { if (!r.e) return; const a = num(r.e.amount); total += a; if (r.e.paid) paid += a; });
+  $('peTitle').textContent = `🤝 ${name} · 외주비 내역`;
+  $('peInfo').textContent = [p.manager && '담당 ' + p.manager, p.phone, p.trade].filter(Boolean).join(' · ');
+  $('peSum').innerHTML = '';
+  [['배정 일정', schedules.filter(x => x.partner === name).length + '건'], ['외주비 합계', wn(total)], ['지급 완료', wn(paid)], ['미지급', wn(total - paid)]].forEach(([k, v], i) => {
+    const d = document.createElement('div'); d.textContent = k; const b = document.createElement('b'); b.textContent = v; if (i === 3 && total - paid > 0) b.style.color = '#e03131'; d.appendChild(b); $('peSum').appendChild(d);
+  });
+  const body = $('peBody'); body.innerHTML = '';
+  if (!rows.length) { const tr = document.createElement('tr'), td = document.createElement('td'); td.colSpan = 7; td.style.textAlign = 'center'; td.style.color = '#999'; td.textContent = '배정된 일정이나 외주비 기록이 없습니다.'; tr.appendChild(td); body.appendChild(tr); }
+  rows.forEach(({ x, e }) => {
+    const tr = document.createElement('tr');
+    const c = (t, cls) => { const td = document.createElement('td'); td.textContent = t; if (cls) td.className = cls; tr.appendChild(td); return td; };
+    c(((e && e.date) || (x.visit || '')).slice(0, 10) || '-');
+    c(x.customer || '-'); c(x.request || '-');
+    if (e) {
+      c(e.type || '-'); c(wn(num(e.amount)), 'n');
+      const pd = c(e.paid ? '✅ 지급' : '미지급'); if (!e.paid && num(e.amount)) pd.style.color = '#e03131';
+      c(e.memo || '');
+    } else { const t = c('외주비 미입력'); t.colSpan = 4; t.style.color = '#adb5bd'; }
+    tr.onclick = () => openDetail(x.id);
+    body.appendChild(tr);
+  });
+  $('ptnExpModal').classList.add('show');
+}
+$('ptnExpModal').addEventListener('click', e => { if (e.target.id === 'ptnExpModal') $('ptnExpModal').classList.remove('show'); });
 
 /* ===== 계약금 / 잔금 관리 ===== */
 const PAY_STAGES = ['방문시공', '계약', '공사진행', '처리완료'];
