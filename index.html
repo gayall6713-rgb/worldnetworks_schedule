@@ -1461,6 +1461,14 @@ function expButton(item) {
 /* ===== 관리자: 진행 현황표 ===== */
 // 기준: 방문 일시의 날짜. 미수금은 방문시공·계약·공사진행·처리완료 건만 셈. 시공 예정일로 자동 생성된 [시공] 일정은 원래 일정과 같은 공사라서 빼고 셉니다.
 const statJobs = () => schedules.filter(x => !x.installFor);
+/* 현황표에 쓰는 공사 상태: 자동 생성된 [시공] 일정의 상태를 기본값(방문시공)에서 바꿨으면 그 상태를 씀
+   (예: [시공] 일정이 '보류 및 재방문'이면 그 공사는 보류로 셈). 같은 공사를 두 번 세지는 않습니다. */
+function jobStatus(x) {
+  if (!x) return '';
+  const ins = x.installId ? schedules.find(y => y.id === x.installId && y.installFor === x.id) : null;
+  if (ins && ins.status && ins.status !== INSTALL_STAGE) return ins.status;
+  return x.status || '';
+}
 const statMoney = list => {
   const m = { total:0, deposit:0, middle:0, balance:0, paid:0, unpaid:0, out:0, other:0, cost:0, profit:0 };
   list.forEach(x => {
@@ -1500,11 +1508,11 @@ function statData() {
   if (src) jobs = jobs.filter(x => src === '__none__' ? !x.source : x.source === src);
   const periods = statPeriods(mode, year);
   const inRange = mode === 'month' || mode === 'quarter' ? jobs.filter(x => visitDay(x).slice(0, 4) === year) : jobs;
-  const stages = [...STAGES]; if (inRange.some(x => !x.status) || jobs.some(x => !x.status)) stages.push('');
-  const stageRows = stages.map(st => { const l = inRange.filter(x => (x.status || '') === st); return { st, n: l.length, items: l, ...statMoney(l) }; });
+  const stages = [...STAGES]; if (inRange.some(x => !jobStatus(x)) || jobs.some(x => !jobStatus(x))) stages.push('');
+  const stageRows = stages.map(st => { const l = inRange.filter(x => jobStatus(x) === st); return { st, n: l.length, items: l, ...statMoney(l) }; });
   const periodRows = periods.map(p => {
     const l = jobs.filter(x => p.test(visitDay(x)));
-    const cnt = {}; stages.forEach(st => { cnt[st] = l.filter(x => (x.status || '') === st).length; });
+    const cnt = {}; stages.forEach(st => { cnt[st] = l.filter(x => jobStatus(x) === st).length; });
     return { label: p.label, n: l.length, cnt, items: l, ...statMoney(l) };
   });
   const vm = {};
@@ -2146,8 +2154,8 @@ function renderCalStat() {
   const ym = `${currentYear}-${String(currentMonth + 1).padStart(2, '0')}`;
   const jobs = schedules.filter(x => !x.installFor);
   const month = jobs.filter(x => (visitDay(x) || '').startsWith(ym));
-  const stages = [...STAGES]; if (jobs.some(x => !x.status)) stages.push('');
-  const by = (list, st) => list.filter(x => (x.status || '') === st);
+  const stages = [...STAGES]; if (jobs.some(x => !jobStatus(x))) stages.push('');
+  const by = (list, st) => list.filter(x => jobStatus(x) === st);
   const admin = isAdmin(), won = n => n ? n.toLocaleString('ko-KR') : '0';
   const mLbl = `${currentMonth + 1}월`;
   const cell = (list, key, val, txt) => `<td class="n${val ? '' : ' zero'}${admin && list.length ? ' go' : ''}" data-k="${key}">${txt}</td>`;
@@ -2163,7 +2171,7 @@ function renderCalStat() {
     ${row(`${mLbl} 건수`, month, cnt, false, 'mc')}
     ${row('전체 건수', jobs, cnt, false, 'ac')}
     </tbody></table></div>
-    <div class="cal-stat-note" style="font-size:12px;color:#868e96;margin-top:6px;">※ '시공 예정일'로 자동 생성된 [시공] 일정은 원래 일정과 같은 공사라 건수에서 제외됩니다. 달력에는 고객별 최종 일정만 보이고, 이 표는 지난 일정까지 모두 셉니다.</div>`;
+    <div class="cal-stat-note" style="font-size:12px;color:#868e96;margin-top:6px;">※ 자동 생성된 [시공] 일정은 원래 일정과 같은 공사로 한 번만 셉니다. [시공] 일정의 상태를 바꾸면(예: 보류 및 재방문) 그 공사는 바뀐 상태로 셉니다. 달력에는 고객별 최종 일정만 보이고, 이 표는 지난 일정까지 모두 셉니다.</div>`;
   if (admin) box.querySelectorAll('td.go').forEach(td => td.onclick = () => { const g = groups[td.dataset.k]; if (g) openStatList(g[0], g[1]); });
 }
 
