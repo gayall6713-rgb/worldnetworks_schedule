@@ -2145,7 +2145,8 @@ function renderCalStat() {
     <div class="table-responsive"><table><thead><tr><th style="width:110px;">구분</th>${stages.map(st => `<th><span class="dot" style="background:${STAGE_ACCENT[st] || '#adb5bd'}"></span>${escAttr(st || '미지정')}</th>`).join('')}<th class="sum">합계</th></tr></thead><tbody>
     ${row(`${mLbl} 건수`, month, cnt, false, 'mc')}
     ${row('전체 건수', jobs, cnt, false, 'ac')}
-    </tbody></table></div>`;
+    </tbody></table></div>
+    <div class="cal-stat-note" style="font-size:12px;color:#868e96;margin-top:6px;">※ '시공 예정일'로 자동 생성된 [시공] 일정은 원래 일정과 같은 공사라 건수에서 제외됩니다. 그래서 달력에 보이는 일정 수보다 적게 나올 수 있어요.</div>`;
   if (admin) box.querySelectorAll('td.go').forEach(td => td.onclick = () => { const g = groups[td.dataset.k]; if (g) openStatList(g[0], g[1]); });
 }
 
