@@ -1,0 +1,473 @@
+<!doctype html>
+<html lang="ko">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover">
+<title>자재 재고</title>
+<link rel="manifest" href="manifest.webmanifest">
+<link rel="apple-touch-icon" href="apple-touch-icon.png">
+<link rel="icon" href="icon-192.png">
+<meta name="theme-color" content="#1f5f8b">
+<meta name="apple-mobile-web-app-capable" content="yes">
+<meta name="apple-mobile-web-app-title" content="자재재고">
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=IBM+Plex+Sans+KR:wght@400;500;600;700&family=IBM+Plex+Mono:wght@500;600&display=swap">
+<style>
+/* 상단 요약 → 왼쪽 현재 재고 / 오른쪽 입출고 기록 → 아래 내역. 좁은 화면에서는 한 줄로 쌓임 */
+:root{
+  --bg:#eef1f3; --panel:#ffffff; --ink:#1b2328; --muted:#5d6a72; --line:#d5dce0;
+  --accent:#1f5f8b; --accent-ink:#ffffff; --accent-soft:#e2edf5;
+  --in:#1d7a4c; --in-soft:#e1f2e8; --out:#b3451f; --out-soft:#fbe7df;
+  --warn:#9a6a00; --warn-soft:#fbf0cf;
+  --f-body:"IBM Plex Sans KR",system-ui,-apple-system,"Apple SD Gothic Neo","Malgun Gothic",sans-serif;
+  --f-num:"IBM Plex Mono",ui-monospace,Menlo,Consolas,monospace;
+  color-scheme:light;
+}
+@media (prefers-color-scheme: dark){:root{
+  --bg:#13181b; --panel:#1b2226; --ink:#e4eaee; --muted:#93a1a9; --line:#2d373d;
+  --accent:#6fb0dc; --accent-ink:#0d1a22; --accent-soft:#1d3141;
+  --in:#5fc690; --in-soft:#173126; --out:#f08a63; --out-soft:#3a2219;
+  --warn:#e8b84a; --warn-soft:#352b12; color-scheme:dark}}
+*{box-sizing:border-box}
+html{padding-top:env(safe-area-inset-top,0px);padding-bottom:env(safe-area-inset-bottom,0px)}
+body{margin:0;background:var(--bg);color:var(--ink);font-family:var(--f-body);font-size:15px;line-height:1.5}
+[hidden]{display:none!important}
+.wrap{max-width:1180px;margin:0 auto;padding-block:16px 48px;padding-left:max(16px,env(safe-area-inset-left,0px));padding-right:max(16px,env(safe-area-inset-right,0px));display:grid;gap:16px}
+header{display:flex;flex-wrap:wrap;align-items:flex-end;justify-content:space-between;gap:10px}
+h1{font-size:1.45rem;margin:0;font-weight:700;letter-spacing:-.01em}
+.sub{color:var(--muted);margin:2px 0 0;font-size:.88rem}
+h2{font-size:1.05rem;margin:0;font-weight:600}
+.num{font-family:var(--f-num);font-variant-numeric:tabular-nums}
+.hbtns{display:flex;gap:8px;align-items:center;flex-wrap:wrap}
+.sync{font-size:.8rem;color:var(--muted)}
+.sync.err{color:var(--out)}
+.stats{display:grid;grid-template-columns:repeat(4,minmax(0,1fr));gap:10px}
+.stat{background:var(--panel);border:1px solid var(--line);border-radius:8px;padding:10px 14px}
+.stat .k{font-size:.78rem;color:var(--muted)}
+.stat .v{font-size:1.45rem;font-weight:600}
+.stat.alert .v{color:var(--warn)}
+.main{display:grid;grid-template-columns:minmax(0,1.7fr) minmax(0,1fr);gap:16px;align-items:start}
+.panel{background:var(--panel);border:1px solid var(--line);border-radius:10px;padding:16px;display:grid;gap:12px;min-width:0}
+.ph{display:flex;flex-wrap:wrap;gap:8px;align-items:center;justify-content:space-between}
+.tabs{display:flex;flex-wrap:wrap;gap:6px}
+.chip{border:1px solid var(--line);background:transparent;color:var(--ink);border-radius:999px;padding:4px 12px;font:inherit;font-size:.85rem;cursor:pointer}
+.chip[aria-pressed="true"]{background:var(--ink);color:var(--bg);border-color:var(--ink)}
+.tbl{overflow-x:auto}
+table{width:100%;border-collapse:collapse;font-size:.92rem}
+th{font-size:.76rem;color:var(--muted);font-weight:500;text-align:left;padding:6px 8px;border-bottom:1px solid var(--line);white-space:nowrap}
+td{padding:9px 8px;border-bottom:1px solid var(--line);vertical-align:middle}
+td.r,th.r{text-align:right}
+tr:last-child td{border-bottom:0}
+.iname{font-weight:600;min-width:6em}
+@media (max-width:520px){.stock.s-low{color:var(--warn)}.stock.s-zero{color:var(--out)}}
+.meta{color:var(--muted);font-size:.82rem}
+.cat{display:inline-block;font-size:.74rem;padding:1px 8px;border-radius:4px;background:var(--accent-soft);color:var(--accent);white-space:nowrap}
+.stock{font-size:1.1rem;font-weight:600}
+.pill{display:inline-block;font-size:.74rem;padding:1px 8px;border-radius:999px;white-space:nowrap}
+.pill.ok{background:var(--in-soft);color:var(--in)}
+.pill.low{background:var(--warn-soft);color:var(--warn)}
+.pill.zero{background:var(--out-soft);color:var(--out)}
+.rowbtns{display:flex;gap:4px;justify-content:flex-end}
+.mini{font:inherit;font-size:.8rem;border:1px solid var(--line);background:var(--panel);color:var(--ink);border-radius:6px;padding:4px 9px;cursor:pointer;white-space:nowrap}
+.mini.in{color:var(--in)} .mini.out{color:var(--out)}
+.mini:disabled{opacity:.5}
+form{display:grid;gap:10px}
+label{display:grid;gap:4px;font-size:.82rem;color:var(--muted)}
+input,select{font:inherit;font-size:16px;color:var(--ink);background:var(--panel);border:1px solid var(--line);border-radius:6px;padding:8px 10px;width:100%;min-width:0}
+input:focus-visible,select:focus-visible,button:focus-visible{outline:2px solid var(--accent);outline-offset:1px}
+.two{display:grid;grid-template-columns:1fr 1fr;gap:10px}
+.seg{display:grid;grid-template-columns:1fr 1fr;border:1px solid var(--line);border-radius:8px;overflow:hidden}
+.seg label{position:relative;display:block;text-align:center;padding:9px;font-size:.95rem;font-weight:600;color:var(--muted);cursor:pointer}
+.seg input{position:absolute;opacity:0;width:1px;height:1px}
+.seg label:has(input[value="in"]:checked){background:var(--in-soft);color:var(--in)}
+.seg label:has(input[value="out"]:checked){background:var(--out-soft);color:var(--out)}
+.btn{font:inherit;font-weight:600;border:0;border-radius:8px;padding:10px 14px;background:var(--accent);color:var(--accent-ink);cursor:pointer;text-decoration:none;text-align:center}
+.btn:disabled{opacity:.5;cursor:default}
+.btn.ghost{background:transparent;color:var(--accent);border:1px solid var(--line)}
+.btn.danger{background:var(--out);color:#fff}
+.msg{font-size:.86rem;margin:0;min-height:1.2em}
+.msg.ok{color:var(--in)} .msg.bad{color:var(--out)}
+.hint{font-size:.82rem;color:var(--muted);margin:0}
+.empty{color:var(--muted);text-align:center;padding:24px 8px;font-size:.92rem}
+.type{font-weight:600;font-size:.82rem;white-space:nowrap}
+.type.in,.qty.in{color:var(--in)} .type.out,.qty.out{color:var(--out)}
+.links{display:flex;flex-wrap:wrap;gap:8px;align-items:center}
+.links a{color:var(--accent);font-size:.86rem}
+dialog{border:1px solid var(--line);border-radius:12px;background:var(--panel);color:var(--ink);padding:0;width:min(460px,calc(100vw - 32px))}
+dialog::backdrop{background:rgb(0 0 0 / .35)}
+.dlg{padding:18px;display:grid;gap:12px}
+.acts{display:flex;gap:8px;justify-content:flex-end;flex-wrap:wrap}
+.gate{min-height:80vh;display:grid;place-items:center;padding:16px}
+.gate .panel{width:min(420px,100%)}
+@media (max-width:860px){.main{grid-template-columns:1fr}.stats{grid-template-columns:repeat(2,minmax(0,1fr))}}
+@media (max-width:520px){.hide-sm{display:none}}
+</style>
+</head>
+<body>
+
+<!-- 처음 연결 / 로그인 화면 -->
+<div class="gate" id="gate">
+  <section class="panel">
+    <h1>자재 재고</h1>
+    <div id="gUrlBox" hidden>
+      <form id="urlForm">
+        <p class="hint">구글 Apps Script를 배포하고 받은 <b>웹 앱 주소</b>(https://script.google.com/macros/s/…/exec)를 붙여 넣어 주세요. 설치 방법은 apps-script/설치안내.md에 있습니다.</p>
+        <label>웹 앱 주소<input id="gUrl" type="url" required placeholder="https://script.google.com/macros/s/.../exec"></label>
+        <button class="btn" type="submit">연결</button>
+      </form>
+    </div>
+    <form id="loginForm" hidden>
+      <p class="hint" id="gHint">비밀번호를 입력해 주세요.</p>
+      <label>비밀번호<input id="gPw" type="password" autocomplete="current-password" required></label>
+      <label id="gPw2Wrap" hidden>비밀번호 한 번 더<input id="gPw2" type="password" autocomplete="new-password"></label>
+      <button class="btn" type="submit" id="gBtn">로그인</button>
+    </form>
+    <p class="msg bad" id="gMsg"></p>
+  </section>
+</div>
+
+<div class="wrap" id="app" hidden>
+  <header>
+    <div>
+      <h1>자재 재고</h1>
+      <p class="sub">호차 · 락킹기어 · 핸들 입고/출고와 현재 재고</p>
+    </div>
+    <div class="hbtns">
+      <span class="sync" id="sync"></span>
+      <button class="btn ghost" id="refreshBtn" type="button">새로고침</button>
+      <button class="btn" id="addItemBtn" type="button">+ 품목 추가</button>
+    </div>
+  </header>
+
+  <section class="stats" aria-label="요약">
+    <div class="stat"><div class="k">등록 품목</div><div class="v num" id="sItems">–</div></div>
+    <div class="stat" id="sLowBox"><div class="k">최소재고 이하</div><div class="v num" id="sLow">–</div></div>
+    <div class="stat"><div class="k">오늘 입고</div><div class="v num" id="sIn">–</div></div>
+    <div class="stat"><div class="k">오늘 출고</div><div class="v num" id="sOut">–</div></div>
+  </section>
+
+  <div class="main">
+    <section class="panel" aria-labelledby="stockH">
+      <div class="ph"><h2 id="stockH">현재 재고</h2><div class="tabs" id="catTabs"></div></div>
+      <div class="tbl">
+        <table>
+          <thead><tr><th>품목</th><th class="hide-sm">구분</th><th class="r">재고</th><th class="r hide-sm">최소</th><th class="hide-sm">상태</th><th class="r">기록</th></tr></thead>
+          <tbody id="stockBody"></tbody>
+        </table>
+      </div>
+    </section>
+
+    <section class="panel" aria-labelledby="txH">
+      <h2 id="txH">입고 / 출고 기록</h2>
+      <form id="txForm" autocomplete="off">
+        <div class="seg" role="radiogroup" aria-label="구분">
+          <label><input type="radio" name="ttype" id="tIn" value="in" checked>입고</label>
+          <label><input type="radio" name="ttype" id="tOut" value="out">출고</label>
+        </div>
+        <label>품목<select id="tItem" required></select></label>
+        <div class="two">
+          <label>수량<input id="tQty" type="number" inputmode="numeric" min="1" step="1" required placeholder="0"></label>
+          <label>날짜<input id="tDate" type="date" required></label>
+        </div>
+        <label>거래처 / 현장 / 메모 (선택)<input id="tMemo" type="text" maxlength="80" placeholder="예: OO현장 3동, OO상사 입고"></label>
+        <button class="btn" type="submit" id="tSubmit">기록하기</button>
+        <p class="msg" id="tMsg" role="status"></p>
+      </form>
+      <p class="hint">출고 수량이 현재 재고보다 많으면 기록되지 않습니다. 잘못 넣은 기록은 아래 내역에서 취소하면 재고가 되돌아갑니다.</p>
+    </section>
+  </div>
+
+  <section class="panel" aria-labelledby="logH">
+    <div class="ph">
+      <h2 id="logH">입출고 내역</h2>
+      <select id="logFilter" aria-label="품목별 보기" style="width:auto"></select>
+    </div>
+    <div class="tbl">
+      <table>
+        <thead><tr><th>날짜</th><th>구분</th><th>품목</th><th class="r">수량</th><th class="hide-sm">메모</th><th class="r"></th></tr></thead>
+        <tbody id="logBody"></tbody>
+      </table>
+    </div>
+    <p class="hint" id="logNote"></p>
+  </section>
+
+  <section class="panel" aria-labelledby="gH">
+    <h2 id="gH">구글 드라이브</h2>
+    <p class="hint" id="backupInfo">모든 기록은 구글 시트에 바로 저장되고, 매일 새벽 3시쯤 드라이브 "백업" 폴더에 사본이 자동으로 쌓입니다.</p>
+    <div class="links">
+      <a id="sheetLink" href="#" target="_blank" rel="noopener">구글 시트 열기</a>
+      <a id="folderLink" href="#" target="_blank" rel="noopener">드라이브 폴더 열기</a>
+      <button class="mini" id="backupBtn" type="button">지금 백업</button>
+      <button class="mini" id="logoutBtn" type="button">이 기기 로그아웃</button>
+    </div>
+  </section>
+</div>
+
+<dialog id="itemDlg">
+  <form class="dlg" id="itemForm" method="dialog">
+    <h2 id="itemDlgH">품목 추가</h2>
+    <label>구분<select id="iCat"><option>호차</option><option>락킹기어</option><option>핸들</option><option>기타</option></select></label>
+    <label>품목명<input id="iName" required maxlength="40" placeholder="예: 미서기 호차"></label>
+    <div class="two">
+      <label>규격 (선택)<input id="iSpec" maxlength="40" placeholder="예: 32mm"></label>
+      <label>색상 (선택)<input id="iColor" maxlength="20" placeholder="예: 화이트"></label>
+    </div>
+    <div class="two">
+      <label>단위<input id="iUnit" maxlength="6" value="개"></label>
+      <label>최소재고<input id="iMin" type="number" min="0" step="1" value="0"></label>
+    </div>
+    <label id="iInitWrap">현재 보유 수량 (처음 등록할 때만)<input id="iInit" type="number" min="0" step="1" value="0"></label>
+    <p class="msg" id="iMsg" role="status"></p>
+    <div class="acts">
+      <button class="btn danger" type="button" id="iDelete" hidden>품목 삭제</button>
+      <span style="flex:1"></span>
+      <button class="btn ghost" type="button" id="iCancel">닫기</button>
+      <button class="btn" type="submit" id="iSave">저장</button>
+    </div>
+  </form>
+</dialog>
+
+<dialog id="confirmDlg">
+  <div class="dlg">
+    <h2 id="cTitle">확인</h2>
+    <p id="cText" style="margin:0"></p>
+    <div class="acts">
+      <button class="btn ghost" type="button" id="cNo">아니요</button>
+      <button class="btn danger" type="button" id="cYes">네, 진행</button>
+    </div>
+  </div>
+</dialog>
+
+<script>
+/* ===== 구글 Apps Script 웹 앱 주소 (배포 후 여기에 넣으면 모든 기기에서 바로 연결됨) ===== */
+const SCRIPT_URL_DEFAULT = '';
+
+(function(){
+  const $ = id => document.getElementById(id);
+  const K = { url:'inv_script_url', token:'inv_token', cache:'inv_cache' };
+  const get = k => { try { return localStorage.getItem(k) || ''; } catch(e){ return ''; } };
+  const put = (k,v) => { try { v ? localStorage.setItem(k,v) : localStorage.removeItem(k); } catch(e){} };
+  let URL_ = SCRIPT_URL_DEFAULT || get(K.url);
+  let token = get(K.token);
+  let state = { items:[], logs:[] };
+  let cat = '전체', editingId = null, busy = false;
+  const CATS = ['전체','호차','락킹기어','핸들','기타'];
+
+  function device(){
+    const ua = navigator.userAgent || '';
+    const os = /iPhone/.test(ua)?'아이폰':/iPad/.test(ua)?'아이패드':/Android/.test(ua)?'안드로이드':/Windows/.test(ua)?'윈도우 PC':/Mac/.test(ua)?'맥':'기타';
+    const app = (matchMedia('(display-mode: standalone)').matches || navigator.standalone) ? '설치 앱' : '브라우저';
+    return os+' · '+app;
+  }
+  function today(){ const d=new Date(); d.setMinutes(d.getMinutes()-d.getTimezoneOffset()); return d.toISOString().slice(0,10); }
+  const fmt = n => Number(n||0).toLocaleString('ko-KR');
+  function el(tag, props, kids){
+    const e=document.createElement(tag);
+    if(props) for(const k in props){ if(k==='text') e.textContent=props[k]; else if(k==='cls') e.className=props[k]; else e.setAttribute(k,props[k]); }
+    (kids||[]).forEach(c=>c&&e.appendChild(c)); return e;
+  }
+  const label = it => [it.name,it.spec,it.color].filter(Boolean).join(' · ');
+  function stateOf(it){ const s=+it.stock||0, m=+it.minStock||0; if(s<=0) return ['zero','재고 없음']; if(m>0&&s<=m) return ['low','부족']; return ['ok','충분']; }
+  function sync(t,err){ const s=$('sync'); s.textContent=t; s.classList.toggle('err',!!err); }
+  function msg(id,t,ok){ const m=$(id); m.textContent=t; m.className='msg '+(ok?'ok':'bad'); }
+
+  async function call(action, data){
+    const res = await fetch(URL_, { method:'POST', body: JSON.stringify(Object.assign({ action, token, device: device() }, data||{})) });
+    const j = await res.json();
+    if (j && j.ok === false && j.error === 'AUTH') { token=''; put(K.token,''); showGate('로그인이 만료되었습니다. 다시 로그인해 주세요.'); throw new Error('AUTH'); }
+    if (!j || j.ok === false) throw new Error((j && j.error) || '서버 응답 오류');
+    return j;
+  }
+  function apply(j){
+    state = { items:j.items||[], logs:j.logs||[], logTotal:j.logTotal||0, sheetUrl:j.sheetUrl, folderUrl:j.folderUrl, lastBackup:j.lastBackup, at:new Date().toISOString() };
+    put(K.cache, JSON.stringify(state));
+    render();
+    sync('✓ 최신 상태 · '+new Date().toTimeString().slice(0,5));
+  }
+  async function refresh(quiet){
+    if (!token || busy) return;
+    if(!quiet) sync('불러오는 중…');
+    try { apply(await call('list')); }
+    catch(e){ if(e.message!=='AUTH') sync('인터넷 연결을 확인해 주세요 (저장된 화면을 보여주는 중)', true); }
+  }
+  async function act(action, data, msgId){
+    busy = true; sync('저장 중…');
+    try { const j = await call(action, data); busy=false; apply(j); if(msgId && j.message) msg(msgId, j.message, true); return true; }
+    catch(e){ busy=false; if(e.message!=='AUTH'){ sync('저장하지 못했습니다', true); if(msgId) msg(msgId, e.message==='Failed to fetch'?'인터넷 연결을 확인해 주세요.':e.message); } return false; }
+  }
+
+  /* ---------- 화면 그리기 ---------- */
+  CATS.forEach(c=>{ const b=el('button',{cls:'chip',type:'button','aria-pressed':String(c===cat),text:c}); b.onclick=()=>{cat=c;[...$('catTabs').children].forEach(x=>x.setAttribute('aria-pressed',String(x.textContent===c)));render();}; $('catTabs').appendChild(b); });
+  $('tDate').value = today();
+
+  function render(){
+    const items = state.items.slice().sort((a,b)=>CATS.indexOf(a.category)-CATS.indexOf(b.category)||String(a.name).localeCompare(String(b.name),'ko'));
+    const body=$('stockBody'); body.textContent='';
+    const list=items.filter(it=>cat==='전체'||it.category===cat);
+    if(!items.length) body.appendChild(el('tr',null,[el('td',{colspan:'6',cls:'empty',text:"등록된 품목이 없습니다. 오른쪽 위 '+ 품목 추가'로 호차·락킹기어·핸들을 등록해 주세요."})]));
+    else if(!list.length) body.appendChild(el('tr',null,[el('td',{colspan:'6',cls:'empty',text:cat+' 품목이 없습니다.'})]));
+    list.forEach(it=>{
+      const [st,stT]=stateOf(it);
+      const bIn=el('button',{cls:'mini in',type:'button',text:'입고'}); bIn.onclick=()=>prefill(it.id,'in');
+      const bOut=el('button',{cls:'mini out',type:'button',text:'출고'}); bOut.onclick=()=>prefill(it.id,'out');
+      const bEd=el('button',{cls:'mini',type:'button',text:'수정'}); bEd.onclick=()=>openItem(it);
+      body.appendChild(el('tr',null,[
+        el('td',null,[el('div',{cls:'iname',text:it.name}),el('div',{cls:'meta',text:[it.spec,it.color].filter(Boolean).join(' · ')})]),
+        el('td',{cls:'hide-sm'},[el('span',{cls:'cat',text:it.category||'기타'})]),
+        el('td',{cls:'r'},[el('span',{cls:'stock num s-'+st,text:fmt(it.stock)}),el('span',{cls:'meta',text:' '+(it.unit||'개')})]),
+        el('td',{cls:'r hide-sm num meta',text:it.minStock?fmt(it.minStock):'–'}),
+        el('td',{cls:'hide-sm'},[el('span',{cls:'pill '+st,text:stT})]),
+        el('td',null,[el('div',{cls:'rowbtns'},[bIn,bOut,bEd])])
+      ]));
+    });
+    $('sItems').textContent=fmt(items.length);
+    const low=items.filter(it=>stateOf(it)[0]!=='ok').length;
+    $('sLow').textContent=fmt(low); $('sLowBox').classList.toggle('alert',low>0);
+
+    const sel=$('tItem'), keep=sel.value; sel.textContent='';
+    if(!items.length) sel.appendChild(el('option',{value:'',text:'먼저 품목을 추가해 주세요'}));
+    items.forEach(it=>sel.appendChild(el('option',{value:it.id,text:label(it)+'  (재고 '+fmt(it.stock)+')'})));
+    if(items.some(i=>i.id===keep)) sel.value=keep;
+    const f=$('logFilter'), fk=f.value; f.textContent='';
+    f.appendChild(el('option',{value:'',text:'전체 품목'}));
+    items.forEach(it=>f.appendChild(el('option',{value:it.id,text:label(it)})));
+    f.value = items.some(i=>i.id===fk)?fk:'';
+
+    if(state.sheetUrl){ $('sheetLink').href=state.sheetUrl; $('folderLink').href=state.folderUrl; }
+    $('backupInfo').textContent='모든 기록은 구글 시트에 바로 저장되고, 매일 새벽 3시쯤 드라이브 "백업" 폴더에 사본이 자동으로 쌓입니다.'+(state.lastBackup?' 마지막 백업: '+state.lastBackup:'');
+    renderLogs();
+  }
+
+  function renderLogs(){
+    const body=$('logBody'); body.textContent='';
+    const fid=$('logFilter').value, t=today();
+    let tin=0,tout=0; state.logs.forEach(l=>{ if(l.date===t){ if(l.type==='in') tin+=+l.qty; else tout+=+l.qty; } });
+    $('sIn').textContent=fmt(tin); $('sOut').textContent=fmt(tout);
+    const list=state.logs.filter(l=>!fid||l.itemId===fid);
+    if(!list.length) body.appendChild(el('tr',null,[el('td',{colspan:'6',cls:'empty',text:'입출고 기록이 아직 없습니다.'})]));
+    list.forEach(l=>{
+      const it=state.items.find(i=>i.id===l.itemId);
+      const undo=el('button',{cls:'mini',type:'button',text:'취소'}); undo.onclick=()=>cancelLog(l);
+      body.appendChild(el('tr',null,[
+        el('td',{cls:'num',text:(l.date||'').slice(5).replace('-','/')}),
+        el('td',null,[el('span',{cls:'type '+l.type,text:l.type==='in'?'입고':'출고'})]),
+        el('td',{text:it?label(it):(l.itemName||'(삭제된 품목)')}),
+        el('td',{cls:'r num qty '+l.type,text:(l.type==='in'?'+':'−')+fmt(l.qty)}),
+        el('td',{cls:'hide-sm meta',text:l.memo||''}),
+        el('td',{cls:'r'},[undo])
+      ]));
+    });
+    $('logNote').textContent = state.logTotal>state.logs.length ? '최근 '+fmt(state.logs.length)+'건만 보입니다. 전체 '+fmt(state.logTotal)+'건은 구글 시트에서 볼 수 있습니다.' : '';
+  }
+
+  function prefill(id,type){ $('tItem').value=id; (type==='in'?$('tIn'):$('tOut')).checked=true; $('tQty').focus(); $('txForm').scrollIntoView({behavior:'smooth',block:'nearest'}); }
+
+  $('txForm').addEventListener('submit', async e=>{
+    e.preventDefault();
+    const it=state.items.find(i=>i.id===$('tItem').value);
+    const qty=Math.floor(+$('tQty').value);
+    const type=document.querySelector('input[name="ttype"]:checked').value;
+    if(!it) return msg('tMsg','품목을 선택해 주세요.');
+    if(!(qty>0)) return msg('tMsg','수량을 1 이상으로 입력해 주세요.');
+    if(type==='out'&&qty>(+it.stock||0)) return msg('tMsg','현재 재고가 '+fmt(it.stock)+(it.unit||'개')+'라서 '+fmt(qty)+' 출고할 수 없습니다.');
+    $('tSubmit').disabled=true; msg('tMsg','저장 중…',true);
+    const ok = await act('addLog',{log:{itemId:it.id,type,qty,date:$('tDate').value||today(),memo:$('tMemo').value.trim()}},'tMsg');
+    if(ok){ $('tQty').value=''; $('tMemo').value=''; }
+    $('tSubmit').disabled=false;
+  });
+
+  function ask(title,text){ return new Promise(res=>{ $('cTitle').textContent=title; $('cText').textContent=text; const d=$('confirmDlg');
+    const done=v=>{ $('cYes').onclick=$('cNo').onclick=null; d.onclose=null; d.close(); res(v); };
+    $('cYes').onclick=()=>done(true); $('cNo').onclick=()=>done(false); d.onclose=()=>res(false); d.showModal(); }); }
+
+  async function cancelLog(l){
+    if(!await ask('기록 취소',(l.date||'')+' '+(l.type==='in'?'입고':'출고')+' '+fmt(l.qty)+' 기록을 지우고 재고를 되돌릴까요?')) return;
+    await act('cancelLog',{id:l.id});
+  }
+
+  function openItem(it){
+    editingId = it?it.id:null;
+    $('itemDlgH').textContent = it?'품목 수정':'품목 추가';
+    $('iCat').value = it?(it.category||'기타'):(cat!=='전체'?cat:'호차');
+    $('iName').value=it?it.name:''; $('iSpec').value=it?(it.spec||''):''; $('iColor').value=it?(it.color||''):'';
+    $('iUnit').value=it?(it.unit||'개'):'개'; $('iMin').value=it?(it.minStock||0):0; $('iInit').value=0;
+    $('iInitWrap').hidden=!!it; $('iDelete').hidden=!it; $('iMsg').textContent='';
+    $('itemDlg').showModal(); $('iName').focus();
+  }
+  $('addItemBtn').onclick=()=>openItem(null);
+  $('iCancel').onclick=()=>$('itemDlg').close();
+  $('itemForm').addEventListener('submit', async e=>{
+    e.preventDefault();
+    const item={id:editingId||'',category:$('iCat').value,name:$('iName').value.trim(),spec:$('iSpec').value.trim(),color:$('iColor').value.trim(),unit:$('iUnit').value.trim()||'개',minStock:Math.max(0,Math.floor(+$('iMin').value||0)),initStock:Math.max(0,Math.floor(+$('iInit').value||0))};
+    if(!item.name) return msg('iMsg','품목명을 입력해 주세요.');
+    $('iSave').disabled=true; msg('iMsg','저장 중…',true);
+    if(await act('saveItem',{item},'iMsg')) $('itemDlg').close();
+    $('iSave').disabled=false;
+  });
+  $('iDelete').onclick=async()=>{
+    const it=state.items.find(i=>i.id===editingId); if(!it) return;
+    $('itemDlg').close();
+    if(!await ask('품목 삭제',label(it)+' 품목을 삭제할까요? 지난 입출고 내역은 남습니다.')) return;
+    await act('deleteItem',{id:it.id});
+  };
+  $('logFilter').onchange=renderLogs;
+  $('refreshBtn').onclick=()=>refresh();
+  $('backupBtn').onclick=async()=>{ $('backupBtn').disabled=true; if(await act('backupNow',{})) sync('✓ 드라이브에 백업했습니다'); $('backupBtn').disabled=false; };
+  $('logoutBtn').onclick=async()=>{
+    if(!await ask('로그아웃','이 기기에서 로그아웃할까요? 기록은 구글 시트에 그대로 남습니다.')) return;
+    try{ await call('logout'); }catch(e){}
+    token=''; put(K.token,''); put(K.cache,''); showGate('');
+  };
+
+  /* ---------- 연결 / 로그인 ---------- */
+  let setupMode=false;
+  async function showGate(text){
+    $('app').hidden=true; $('gate').hidden=false; $('gMsg').textContent=text||'';
+    if(!URL_){ $('gUrlBox').hidden=false; $('loginForm').hidden=true; return; }
+    $('gUrlBox').hidden=true; $('loginForm').hidden=false;
+    try{
+      const st = await (await fetch(URL_)).json();
+      setupMode = !!st.needsSetup;
+    }catch(e){ $('gMsg').textContent='서버에 연결하지 못했습니다. 주소와 인터넷 연결을 확인해 주세요.'; if(!SCRIPT_URL_DEFAULT){ $('gUrlBox').hidden=false; $('gUrl').value=URL_; } }
+    $('gPw2Wrap').hidden=!setupMode;
+    $('gHint').textContent = setupMode ? '처음 사용입니다. 이 앱에서 쓸 비밀번호를 정해 주세요 (4자 이상). 휴대폰과 PC에서 같은 비밀번호로 로그인합니다.' : '비밀번호를 입력해 주세요.';
+    $('gBtn').textContent = setupMode ? '비밀번호 정하고 시작' : '로그인';
+    $('gPw').autocomplete = setupMode ? 'new-password' : 'current-password';
+  }
+  $('urlForm').addEventListener('submit', e=>{
+    e.preventDefault();
+    const u=$('gUrl').value.trim();
+    if(!/^https:\/\/script\.google\.com\/macros\/s\/[^/]+\/exec/.test(u)){ $('gMsg').textContent='주소는 https://script.google.com/macros/s/…/exec 모양이어야 합니다.'; return; }
+    URL_=u; put(K.url,u); showGate('');
+  });
+  $('loginForm').addEventListener('submit', async e=>{
+    e.preventDefault();
+    const pw=$('gPw').value;
+    if(setupMode){ if(pw.length<4) return void($('gMsg').textContent='비밀번호는 4자 이상으로 정해 주세요.'); if(pw!==$('gPw2').value) return void($('gMsg').textContent='비밀번호 두 칸이 서로 다릅니다.'); }
+    $('gBtn').disabled=true; $('gMsg').textContent='확인 중… (처음에는 구글 시트를 만드느라 10초쯤 걸릴 수 있어요)';
+    try{
+      const r = await (await fetch(URL_,{method:'POST',body:JSON.stringify({action:setupMode?'setup':'login',password:pw,device:device()})})).json();
+      if(!r.ok){ $('gMsg').textContent=r.error||'로그인하지 못했습니다.'; return; }
+      token=r.token; put(K.token,token); $('gPw').value=''; $('gPw2').value='';
+      startApp();
+    }catch(err){ $('gMsg').textContent='서버에 연결하지 못했습니다. 인터넷 연결을 확인해 주세요.'; }
+    finally{ $('gBtn').disabled=false; }
+  });
+
+  function startApp(){
+    $('gate').hidden=true; $('app').hidden=false;
+    try{ const c=JSON.parse(get(K.cache)||'null'); if(c&&c.items){ state=c; render(); sync('저장된 화면 · 불러오는 중…'); } }catch(e){}
+    if(!state.items.length) render();
+    refresh(!!state.items.length);
+  }
+
+  // 실시간: 화면이 보이는 동안 30초마다, 앱으로 돌아올 때마다 최신 자료를 받음
+  setInterval(()=>{ if(document.visibilityState==='visible' && token && !document.querySelector('dialog[open]')) refresh(true); }, 30000);
+  document.addEventListener('visibilitychange', ()=>{ if(document.visibilityState==='visible' && token) refresh(true); });
+
+  if(token && URL_) startApp(); else showGate('');
+
+  if('serviceWorker' in navigator) navigator.serviceWorker.register('sw.js').catch(()=>{});
+})();
+</script>
+</body>
+</html>
