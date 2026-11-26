@@ -1001,7 +1001,7 @@ function nowStr() {
 const uid = () => Date.now() + Math.random().toString(36).slice(2, 6);
 
 const STORE_KEY = 'siteSchedules_v3';
-const FIELD_IDS = { installDate:'installDate', receiptType:'receiptType', receiptDate:'receiptDate', status:'stage', source:'source', sourceUrl:'sourceUrl', customer:'customer', phone:'phone', visit:'visitDate', request:'request', cost:'cost', engineer:'engineer', engPhone:'engPhone', note:'note', report:'report', total:'contractTotal', vatType:'vatType', deposit:'depositAmt', middle:'middleAmt', balance:'balanceAmt' };
+const FIELD_IDS = { installDate:'installDate', receiptType:'receiptType', receiptDate:'receiptDate', status:'stage', source:'source', sourceUrl:'sourceUrl', customer:'customer', phone:'phone', visit:'visitDate', request:'request', cost:'cost', engineer:'engineer', engPhone:'engPhone', partner:'partner', note:'note', report:'report', total:'contractTotal', vatType:'vatType', deposit:'depositAmt', middle:'middleAmt', balance:'balanceAmt' };
 const STAGES = ['방문실측','방문시공','견적제출','계약','공사진행','처리완료','보류 및 재방문'];
 const STAGE_COLORS = { '방문실측':'#d0ebff','방문시공':'#e5dbff','견적제출':'#fff3bf','계약':'#d3f9d8','공사진행':'#ffe8cc','처리완료':'#b2f2bb','보류 및 재방문':'#ffc9c9' };
 const STAGE_ACCENT = { '방문실측':'#339af0','방문시공':'#7950f2','견적제출':'#fab005','계약':'#40c057','공사진행':'#fd7e14','처리완료':'#2f9e44','보류 및 재방문':'#fa5252' };
@@ -3627,7 +3627,7 @@ $('scheduleForm').addEventListener('submit', e => {
   if (editingId) {
     schedules = schedules.map(s => s.id === editingId ? { ...s, ...data, id: editingId, reportAt: data.report ? (s.report !== data.report ? nowStr() : s.reportAt) : '', reportImageLink: data.reportImageLink || s.reportImageLink } : s);
   } else {
-    const dup = schedules.some(s => Object.keys(FIELD_IDS).every(k => s[k] === data[k]));
+    const dup = schedules.some(s => Object.keys(FIELD_IDS).every(k => (s[k] || '') === (data[k] || '')));
     if (dup && !confirm('똑같은 내용이 이미 등록되어 있습니다. 그래도 추가할까요?')) return;
     if (data.report) data.reportAt = nowStr();
     savedId = uid();
