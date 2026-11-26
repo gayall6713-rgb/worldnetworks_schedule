@@ -161,7 +161,7 @@ body.locked #loginScreen{display:flex}
 .ub-btn.switch{background:#fff3bf;border-color:#fcc419;color:#7c5800}
 .ub-btn.out{background:#ffe3e3;border-color:#ffa8a8;color:#c92a2a}
 /* 권한별 화면 제한 */
-body:not(.role-admin) .btn-del:not(.keep),body:not(.role-admin) #clearAll,body:not(.role-admin) #empBox,body:not(.role-admin) #ptnBox{display:none!important}
+body:not(.role-admin) .btn-del:not(.keep),body:not(.role-admin) #clearAll,body:not(.role-admin) #empBox,body:not(.role-admin) #ptnBox,body:not(.role-admin) .admin-only{display:none!important}
 body.role-view .upload-box,body.role-view #addScheduleFromDayBtn,body.role-view #addScheduleFromHistoryBtn,body.role-view .dp-add,body.role-view #draftBtn,body.role-view #resetForm,body.role-view .view-hide{display:none!important}
 body.role-view #tab-manage>#scheduleForm{display:none}
 body.role-partner #filterSource,body.role-partner #filterPay,body.role-partner .partner-hide{display:none!important}
@@ -439,7 +439,7 @@ body.role-partner .q-only{display:none!important}
       <button type="button" class="btn btn-mini btn-reset" id="expAdd">＋ 다른 지출 추가 (자재비·인건비 등)</button>
     </div>
     <div class="table-responsive"><table class="stat-tbl exp-tbl"><thead><tr><th>구분</th><th>업체·내용</th><th>금액 (원)</th><th>지급일</th><th>지급</th><th>메모</th><th></th></tr></thead><tbody id="expBody"></tbody></table></div>
-    <div class="hint" style="margin:6px 0 10px;">순이익 = 최종 계약금액 − 지출 합계 · 협력업체 이름은 '🤝 협력업체 관리'에 등록하면 목록에서 고를 수 있어요</div>
+    <div class="hint" style="margin:6px 0 10px;">순이익 = 최종 계약금액 − 지출 합계 · 협력업체 이름은 '👥 직원·협력업체' 탭에 등록하면 목록에서 고를 수 있어요</div>
     <div style="display:flex;justify-content:flex-end;gap:8px;">
       <button type="button" class="btn btn-reset" id="expCancel">취소</button>
       <button type="button" class="btn btn-excel" id="expSave">💾 저장</button>
@@ -573,6 +573,7 @@ body.role-partner .q-only{display:none!important}
     <button type="button" class="tab-btn active" data-tab="calendar" onclick="switchTab('calendar')">📅 캘린더 보기</button>
     <button type="button" class="tab-btn" data-tab="manage" onclick="switchTab('manage')">📋 스케줄 입력 및 목록</button>
     <button type="button" class="tab-btn q-only" data-tab="quote" onclick="switchTab('quote')">📝 견적서</button>
+    <button type="button" class="tab-btn admin-only" data-tab="people" onclick="switchTab('people')">👥 직원·협력업체</button>
   </div>
 
   <div id="tab-calendar" class="tab-content active">
@@ -619,6 +620,60 @@ body.role-partner .q-only{display:none!important}
     <div class="filter-bar"><input type="text" id="qListQ" placeholder="🔍 고객명·공사명·견적번호 검색" style="flex:1;padding:8px;border:1px solid #ddd;border-radius:6px;"></div>
     <div class="hint" style="margin-bottom:8px;">견적서를 저장하면 연결된 일정의 공사 총금액·처리 비용이 바뀌고, 진행 상태가 '견적제출'로 바뀝니다. 일정 상세 화면의 [📝 견적서] 버튼으로도 바로 만들 수 있어요.</div>
     <div class="table-responsive"><table><thead><tr><th>견적일</th><th>견적번호</th><th>고객명</th><th>공사명</th><th>합계</th><th>진행 상태</th><th>관리</th></tr></thead><tbody id="qListBody"></tbody></table></div>
+  </div>
+
+  <div id="tab-people" class="tab-content admin-only">
+    <details id="empBox" open style="margin-top:4px;border:1px solid #dee2e6;border-radius:6px;padding:10px 14px;background:#fcfcfd;">
+      <summary style="cursor:pointer;font-weight:bold;">👥 직원 관리 <span id="empCount" style="font-weight:normal;color:#666;font-size:.85rem;"></span></summary>
+      <form id="empForm" style="margin-top:12px;">
+        <div class="grid">
+          <div class="form-group"><label>직원 이름</label><input type="text" id="empName" placeholder="예: 이대진" required></div>
+          <div class="form-group"><label>직원 연락처</label><input type="text" id="empPhone" placeholder="예: 010-8866-6944"></div>
+          <div class="form-group"><label>권한</label><select id="empRole">
+            <option value="직원">직원 — 등록·수정 가능, 삭제 불가</option>
+            <option value="보기">보기 — 보기 + 방문 후 기록·사진만</option>
+            <option value="관리자">관리자 — 모두 가능 + 직원 관리</option>
+            <option value="접속안함">접속 안 함 — 기사 목록에만 표시</option>
+          </select></div>
+          <div class="form-group"><label>비밀번호 <span id="empPwHint" style="font-weight:normal;color:#888;font-size:.78rem;">(4자 이상)</span></label><input type="text" id="empPw" placeholder="새로 정하거나 바꿀 때만 입력" autocomplete="off"></div>
+        </div>
+        <div class="btn-row">
+          <button type="submit" class="btn btn-submit" id="empSubmit">직원 추가</button>
+          <button type="button" class="btn btn-reset" id="empCancel" style="display:none;">수정 취소</button>
+        </div>
+      </form>
+      <div class="table-responsive" style="margin-top:12px;">
+        <table class="schedule-table" style="min-width:360px;">
+          <thead><tr><th>이름</th><th>연락처</th><th>권한</th><th>비밀번호</th><th>마지막 접속</th><th>관리</th></tr></thead>
+          <tbody id="empBody"></tbody>
+        </table>
+      </div>
+    </details>
+
+    <details id="ptnBox" open style="margin-top:14px;border:1px solid #ffd8a8;border-radius:6px;padding:10px 14px;background:#fffaf3;">
+      <summary style="cursor:pointer;font-weight:bold;">🤝 협력업체 관리 <span id="ptnCount" style="font-weight:normal;color:#666;font-size:.85rem;"></span></summary>
+      <div class="hint" style="margin:8px 0 0;">협력업체로 로그인하면 <b>배정된 일정만</b> 보이고 금액은 보이지 않습니다. 고객 안내장에는 업체 이름·연락처가 나갑니다.</div>
+      <form id="ptnForm" style="margin-top:10px;">
+        <div class="grid">
+          <div class="form-group"><label>업체명</label><input type="text" id="ptnName" placeholder="예: 한빛창호" required></div>
+          <div class="form-group"><label>담당자 <span style="font-weight:normal;color:#888;font-size:.78rem;">(안내장에는 '이름 엔지니어'로 나감)</span></label><input type="text" id="ptnManager" placeholder="예: 김삼수 대표"></div>
+          <div class="form-group"><label>연락처 <span style="font-weight:normal;color:#888;font-size:.78rem;">(고객 안내장에 나감)</span></label><input type="text" id="ptnPhone" placeholder="예: 010-1234-5678"></div>
+          <div class="form-group"><label>주력 공종</label><input type="text" id="ptnTrade" placeholder="예: 샷시 수리·유리·방충망" list="ptnTrades"><datalist id="ptnTrades"><option value="샷시 수리"><option value="창호 교체"><option value="유리"><option value="방충망"><option value="실리콘·코킹"><option value="철거·폐기물"><option value="도장"></datalist></div>
+          <div class="form-group"><label>앱 로그인 비밀번호 <span id="ptnPwHint" style="font-weight:normal;color:#888;font-size:.78rem;">(로그인 안 할 업체는 비워 두기)</span></label><input type="text" id="ptnPw" placeholder="4자 이상" autocomplete="off"></div>
+          <div class="form-group full"><label>메모</label><input type="text" id="ptnMemo" placeholder="예: 결제는 월말 일괄, 주말 작업 가능"></div>
+        </div>
+        <div class="btn-row">
+          <button type="submit" class="btn btn-submit" id="ptnSubmit">협력업체 추가</button>
+          <button type="button" class="btn btn-reset" id="ptnCancel" style="display:none;">수정 취소</button>
+        </div>
+      </form>
+      <div class="table-responsive" style="margin-top:12px;">
+        <table class="schedule-table" style="min-width:640px;">
+          <thead><tr><th>업체명</th><th>담당자</th><th>연락처</th><th>주력 공종</th><th>배정 일정</th><th>외주비</th><th>로그인</th><th>메모</th><th>관리</th></tr></thead>
+          <tbody id="ptnBody"></tbody>
+        </table>
+      </div>
+    </details>
   </div>
 
   <div id="tab-manage" class="tab-content">
@@ -716,57 +771,6 @@ body.role-partner .q-only{display:none!important}
       <div id="draftStatus" class="hint" style="text-align:right;min-height:1.2em;"></div>
     </form>
 
-    <details id="empBox" style="margin-top:24px;border:1px solid #dee2e6;border-radius:6px;padding:10px 14px;background:#fcfcfd;">
-      <summary style="cursor:pointer;font-weight:bold;">👥 직원 관리 <span id="empCount" style="font-weight:normal;color:#666;font-size:.85rem;"></span></summary>
-      <form id="empForm" style="margin-top:12px;">
-        <div class="grid">
-          <div class="form-group"><label>직원 이름</label><input type="text" id="empName" placeholder="예: 이대진" required></div>
-          <div class="form-group"><label>직원 연락처</label><input type="text" id="empPhone" placeholder="예: 010-8866-6944"></div>
-          <div class="form-group"><label>권한</label><select id="empRole">
-            <option value="직원">직원 — 등록·수정 가능, 삭제 불가</option>
-            <option value="보기">보기 — 보기 + 방문 후 기록·사진만</option>
-            <option value="관리자">관리자 — 모두 가능 + 직원 관리</option>
-            <option value="접속안함">접속 안 함 — 기사 목록에만 표시</option>
-          </select></div>
-          <div class="form-group"><label>비밀번호 <span id="empPwHint" style="font-weight:normal;color:#888;font-size:.78rem;">(4자 이상)</span></label><input type="text" id="empPw" placeholder="새로 정하거나 바꿀 때만 입력" autocomplete="off"></div>
-        </div>
-        <div class="btn-row">
-          <button type="submit" class="btn btn-submit" id="empSubmit">직원 추가</button>
-          <button type="button" class="btn btn-reset" id="empCancel" style="display:none;">수정 취소</button>
-        </div>
-      </form>
-      <div class="table-responsive" style="margin-top:12px;">
-        <table class="schedule-table" style="min-width:360px;">
-          <thead><tr><th>이름</th><th>연락처</th><th>권한</th><th>비밀번호</th><th>마지막 접속</th><th>관리</th></tr></thead>
-          <tbody id="empBody"></tbody>
-        </table>
-      </div>
-    </details>
-
-    <details id="ptnBox" style="margin-top:14px;border:1px solid #ffd8a8;border-radius:6px;padding:10px 14px;background:#fffaf3;">
-      <summary style="cursor:pointer;font-weight:bold;">🤝 협력업체 관리 <span id="ptnCount" style="font-weight:normal;color:#666;font-size:.85rem;"></span></summary>
-      <div class="hint" style="margin:8px 0 0;">협력업체로 로그인하면 <b>배정된 일정만</b> 보이고 금액은 보이지 않습니다. 고객 안내장에는 업체 이름·연락처가 나갑니다.</div>
-      <form id="ptnForm" style="margin-top:10px;">
-        <div class="grid">
-          <div class="form-group"><label>업체명</label><input type="text" id="ptnName" placeholder="예: 한빛창호" required></div>
-          <div class="form-group"><label>담당자 <span style="font-weight:normal;color:#888;font-size:.78rem;">(안내장에는 '이름 엔지니어'로 나감)</span></label><input type="text" id="ptnManager" placeholder="예: 김삼수 대표"></div>
-          <div class="form-group"><label>연락처 <span style="font-weight:normal;color:#888;font-size:.78rem;">(고객 안내장에 나감)</span></label><input type="text" id="ptnPhone" placeholder="예: 010-1234-5678"></div>
-          <div class="form-group"><label>주력 공종</label><input type="text" id="ptnTrade" placeholder="예: 샷시 수리·유리·방충망" list="ptnTrades"><datalist id="ptnTrades"><option value="샷시 수리"><option value="창호 교체"><option value="유리"><option value="방충망"><option value="실리콘·코킹"><option value="철거·폐기물"><option value="도장"></datalist></div>
-          <div class="form-group"><label>앱 로그인 비밀번호 <span id="ptnPwHint" style="font-weight:normal;color:#888;font-size:.78rem;">(로그인 안 할 업체는 비워 두기)</span></label><input type="text" id="ptnPw" placeholder="4자 이상" autocomplete="off"></div>
-          <div class="form-group full"><label>메모</label><input type="text" id="ptnMemo" placeholder="예: 결제는 월말 일괄, 주말 작업 가능"></div>
-        </div>
-        <div class="btn-row">
-          <button type="submit" class="btn btn-submit" id="ptnSubmit">협력업체 추가</button>
-          <button type="button" class="btn btn-reset" id="ptnCancel" style="display:none;">수정 취소</button>
-        </div>
-      </form>
-      <div class="table-responsive" style="margin-top:12px;">
-        <table class="schedule-table" style="min-width:640px;">
-          <thead><tr><th>업체명</th><th>담당자</th><th>연락처</th><th>주력 공종</th><th>배정 일정</th><th>외주비</th><th>로그인</th><th>메모</th><th>관리</th></tr></thead>
-          <tbody id="ptnBody"></tbody>
-        </table>
-      </div>
-    </details>
 
     <div class="list-head">
       <h3>등록된 스케줄 목록 <span id="count" style="font-size:.9rem;color:#666;"></span></h3>
@@ -1326,7 +1330,7 @@ function applyRole() {
   }
   box.append(sw, pw, lo);
   lockView(document);
-  if (!isAdmin() && $('empBox')) $('empBox').open = false;
+  if (!isAdmin() && document.querySelector('#tab-people.active')) switchTab('calendar');
 }
 /* 보기 권한: 방문 후 기록·사진 칸 말고는 입력 막기 */
 function lockView(root) {
@@ -2663,7 +2667,7 @@ function fillPartnerSelect(sel, val) {
   sel.innerHTML = '';
   const add = (v, t) => { const o = document.createElement('option'); o.value = v; o.textContent = t; sel.appendChild(o); };
   const names = partnerNames();
-  add('', names.length ? '배정 안 함' : "배정 안 함 (아래 '🤝 협력업체 관리'에서 먼저 등록)");
+  add('', names.length ? '배정 안 함' : "배정 안 함 ('👥 직원·협력업체' 탭에서 먼저 등록)");
   names.forEach(n => add(n, '🤝 ' + n));
   if (val && !names.includes(val)) add(val, '🤝 ' + val);
   sel.value = val || '';
@@ -2673,7 +2677,7 @@ function renderEmpOptions() {
   const sel = $('engSelect'); sel.innerHTML = '';
   const add = (v, t) => { const o = document.createElement('option'); o.value = v; o.textContent = t; sel.appendChild(o); };
   const staff = employees.filter(e => e.role !== '협력업체');
-  add('', staff.length ? '직원 선택' : "직원 선택 (아래 '직원 관리'에서 먼저 등록)");
+  add('', staff.length ? '직원 선택' : "직원 선택 ('👥 직원·협력업체' 탭에서 먼저 등록)");
   staff.forEach(e => add(e.id, e.phone ? `${e.name} (${e.phone})` : e.name));
   add('__custom__', '직접 입력');
   syncEngSelect();
@@ -5315,7 +5319,7 @@ renderSiteLinks();
 $('stage').addEventListener('change', () => { $('stage').style.background = STAGE_COLORS[$('stage').value] || '#fff'; });
 updateServerState();
 renderEmp();
-$('empBox').open = employees.length === 0;
+
 restoreDraft();
 renderCalendar();
 render();
