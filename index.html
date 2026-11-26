@@ -97,7 +97,7 @@ select{width:100%;padding:10px;border:1px solid #ddd;border-radius:4px;box-sizin
 #empBox table,#ptnBox table{font-size:.85rem}
 #ptnBody td.memo{max-width:180px;white-space:normal;color:#666;font-size:.78rem}
 #ptnBody td.ptn-name{cursor:pointer;color:#e67700;text-decoration:underline}
-#ptnExpModal table{width:100%;border-collapse:collapse;font-size:.84rem}
+#ptnExpModal table{width:100%;min-width:0!important;border-collapse:collapse;font-size:.84rem}
 #ptnExpModal th,#ptnExpModal td{border-bottom:1px solid #eee;padding:7px 6px;text-align:left;vertical-align:top}
 #ptnExpModal th{background:#fff4e6;white-space:nowrap}
 #ptnExpModal td.n{text-align:right;white-space:nowrap}
@@ -418,6 +418,25 @@ body.role-partner .q-only{display:none!important}
   .q-line .del{grid-column:1/-1;height:30px}
   .q-line .calc{grid-column:1/-1}
 }
+
+/* ===== 입체 버튼 (전체 공통) ===== */
+.tab-menu{background:linear-gradient(#dee2e6,#e9ecef);box-shadow:inset 0 2px 4px rgba(0,0,0,.12);padding:5px;gap:5px}
+.tab-btn{background:linear-gradient(#fdfdfe,#e4e7eb);color:#495057;box-shadow:inset 0 1px 0 #fff,0 3px 0 #b8bec5,0 4px 6px rgba(0,0,0,.12);position:relative;top:0;transition:top .08s,box-shadow .08s}
+.tab-btn:hover{filter:brightness(1.04)}
+.tab-btn.active{background:linear-gradient(#fff,#eef5ff);color:var(--primary);box-shadow:inset 0 1px 0 #fff,0 3px 0 #4d94ff,0 5px 10px rgba(0,102,214,.25)}
+.tab-btn:active{top:2px;box-shadow:inset 0 1px 0 #fff,0 1px 0 #b8bec5,0 1px 2px rgba(0,0,0,.15)}
+.view-toggle button,.calendar-header button,.ub-btn,.qbtn,.tag-pick button,.q-ghead button,.q-hist-item button,.hf-pop .hf-sort button,.hf-pop .hf-foot button{position:relative;top:0;box-shadow:inset 0 1px 0 rgba(255,255,255,.9),inset 0 -2px 0 rgba(0,0,0,.07),0 3px 0 rgba(0,0,0,.16),0 4px 6px rgba(0,0,0,.1);transition:top .08s,box-shadow .08s,filter .1s}
+.view-toggle button:hover,.calendar-header button:hover,.ub-btn:hover,.qbtn:hover,.tag-pick button:hover{filter:brightness(1.04)}
+.view-toggle button:active,.calendar-header button:active,.ub-btn:active,.qbtn:active,.tag-pick button:active,.q-ghead button:active,.q-hist-item button:active,.hf-pop .hf-sort button:active,.hf-pop .hf-foot button:active{top:2px;box-shadow:inset 0 1px 0 rgba(255,255,255,.9),0 1px 0 rgba(0,0,0,.16),0 1px 2px rgba(0,0,0,.1)}
+.view-toggle button{background:linear-gradient(#fff,#eef0f3)}
+.view-toggle button.on{background:linear-gradient(#4da3ff,#007bff 55%,#0066d6);border-color:#0066d6;box-shadow:inset 0 1px 0 rgba(255,255,255,.35),0 3px 0 #00479a,0 5px 8px rgba(0,71,154,.3)}
+.calendar-header button{background:linear-gradient(#fff,#eef0f3)}
+.ub-btn{background-image:linear-gradient(rgba(255,255,255,.6),rgba(255,255,255,0))}
+.qbtn{background-image:linear-gradient(rgba(255,255,255,.55),rgba(255,255,255,0))}
+#notifyBar .nb-btns button{box-shadow:inset 0 1px 0 rgba(255,255,255,.35),0 4px 0 rgba(0,0,0,.22),0 6px 8px rgba(0,0,0,.15);position:relative;top:0}
+#notifyBar .nb-btns button:active{top:3px;box-shadow:0 1px 0 rgba(0,0,0,.22)}
+.btn{background-clip:padding-box}
+.btn::after{content:'';position:absolute;left:1px;right:1px;top:1px;height:50%;border-radius:7px 7px 0 0;background:linear-gradient(rgba(255,255,255,.22),rgba(255,255,255,0));pointer-events:none}
 </style>
 </head>
 <body class="locked">
@@ -665,7 +684,7 @@ body.role-partner .q-only{display:none!important}
       <div class="hint" style="margin:8px 0 0;">업체명을 누르면 <b>외주비 내역</b>이 열립니다 (관리자·직원만). 협력업체로 로그인하면 <b>자기에게 배정된 일정만</b> 보이고 금액·외주비·다른 업체 정보는 보이지 않습니다.</div>
       <form id="ptnForm" style="margin-top:10px;">
         <div class="grid">
-          <div class="form-group"><label>업체명</label><input type="text" id="ptnName" placeholder="예: 한빛창호" required></div>
+          <div class="form-group"><label>업체명</label><input type="text" id="ptnName" placeholder="예: 동양유리샷시" required></div>
           <div class="form-group"><label>담당자 <span style="font-weight:normal;color:#888;font-size:.78rem;">(안내장에는 '이름 엔지니어'로 나감)</span></label><input type="text" id="ptnManager" placeholder="예: 김삼수 대표"></div>
           <div class="form-group"><label>연락처 <span style="font-weight:normal;color:#888;font-size:.78rem;">(고객 안내장에 나감)</span></label><input type="text" id="ptnPhone" placeholder="예: 010-1234-5678"></div>
           <div class="form-group"><label>주력 공종</label><input type="text" id="ptnTrade" placeholder="예: 샷시 수리·유리·방충망" list="ptnTrades"><datalist id="ptnTrades"><option value="샷시 수리"><option value="창호 교체"><option value="유리"><option value="방충망"><option value="실리콘·코킹"><option value="철거·폐기물"><option value="도장"></datalist></div>
@@ -876,7 +895,7 @@ body.role-partner .q-only{display:none!important}
   <div class="modal-box" style="max-width:760px;">
     <div style="display:flex;justify-content:space-between;align-items:center;gap:8px;">
       <h4 id="peTitle" style="margin:0;">🤝 외주비 내역</h4>
-      <button type="button" class="btn btn-reset" onclick="$('ptnExpModal').classList.remove('show')">닫기</button>
+      <button type="button" class="btn btn-reset btn-sm" style="flex:none;" onclick="$('ptnExpModal').classList.remove('show')">닫기</button>
     </div>
     <div id="peInfo" class="hint" style="margin-top:4px;"></div>
     <div class="pe-sum" id="peSum"></div>
