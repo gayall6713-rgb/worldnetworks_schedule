@@ -895,9 +895,13 @@ body.role-partner .q-only{display:none!important}
   <div class="modal-box" style="max-width:760px;">
     <div style="display:flex;justify-content:space-between;align-items:center;gap:8px;">
       <h4 id="peTitle" style="margin:0;">🤝 외주비 내역</h4>
-      <button type="button" class="btn btn-reset btn-sm" style="flex:none;" onclick="$('ptnExpModal').classList.remove('show')">닫기</button>
+      <div style="display:flex;gap:6px;flex:none;">
+        <button type="button" class="btn btn-excel btn-sm" id="peDown">📥 엑셀 다운로드</button>
+        <button type="button" class="btn btn-reset btn-sm" style="flex:none;" onclick="$('ptnExpModal').classList.remove('show')">닫기</button>
+      </div>
     </div>
     <div id="peInfo" class="hint" style="margin-top:4px;"></div>
+    <div style="margin-top:8px;display:flex;align-items:center;gap:6px;font-size:.85rem;">기간 <select id="peMonth" class="filter-sel" style="min-width:140px;"></select></div>
     <div class="pe-sum" id="peSum"></div>
     <div class="table-responsive"><table><thead><tr><th>날짜</th><th>고객</th><th>작업 내용</th><th>구분</th><th>금액</th><th>지급</th><th>메모</th></tr></thead><tbody id="peBody"></tbody></table></div>
     <div class="hint" style="margin-top:8px;">줄을 누르면 그 일정의 상세 화면이 열립니다. 외주비 입력·수정은 상세 화면의 💸 지출·외주비에서 (관리자).</div>
@@ -2888,43 +2892,94 @@ $('ptnForm').addEventListener('submit', ev => {
 });
 $('ptnCancel').onclick = () => { resetPtnForm(); renderPartners(); };
 
-/* 협력업체 외주비 내역 (관리자·직원만) */
-function openPartnerExp(name) {
-  if (!canEdit()) return;
-  const p = employees.find(e => e.name === name && e.role === '협력업체') || { name };
-  const wn = n => n ? n.toLocaleString('ko-KR') + '원' : '-';
-  const num = v => parseInt(String(v || '').replace(/[^\d]/g, ''), 10) || 0;
+/* 협력업체 외주비 내역 (관리자·직원만) — 기간(월) 선택, 엑셀 다운로드 */
+let peName = '';
+function peRows(name, month) {
   const rows = [];
   schedules.forEach(x => {
     const ex = (Array.isArray(x.expenses) ? x.expenses : []).filter(e => (e.vendor || '') === name);
     ex.forEach(e => rows.push({ x, e }));
     if (!ex.length && x.partner === name) rows.push({ x, e: null });   // 배정됐는데 외주비가 아직 없음
   });
-  rows.sort((a, b) => ((b.e && b.e.date) || b.x.visit || '').localeCompare((a.e && a.e.date) || a.x.visit || ''));
-  let total = 0, paid = 0; rows.forEach(r => { if (!r.e) return; const a = num(r.e.amount); total += a; if (r.e.paid) paid += a; });
+  const day = r => ((r.e && r.e.date) || r.x.visit || '').slice(0, 10);
+  return rows.map(r => Object.assign(r, { day: day(r) }))
+    .filter(r => !month || r.day.slice(0, 7) === month)
+    .sort((a, b) => b.day.localeCompare(a.day));
+}
+const peNum = v => parseInt(String(v || '').replace(/[^\d]/g, ''), 10) || 0;
+function openPartnerExp(name) {
+  if (!canEdit()) return;
+  peName = name;
+  const months = [...new Set(peRows(name, '').map(r => r.day.slice(0, 7)).filter(Boolean))].sort().reverse();
+  const sel = $('peMonth'); sel.innerHTML = '';
+  [['', '전체 기간'], ...months.map(m => [m, `${m.slice(0, 4)}년 ${+m.slice(5)}월`])].forEach(([v, t]) => { const o = document.createElement('option'); o.value = v; o.textContent = t; sel.appendChild(o); });
+  sel.onchange = renderPartnerExp;
+  renderPartnerExp();
+  $('ptnExpModal').classList.add('show');
+}
+function renderPartnerExp() {
+  const name = peName, month = $('peMonth').value;
+  const p = employees.find(e => e.name === name && e.role === '협력업체') || { name };
+  const wn = n => n ? n.toLocaleString('ko-KR') + '원' : '-';
+  const rows = peRows(name, month);
+  let total = 0, paid = 0; rows.forEach(r => { if (!r.e) return; const a = peNum(r.e.amount); total += a; if (r.e.paid) paid += a; });
+  const jobs = new Set(rows.map(r => r.x.id)).size;
   $('peTitle').textContent = `🤝 ${name} · 외주비 내역`;
   $('peInfo').textContent = [p.manager && '담당 ' + p.manager, p.phone, p.trade].filter(Boolean).join(' · ');
   $('peSum').innerHTML = '';
-  [['배정 일정', schedules.filter(x => x.partner === name).length + '건'], ['외주비 합계', wn(total)], ['지급 완료', wn(paid)], ['미지급', wn(total - paid)]].forEach(([k, v], i) => {
+  [['현장 수', jobs + '건'], ['외주비 합계', wn(total)], ['지급 완료', wn(paid)], ['미지급', wn(total - paid)]].forEach(([k, v], i) => {
     const d = document.createElement('div'); d.textContent = k; const b = document.createElement('b'); b.textContent = v; if (i === 3 && total - paid > 0) b.style.color = '#e03131'; d.appendChild(b); $('peSum').appendChild(d);
   });
   const body = $('peBody'); body.innerHTML = '';
-  if (!rows.length) { const tr = document.createElement('tr'), td = document.createElement('td'); td.colSpan = 7; td.style.textAlign = 'center'; td.style.color = '#999'; td.textContent = '배정된 일정이나 외주비 기록이 없습니다.'; tr.appendChild(td); body.appendChild(tr); }
-  rows.forEach(({ x, e }) => {
+  if (!rows.length) { const tr = document.createElement('tr'), td = document.createElement('td'); td.colSpan = 7; td.style.textAlign = 'center'; td.style.color = '#999'; td.textContent = '이 기간에 배정된 일정이나 외주비 기록이 없습니다.'; tr.appendChild(td); body.appendChild(tr); }
+  rows.forEach(({ x, e, day }) => {
     const tr = document.createElement('tr');
     const c = (t, cls) => { const td = document.createElement('td'); td.textContent = t; if (cls) td.className = cls; tr.appendChild(td); return td; };
-    c(((e && e.date) || (x.visit || '')).slice(0, 10) || '-');
-    c(x.customer || '-'); c(x.request || '-');
+    c(day || '-'); c(x.customer || '-'); c(x.request || '-');
     if (e) {
-      c(e.type || '-'); c(wn(num(e.amount)), 'n');
-      const pd = c(e.paid ? '✅ 지급' : '미지급'); if (!e.paid && num(e.amount)) pd.style.color = '#e03131';
+      c(e.type || '-'); c(wn(peNum(e.amount)), 'n');
+      const pd = c(e.paid ? '✅ 지급' : '미지급'); if (!e.paid && peNum(e.amount)) pd.style.color = '#e03131';
       c(e.memo || '');
     } else { const t = c('외주비 미입력'); t.colSpan = 4; t.style.color = '#adb5bd'; }
     tr.onclick = () => openDetail(x.id);
     body.appendChild(tr);
   });
-  $('ptnExpModal').classList.add('show');
 }
+$('peDown').onclick = () => {
+  if (!canEdit() || !peName) return;
+  if (typeof XLSX === 'undefined') { alert('엑셀 기능을 불러오지 못했습니다. 인터넷 연결을 확인한 뒤 다시 눌러 주세요.'); return; }
+  const name = peName, month = $('peMonth').value;
+  const p = employees.find(e => e.name === name && e.role === '협력업체') || {};
+  const rows = peRows(name, month).slice().reverse();   // 엑셀은 날짜 오름차순
+  let total = 0, paid = 0;
+  const det = rows.map(({ x, e, day }, i) => {
+    const a = e ? peNum(e.amount) : 0; total += a; if (e && e.paid) paid += a;
+    return [i + 1, day, x.customer || '', x.note || '', x.request || '', e ? (e.type || '') : '외주비 미입력', e ? a : '', e ? (e.paid ? '지급' : '미지급') : '', e ? (e.paid ? (e.date || '') : '') : '', e ? (e.memo || '') : ''];
+  });
+  const period = month ? `${month.slice(0, 4)}년 ${+month.slice(5)}월` : '전체 기간';
+  const aoa = [
+    [`외주비 내역서 — ${name}`],
+    [`기간: ${period}`, '', '', `담당: ${p.manager || '-'}`, `연락처: ${p.phone || '-'}`, '', `작성일: ${todayStr()}`],
+    [],
+    ['외주비 합계', total, '', '지급 완료', paid, '', '미지급', total - paid],
+    [],
+    ['No', '날짜', '고객명', '현장 주소', '작업 내용', '구분', '금액(원)', '지급', '지급일', '메모'],
+    ...det,
+    [],
+    ['', '', '', '', '', '합계', total, '', '', ''],
+    ['', '', '', '', '', '지급 완료', paid],
+    ['', '', '', '', '', '미지급', total - paid],
+    [],
+    ['발행: ㈜월드네트웍스']
+  ];
+  const ws = XLSX.utils.aoa_to_sheet(aoa);
+  ws['!cols'] = [{ wch: 5 }, { wch: 11 }, { wch: 12 }, { wch: 32 }, { wch: 28 }, { wch: 14 }, { wch: 12 }, { wch: 8 }, { wch: 11 }, { wch: 20 }];
+  ws['!merges'] = [{ s: { r: 0, c: 0 }, e: { r: 0, c: 9 } }];
+  Object.keys(ws).forEach(k => { if (k[0] !== '!' && typeof ws[k].v === 'number' && ws[k].v >= 1000) ws[k].z = '#,##0'; });
+  const wb = XLSX.utils.book_new();
+  XLSX.utils.book_append_sheet(wb, ws, '외주비 내역');
+  XLSX.writeFile(wb, `외주비내역서_${name.replace(/[\\/:*?"<>|\s]+/g, '_')}_${month || '전체'}_${todayStr()}.xlsx`);
+};
 $('ptnExpModal').addEventListener('click', e => { if (e.target.id === 'ptnExpModal') $('ptnExpModal').classList.remove('show'); });
 
 /* ===== 계약금 / 잔금 관리 ===== */
