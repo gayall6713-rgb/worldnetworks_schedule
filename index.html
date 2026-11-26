@@ -749,7 +749,7 @@ body.role-partner .q-only{display:none!important}
       <form id="ptnForm" style="margin-top:10px;">
         <div class="grid">
           <div class="form-group"><label>업체명</label><input type="text" id="ptnName" placeholder="예: 한빛창호" required></div>
-          <div class="form-group"><label>담당자</label><input type="text" id="ptnManager" placeholder="예: 김삼수 실장"></div>
+          <div class="form-group"><label>담당자 <span style="font-weight:normal;color:#888;font-size:.78rem;">(안내장에는 '이름 엔지니어'로 나감)</span></label><input type="text" id="ptnManager" placeholder="예: 김삼수 대표"></div>
           <div class="form-group"><label>연락처 <span style="font-weight:normal;color:#888;font-size:.78rem;">(고객 안내장에 나감)</span></label><input type="text" id="ptnPhone" placeholder="예: 010-1234-5678"></div>
           <div class="form-group"><label>주력 공종</label><input type="text" id="ptnTrade" placeholder="예: 샷시 수리·유리·방충망" list="ptnTrades"><datalist id="ptnTrades"><option value="샷시 수리"><option value="창호 교체"><option value="유리"><option value="방충망"><option value="실리콘·코킹"><option value="철거·폐기물"><option value="도장"></datalist></div>
           <div class="form-group"><label>앱 로그인 비밀번호 <span id="ptnPwHint" style="font-weight:normal;color:#888;font-size:.78rem;">(로그인 안 할 업체는 비워 두기)</span></label><input type="text" id="ptnPw" placeholder="4자 이상" autocomplete="off"></div>
@@ -1871,11 +1871,13 @@ function checkNewlyDone() {
   }, 400);
 }
 
-/* 고객에게 보여 줄 담당자: 협력업체를 배정했으면 그 업체 이름·연락처, 아니면 담당 기사 (안내장·고객 문자 공통) */
+/* 고객에게 보여 줄 담당자: 협력업체를 배정했으면 그 업체 담당자 '이름 엔지니어'(담당자가 없으면 업체명)·업체 연락처, 아니면 담당 기사 (안내장·고객 문자 공통) */
 function custContact(s) {
   if (s && s.partner) {
     const pe = (typeof employees !== 'undefined' ? employees : []).find(e => e.name === s.partner);
-    return { name: s.partner, tel: (pe && pe.phone) || '' };
+    // 담당자가 있으면 직급(대표·실장 등)을 떼고 '이름 엔지니어'로, 없으면 업체명
+    const mgr = String((pe && pe.manager) || '').replace(/\s*(대표이사|대표|사장|실장|부장|차장|과장|팀장|소장|이사|반장|기사|님)\s*$/g, '').trim();
+    return { name: mgr ? mgr + ' 엔지니어' : s.partner, tel: (pe && pe.phone) || '' };
   }
   return { name: s && s.engineer ? s.engineer + ' 엔지니어' : '', tel: (s && s.engPhone) || '' };
 }
