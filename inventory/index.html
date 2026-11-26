@@ -113,6 +113,30 @@ dialog::backdrop{background:rgb(0 0 0 / .35)}
 .acts{display:flex;gap:8px;justify-content:flex-end;flex-wrap:wrap}
 .gate{min-height:80vh;display:grid;place-items:center;padding:16px}
 .gate .panel{width:min(420px,100%)}
+#reportDlg{width:min(1100px,calc(100vw - 16px));max-height:calc(100vh - 24px)}
+.rhead{display:flex;flex-wrap:wrap;gap:10px;justify-content:space-between;align-items:flex-end}
+.rmonth{min-width:10em}
+.rsum{display:grid;grid-template-columns:repeat(auto-fit,minmax(9.5em,1fr));gap:8px}
+.rsum div{border:1px solid var(--line);border-radius:8px;padding:8px 10px}
+.rsum b{display:block;font-size:1.15rem;font-family:var(--f-num);font-variant-numeric:tabular-nums}
+.rsum span{font-size:.76rem;color:var(--muted)}
+.rtbl{max-height:min(60vh,620px);overflow:auto;border:1px solid var(--line);border-radius:8px}
+#rTable{font-size:.86rem}
+#rTable th{position:sticky;top:0;background:var(--panel);z-index:1}
+#rTable td{padding:7px 8px}
+#rTable td,#rTable th{white-space:nowrap}
+#reportDlg{overflow-y:auto}
+#rTable td.r{font-family:var(--f-num);font-variant-numeric:tabular-nums}
+#rTable tr.sub td{background:var(--accent-soft);font-weight:600}
+#rTable tr.total td{background:var(--ink);color:var(--bg);font-weight:700}
+#rTable td.short{color:var(--out);font-weight:600}
+@media print{
+  body>*:not(#reportDlg){display:none!important}
+  #reportDlg{position:static;border:0;width:100%;max-height:none}
+  .noprint{display:none!important}
+  .rtbl{max-height:none;overflow:visible;border:0}
+  #rTable th{position:static}
+}
 @media (max-width:860px){.main{grid-template-columns:1fr}.stats{grid-template-columns:repeat(2,minmax(0,1fr))}}
 @media (max-width:520px){.hide-sm{display:none}}
 </style>
@@ -149,6 +173,7 @@ dialog::backdrop{background:rgb(0 0 0 / .35)}
     <div class="hbtns">
       <span class="sync" id="sync"></span>
       <button class="btn ghost" id="refreshBtn" type="button">새로고침</button>
+      <button class="btn ghost" id="reportBtn" type="button">재고 현황표</button>
       <button class="btn" id="addItemBtn" type="button">+ 품목 추가</button>
     </div>
   </header>
@@ -245,6 +270,31 @@ dialog::backdrop{background:rgb(0 0 0 / .35)}
       <button class="btn" type="submit" id="iSave">저장</button>
     </div>
   </form>
+</dialog>
+
+<dialog id="reportDlg" class="report">
+  <div class="dlg">
+    <div class="rhead">
+      <div>
+        <h2>자재 재고 현황표</h2>
+        <p class="meta" id="rBase"></p>
+      </div>
+      <label class="rmonth">기간<input id="rMonth" type="month"></label>
+    </div>
+    <div class="rsum" id="rSum"></div>
+    <div class="tbl rtbl">
+      <table id="rTable">
+        <thead><tr><th>구분</th><th>품목</th><th>규격</th><th>색상</th><th class="r">월초</th><th class="r">입고</th><th class="r">출고</th><th class="r">월말</th><th class="r">현재</th><th class="r">최소</th><th class="r">부족</th><th>상태</th></tr></thead>
+        <tbody id="rBody"></tbody>
+      </table>
+    </div>
+    <p class="hint" id="rNote"></p>
+    <div class="acts noprint">
+      <button class="btn ghost" type="button" id="rCsv">엑셀 파일로 저장</button>
+      <button class="btn ghost" type="button" id="rPrint">인쇄 / PDF</button>
+      <button class="btn" type="button" id="rClose">닫기</button>
+    </div>
+  </div>
 </dialog>
 
 <dialog id="confirmDlg">
@@ -477,6 +527,61 @@ const SCRIPT_URL_DEFAULT = 'https://script.google.com/macros/s/AKfycbzdZ6yB6BdtF
   };
   $('logFilter').onchange=renderLogs;
   $('refreshBtn').onclick=()=>refresh();
+
+  /* ---------- 재고 현황표 ---------- */
+  function monthNow(){ return today().slice(0,7); }
+  function lastDay(ym){ const [y,m]=ym.split('-').map(Number); return ym+'-'+String(new Date(y,m,0).getDate()).padStart(2,'0'); }
+  let reportRows=[];
+  function buildReport(){
+    const ym=$('rMonth').value||monthNow(), from=ym+'-01', to=lastDay(ym);
+    const items=state.items.slice().sort((a,b)=>CATS.indexOf(a.category)-CATS.indexOf(b.category)||String(a.name).localeCompare(String(b.name),'ko'));
+    const oldest = state.logs.length ? state.logs.reduce((m,l)=>l.date<m?l.date:m, state.logs[0].date) : '';
+    const partial = state.logTotal>state.logs.length && oldest>from;
+    reportRows=[];
+    const body=$('rBody'); body.textContent='';
+    const groups={}; items.forEach(it=>{ (groups[it.category||'기타']=groups[it.category||'기타']||[]).push(it); });
+    const tot={start:0,in:0,out:0,end:0,cur:0,short:0,cnt:0,low:0};
+    const tr=(cells,cls)=>{ const r=el('tr',cls?{cls}:null); cells.forEach(c=>{ const td=el('td',{text:c.t==null?'':String(c.t)}); if(c.c) td.className=c.c; r.appendChild(td); }); body.appendChild(r); };
+    CATS.filter(c=>groups[c]).forEach(c=>{
+      const sub={start:0,in:0,out:0,end:0,cur:0,short:0};
+      groups[c].forEach(it=>{
+        let inQ=0,outQ=0,after=0;
+        state.logs.forEach(l=>{ if(l.itemId!==it.id) return; const q=+l.qty||0, sgn=l.type==='in'?1:-1;
+          if(l.date>to) after+=sgn*q; else if(l.date>=from){ if(sgn>0) inQ+=q; else outQ+=q; } });
+        const cur=+it.stock||0, end=cur-after, start=end-inQ+outQ, mn=+it.minStock||0, short=mn>0&&cur<=mn?Math.max(0,mn-cur):0;
+        const st=stateOf(it)[1];
+        tr([{t:c},{t:it.name},{t:it.spec},{t:it.color},{t:fmt(start),c:'r'},{t:fmt(inQ),c:'r'},{t:fmt(outQ),c:'r'},{t:fmt(end),c:'r'},{t:fmt(cur)+' '+(it.unit||'개'),c:'r'},{t:mn?fmt(mn):'–',c:'r'},{t:short?fmt(short):'',c:'r'+(short?' short':'')},{t:st,c:stateOf(it)[0]==='ok'?'':'short'}]);
+        reportRows.push([c,it.name,it.spec,it.color,it.unit||'개',start,inQ,outQ,end,cur,mn,short,st]);
+        sub.start+=start; sub.in+=inQ; sub.out+=outQ; sub.end+=end; sub.cur+=cur; sub.short+=short;
+        tot.cnt++; if(stateOf(it)[0]!=='ok') tot.low++;
+      });
+      tr([{t:c+' 소계'},{t:groups[c].length+'개 품목'},{},{},{t:fmt(sub.start),c:'r'},{t:fmt(sub.in),c:'r'},{t:fmt(sub.out),c:'r'},{t:fmt(sub.end),c:'r'},{t:fmt(sub.cur),c:'r'},{},{t:sub.short?fmt(sub.short):'',c:'r'},{}],'sub');
+      reportRows.push([c+' 소계',groups[c].length+'개 품목','','','',sub.start,sub.in,sub.out,sub.end,sub.cur,'',sub.short,'']);
+      ['start','in','out','end','cur','short'].forEach(k=>tot[k]+=sub[k]);
+    });
+    if(!items.length) tr([{t:'등록된 품목이 없습니다.'}]);
+    else {
+      tr([{t:'합계'},{t:tot.cnt+'개 품목'},{},{},{t:fmt(tot.start),c:'r'},{t:fmt(tot.in),c:'r'},{t:fmt(tot.out),c:'r'},{t:fmt(tot.end),c:'r'},{t:fmt(tot.cur),c:'r'},{},{t:tot.short?fmt(tot.short):'',c:'r'},{}],'total');
+      reportRows.push(['합계',tot.cnt+'개 품목','','','',tot.start,tot.in,tot.out,tot.end,tot.cur,'',tot.short,'']);
+    }
+    const [y,m]=ym.split('-');
+    $('rBase').textContent=y+'년 '+Number(m)+'월 · '+new Date().toLocaleString('ko-KR',{dateStyle:'medium',timeStyle:'short'})+' 기준';
+    const sum=$('rSum'); sum.textContent='';
+    [['등록 품목',tot.cnt+'개'],['이달 입고',fmt(tot.in)],['이달 출고',fmt(tot.out)],['현재 재고 합계',fmt(tot.cur)],['부족·재고 없음',tot.low+'개']].forEach(([k,v])=>sum.appendChild(el('div',null,[el('span',{text:k}),el('b',{text:v})])));
+    $('rNote').textContent='월초 = 월말 − 이달 입고 + 이달 출고, 월말 = 현재 재고에서 그 뒤 입출고를 되돌린 값입니다. 부족 = 최소재고 − 현재 재고. 단위가 다른 품목도 합계에는 숫자만 더합니다.'+(partial?' 앱에는 최근 '+fmt(state.logs.length)+'건만 불러와서 이 달 숫자가 덜 잡혔을 수 있습니다. 전체는 구글 시트에서 확인해 주세요.':'');
+  }
+  $('reportBtn').onclick=()=>{ if(!$('rMonth').value) $('rMonth').value=monthNow(); buildReport(); $('reportDlg').showModal(); };
+  $('rMonth').onchange=buildReport;
+  $('rClose').onclick=()=>$('reportDlg').close();
+  $('rPrint').onclick=()=>window.print();
+  $('rCsv').onclick=()=>{
+    const head=['구분','품목','규격','색상','단위','월초','입고','출고','월말','현재','최소재고','부족','상태'];
+    const esc=v=>{ const t=String(v==null?'':v); return /[",\n]/.test(t)?'"'+t.replace(/"/g,'""')+'"':t; };
+    const csv='\ufeff'+[[$('rBase').textContent],head].concat(reportRows).map(r=>r.map(esc).join(',')).join('\r\n');
+    const a=document.createElement('a'); a.href=URL.createObjectURL(new Blob([csv],{type:'text/csv;charset=utf-8'}));
+    a.download='재고현황_'+($('rMonth').value||monthNow())+'.csv'; document.body.appendChild(a); a.click(); a.remove();
+    setTimeout(()=>URL.revokeObjectURL(a.href),2000);
+  };
   $('backupBtn').onclick=async()=>{ $('backupBtn').disabled=true; if(await act('backupNow',{})) sync('✓ 드라이브에 백업했습니다'); $('backupBtn').disabled=false; };
   $('logoutBtn').onclick=async()=>{
     if(!await ask('로그아웃','이 기기에서 로그아웃할까요? 기록은 구글 시트에 그대로 남습니다.')) return;
