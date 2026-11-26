@@ -94,7 +94,8 @@ td.act{white-space:nowrap;text-align:center}
 .empty{text-align:center;color:#999;padding:20px}
 tr.editing td{background:#fff3bf!important}
 select{width:100%;padding:10px;border:1px solid #ddd;border-radius:4px;box-sizing:border-box;font-size:.95rem;background:#fff}
-#empBox table{font-size:.85rem}
+#empBox table,#ptnBox table{font-size:.85rem}
+#ptnBody td.memo{max-width:180px;white-space:normal;color:#666;font-size:.78rem}
 .stage-sel{padding:6px 4px;font-size:.82rem;font-weight:bold;border:1px solid #adb5bd;border-radius:4px;min-width:104px;color:#222}
 .src-sel{min-width:96px}
 .filter-sel{width:auto;padding:6px 8px;font-size:.85rem}
@@ -160,7 +161,7 @@ body.locked #loginScreen{display:flex}
 .ub-btn.switch{background:#fff3bf;border-color:#fcc419;color:#7c5800}
 .ub-btn.out{background:#ffe3e3;border-color:#ffa8a8;color:#c92a2a}
 /* 권한별 화면 제한 */
-body:not(.role-admin) .btn-del:not(.keep),body:not(.role-admin) #clearAll,body:not(.role-admin) #empBox{display:none!important}
+body:not(.role-admin) .btn-del:not(.keep),body:not(.role-admin) #clearAll,body:not(.role-admin) #empBox,body:not(.role-admin) #ptnBox{display:none!important}
 body.role-view .upload-box,body.role-view #addScheduleFromDayBtn,body.role-view #addScheduleFromHistoryBtn,body.role-view .dp-add,body.role-view #draftBtn,body.role-view #resetForm,body.role-view .view-hide{display:none!important}
 body.role-view #tab-manage>#scheduleForm{display:none}
 body.role-partner #filterSource,body.role-partner #filterPay,body.role-partner .partner-hide{display:none!important}
@@ -438,7 +439,7 @@ body.role-partner .q-only{display:none!important}
       <button type="button" class="btn btn-mini btn-reset" id="expAdd">＋ 다른 지출 추가 (자재비·인건비 등)</button>
     </div>
     <div class="table-responsive"><table class="stat-tbl exp-tbl"><thead><tr><th>구분</th><th>업체·내용</th><th>금액 (원)</th><th>지급일</th><th>지급</th><th>메모</th><th></th></tr></thead><tbody id="expBody"></tbody></table></div>
-    <div class="hint" style="margin:6px 0 10px;">순이익 = 최종 계약금액 − 지출 합계 · 협력업체 이름은 직원 관리에서 권한을 '협력업체'로 등록하면 목록에서 고를 수 있어요</div>
+    <div class="hint" style="margin:6px 0 10px;">순이익 = 최종 계약금액 − 지출 합계 · 협력업체 이름은 '🤝 협력업체 관리'에 등록하면 목록에서 고를 수 있어요</div>
     <div style="display:flex;justify-content:flex-end;gap:8px;">
       <button type="button" class="btn btn-reset" id="expCancel">취소</button>
       <button type="button" class="btn btn-excel" id="expSave">💾 저장</button>
@@ -725,7 +726,6 @@ body.role-partner .q-only{display:none!important}
             <option value="직원">직원 — 등록·수정 가능, 삭제 불가</option>
             <option value="보기">보기 — 보기 + 방문 후 기록·사진만</option>
             <option value="관리자">관리자 — 모두 가능 + 직원 관리</option>
-            <option value="협력업체">협력업체 — 배정된 일정만 보기 + 기록·사진 (금액 안 보임)</option>
             <option value="접속안함">접속 안 함 — 기사 목록에만 표시</option>
           </select></div>
           <div class="form-group"><label>비밀번호 <span id="empPwHint" style="font-weight:normal;color:#888;font-size:.78rem;">(4자 이상)</span></label><input type="text" id="empPw" placeholder="새로 정하거나 바꿀 때만 입력" autocomplete="off"></div>
@@ -739,6 +739,31 @@ body.role-partner .q-only{display:none!important}
         <table class="schedule-table" style="min-width:360px;">
           <thead><tr><th>이름</th><th>연락처</th><th>권한</th><th>비밀번호</th><th>마지막 접속</th><th>관리</th></tr></thead>
           <tbody id="empBody"></tbody>
+        </table>
+      </div>
+    </details>
+
+    <details id="ptnBox" style="margin-top:14px;border:1px solid #ffd8a8;border-radius:6px;padding:10px 14px;background:#fffaf3;">
+      <summary style="cursor:pointer;font-weight:bold;">🤝 협력업체 관리 <span id="ptnCount" style="font-weight:normal;color:#666;font-size:.85rem;"></span></summary>
+      <div class="hint" style="margin:8px 0 0;">협력업체로 로그인하면 <b>배정된 일정만</b> 보이고 금액은 보이지 않습니다. 고객 안내장에는 업체 이름·연락처가 나갑니다.</div>
+      <form id="ptnForm" style="margin-top:10px;">
+        <div class="grid">
+          <div class="form-group"><label>업체명</label><input type="text" id="ptnName" placeholder="예: 한빛창호" required></div>
+          <div class="form-group"><label>담당자</label><input type="text" id="ptnManager" placeholder="예: 김삼수 실장"></div>
+          <div class="form-group"><label>연락처 <span style="font-weight:normal;color:#888;font-size:.78rem;">(고객 안내장에 나감)</span></label><input type="text" id="ptnPhone" placeholder="예: 010-1234-5678"></div>
+          <div class="form-group"><label>주력 공종</label><input type="text" id="ptnTrade" placeholder="예: 샷시 수리·유리·방충망" list="ptnTrades"><datalist id="ptnTrades"><option value="샷시 수리"><option value="창호 교체"><option value="유리"><option value="방충망"><option value="실리콘·코킹"><option value="철거·폐기물"><option value="도장"></datalist></div>
+          <div class="form-group"><label>앱 로그인 비밀번호 <span id="ptnPwHint" style="font-weight:normal;color:#888;font-size:.78rem;">(로그인 안 할 업체는 비워 두기)</span></label><input type="text" id="ptnPw" placeholder="4자 이상" autocomplete="off"></div>
+          <div class="form-group full"><label>메모</label><input type="text" id="ptnMemo" placeholder="예: 결제는 월말 일괄, 주말 작업 가능"></div>
+        </div>
+        <div class="btn-row">
+          <button type="submit" class="btn btn-submit" id="ptnSubmit">협력업체 추가</button>
+          <button type="button" class="btn btn-reset" id="ptnCancel" style="display:none;">수정 취소</button>
+        </div>
+      </form>
+      <div class="table-responsive" style="margin-top:12px;">
+        <table class="schedule-table" style="min-width:640px;">
+          <thead><tr><th>업체명</th><th>담당자</th><th>연락처</th><th>주력 공종</th><th>배정 일정</th><th>외주비</th><th>로그인</th><th>메모</th><th>관리</th></tr></thead>
+          <tbody id="ptnBody"></tbody>
         </table>
       </div>
     </details>
@@ -1140,6 +1165,10 @@ function updateServerState() {
 
 let schedules = [];
 try { schedules = JSON.parse(localStorage.getItem(STORE_KEY) || '[]'); } catch (e) { schedules = []; }
+/* 서버에서 받은 일정 번호 목록: 저장할 때 '이 기기에서 지운 일정'만 골라 서버에 알려 줌.
+   (다른 사람이 방금 등록한 일정은 이 기기가 모르므로 지워지지 않음) */
+let knownIds = new Set((Array.isArray(schedules) ? schedules : []).map(x => x && x.id).filter(Boolean));
+const rememberIds = list => { knownIds = new Set((list || []).map(x => x && x.id).filter(Boolean)); };
 if (!Array.isArray(schedules)) schedules = [];
 setTimeout(() => { try { if (!statusSnap) snapStatus(); } catch (e) {} }, 0);
 /* 구글 시트에서 '2026-11-13T04:00:00.000Z'처럼 세계표준시(UTC)로 돌아온 시간을 한국 시간으로 바꿈 */
@@ -2026,7 +2055,9 @@ async function save() {
   try {
     // 새 사진의 시공 전/후 구분: 저장 뒤 새로 생긴 드라이브 사진 ID에 붙임
     const pendTags = schedules.filter(x => pendingPhotos(x).length).map(x => ({ id: x.id, tags: pendingPhotos(x).map(q => q.tag || ''), old: (x.reportImageIds || []).slice() }));
-    const saved = await api('save', { schedules });
+    const cur = new Set(schedules.map(x => x.id));
+    const deletedIds = [...knownIds].filter(id => !cur.has(id));
+    const saved = await api('save', { schedules, deletedIds });
     if (!Array.isArray(saved)) throw new Error((saved && saved.error) || '저장 응답 형식 오류');
     if (!resync) {
       let tagged = false;
@@ -2038,7 +2069,7 @@ async function save() {
         it.reportImageTag = ''; it.reportImagesTags = []; tagged = true;
       });
       if (tagged) resync = true;   // 구분 정보를 한 번 더 저장
-      schedules = saved; ensureIds(); takeNotifySnap();
+      schedules = saved; ensureIds(); rememberIds(schedules); takeNotifySnap();
       try { localStorage.setItem(STORE_KEY, JSON.stringify(schedules)); } catch (e) {}
       renderCalendar(); render(); refreshPopups();
     }
@@ -2061,7 +2092,7 @@ async function loadFromServer() {
   try {
     const data = await api('list');
     if (Array.isArray(data) && (data.length > 0 || !schedules.length || isAdmin())) {
-      schedules = data; ensureIds(); takeNotifySnap(); snapStatus();
+      schedules = data; ensureIds(); rememberIds(schedules); takeNotifySnap(); snapStatus();
       localStorage.setItem(STORE_KEY, JSON.stringify(schedules));
       renderCalendar(); render(); refreshPopups();
       showSync("✅ 최신 상태입니다");
@@ -2581,7 +2612,7 @@ let employees = [];
 try { employees = JSON.parse(localStorage.getItem(EMP_KEY) || '[]'); } catch (e) { employees = []; }
 let empServerOk = false;   // 구글 서버가 직원 저장을 지원하는지 (지원 확인 전에는 절대 전송하지 않음)
 let empSyncing = false, empResync = false;
-const empPublic = list => list.map(e => ({ id: e.id, name: e.name, phone: e.phone || '', role: e.role || '접속안함', hasPw: !!e.hasPw, lastLogin: e.lastLogin || '' }));
+const empPublic = list => list.map(e => ({ id: e.id, name: e.name, phone: e.phone || '', role: e.role || '접속안함', manager: e.manager || '', trade: e.trade || '', memo: e.memo || '', hasPw: !!e.hasPw, lastLogin: e.lastLogin || '' }));
 function saveEmp() {
   try { localStorage.setItem(EMP_KEY, JSON.stringify(empPublic(employees))); } catch (e) {}
   pushEmployees();
@@ -2591,7 +2622,7 @@ async function pushEmployees() {
   if (empSyncing) { empResync = true; return; }
   empSyncing = true;
   try {
-    const data = await api('saveEmployees', { employees: employees.map(e => ({ id: e.id, name: e.name, phone: e.phone || '', role: e.role || '접속안함', password: e._pw || '' })) });
+    const data = await api('saveEmployees', { employees: employees.map(e => ({ id: e.id, name: e.name, phone: e.phone || '', role: e.role || '접속안함', manager: e.manager || '', trade: e.trade || '', memo: e.memo || '', password: e._pw || '' })) });
     if (!data || !Array.isArray(data.employees)) throw new Error((data && data.error) || '응답 오류');
     employees = empPublic(data.employees);
     try { localStorage.setItem(EMP_KEY, JSON.stringify(employees)); } catch (e) {}
@@ -2630,7 +2661,7 @@ function fillPartnerSelect(sel, val) {
   sel.innerHTML = '';
   const add = (v, t) => { const o = document.createElement('option'); o.value = v; o.textContent = t; sel.appendChild(o); };
   const names = partnerNames();
-  add('', names.length ? '배정 안 함' : "배정 안 함 (직원 관리에서 권한 '협력업체'로 먼저 등록)");
+  add('', names.length ? '배정 안 함' : "배정 안 함 (아래 '🤝 협력업체 관리'에서 먼저 등록)");
   names.forEach(n => add(n, '🤝 ' + n));
   if (val && !names.includes(val)) add(val, '🤝 ' + val);
   sel.value = val || '';
@@ -2639,8 +2670,9 @@ function renderEmpOptions() {
   fillPartnerSelect($('partner'), $('partner').value);
   const sel = $('engSelect'); sel.innerHTML = '';
   const add = (v, t) => { const o = document.createElement('option'); o.value = v; o.textContent = t; sel.appendChild(o); };
-  add('', employees.length ? '직원 선택' : "직원 선택 (아래 '직원 관리'에서 먼저 등록)");
-  employees.forEach(e => add(e.id, e.phone ? `${e.name} (${e.phone})` : e.name));
+  const staff = employees.filter(e => e.role !== '협력업체');
+  add('', staff.length ? '직원 선택' : "직원 선택 (아래 '직원 관리'에서 먼저 등록)");
+  staff.forEach(e => add(e.id, e.phone ? `${e.name} (${e.phone})` : e.name));
   add('__custom__', '직접 입력');
   syncEngSelect();
 }
@@ -2662,14 +2694,15 @@ function resetEmpForm() {
   $('empCancel').style.display = 'none';
 }
 function renderEmp() {
-  $('empCount').textContent = employees.length ? `(${employees.length}명)` : '';
+  const staff = employees.filter(e => e.role !== '협력업체');
+  $('empCount').textContent = staff.length ? `(${staff.length}명)` : '';
   const body = $('empBody'); body.innerHTML = '';
-  if (!employees.length) {
+  if (!staff.length) {
     const tr = document.createElement('tr'), td = document.createElement('td');
     td.colSpan = 6; td.className = 'empty'; td.textContent = '등록된 직원이 없습니다.';
     tr.appendChild(td); body.appendChild(tr);
   }
-  employees.forEach(emp => {
+  staff.forEach(emp => {
     const tr = document.createElement('tr');
     if (emp.id === editingEmpId) tr.className = 'editing';
     [emp.name, emp.phone || ''].forEach(t => { const td = document.createElement('td'); td.textContent = t; tr.appendChild(td); });
@@ -2699,6 +2732,7 @@ function renderEmp() {
     };
     td.appendChild(eb); td.appendChild(db); tr.appendChild(td); body.appendChild(tr);
   });
+  renderPartners();
   renderEmpOptions();
 }
 $('empForm').addEventListener('submit', ev => {
@@ -2707,7 +2741,7 @@ $('empForm').addEventListener('submit', ev => {
   const role = $('empRole').value, pw = $('empPw').value.trim();
   if (!name) return;
   if (!isAdmin()) { alert('직원 관리는 관리자만 할 수 있습니다.'); return; }
-  if (employees.some(e => e.name === name && e.id !== editingEmpId)) { alert('이미 등록된 직원 이름입니다.'); return; }
+  if (employees.some(e => e.name === name && e.id !== editingEmpId)) { alert('이미 등록된 이름입니다. (직원·협력업체 이름은 서로 겹칠 수 없어요)'); return; }
   if (pw && pw.length < 4) { alert('비밀번호는 4자 이상으로 정해 주세요.'); return; }
   const prev = employees.find(e => e.id === editingEmpId);
   if (role !== '접속안함' && !pw && !(prev && prev.hasPw)) { alert(`'${name}'님이 로그인하려면 비밀번호를 정해 주세요.\n(로그인하지 않는 기사라면 권한을 '접속 안 함'으로 고르세요)`); $('empPw').focus(); return; }
@@ -2718,6 +2752,94 @@ $('empForm').addEventListener('submit', ev => {
   saveEmp(); resetEmpForm(); renderEmp();
 });
 $('empCancel').onclick = () => { resetEmpForm(); renderEmp(); };
+
+/* ===== 🤝 협력업체 관리 (직원 목록과 같은 곳에 권한 '협력업체'로 저장) ===== */
+let editingPtnId = null;
+function partnerStats(name) {   // (화면을 처음 그릴 때도 쓰므로 다른 도우미 함수에 기대지 않음)
+  const num = v => parseInt(String(v || '').replace(/[^\d]/g, ''), 10) || 0;
+  const jobs = (schedules || []).filter(x => x.partner === name);
+  const open = jobs.filter(x => !/취소|처리완료/.test(x.status || '')).length;
+  let out = 0, unpaid = 0;
+  (schedules || []).forEach(x => (Array.isArray(x.expenses) ? x.expenses : []).forEach(e => {
+    if ((e.vendor || '') !== name) return;
+    const a = num(e.amount); out += a; if (!e.paid) unpaid += a;
+  }));
+  return { total: jobs.length, open, out, unpaid };
+}
+function resetPtnForm() {
+  editingPtnId = null;
+  ['ptnName', 'ptnManager', 'ptnPhone', 'ptnTrade', 'ptnPw', 'ptnMemo'].forEach(id => { $(id).value = ''; });
+  $('ptnPwHint').textContent = '(로그인 안 할 업체는 비워 두기)';
+  $('ptnSubmit').textContent = '협력업체 추가';
+  $('ptnCancel').style.display = 'none';
+}
+function renderPartners() {
+  const list = employees.filter(e => e.role === '협력업체');
+  $('ptnCount').textContent = list.length ? `(${list.length}곳)` : '';
+  const body = $('ptnBody'); body.innerHTML = '';
+  if (!list.length) {
+    const tr = document.createElement('tr'), td = document.createElement('td');
+    td.colSpan = 9; td.className = 'empty'; td.textContent = '등록된 협력업체가 없습니다.';
+    tr.appendChild(td); body.appendChild(tr); return;
+  }
+  list.forEach(p => {
+    const st = partnerStats(p.name);
+    const tr = document.createElement('tr');
+    if (p.id === editingPtnId) tr.className = 'editing';
+    const cell = (t, cls) => { const td = document.createElement('td'); td.textContent = t; if (cls) td.className = cls; tr.appendChild(td); return td; };
+    cell(p.name).style.fontWeight = 'bold';
+    cell(p.manager || '-'); cell(p.phone || '-'); cell(p.trade || '-');
+    cell(st.total ? `${st.total}건 (진행 ${st.open})` : '-');
+    const wn = n => n.toLocaleString('ko-KR');
+    const oc = cell(st.out ? `${wn(st.out)}원` : '-');
+    if (st.unpaid) { const d = document.createElement('div'); d.textContent = `미지급 ${wn(st.unpaid)}원`; d.style.cssText = 'color:#e03131;font-size:.75rem;font-weight:bold;'; oc.appendChild(d); }
+    const lc = cell(p.hasPw ? '✅ 사용' : '미사용');
+    if (p.hasPw && p.lastLogin) { const d = document.createElement('div'); d.textContent = p.lastLogin; d.style.cssText = 'font-size:.72rem;color:#888;white-space:nowrap;'; lc.appendChild(d); }
+    cell(p.memo || '', 'memo');
+    const td = document.createElement('td'); td.className = 'act';
+    const eb = document.createElement('button'); eb.type = 'button'; eb.className = 'btn btn-edit'; eb.textContent = '수정';
+    eb.onclick = () => {
+      editingPtnId = p.id;
+      $('ptnName').value = p.name; $('ptnManager').value = p.manager || ''; $('ptnPhone').value = p.phone || '';
+      $('ptnTrade').value = p.trade || ''; $('ptnMemo').value = p.memo || ''; $('ptnPw').value = '';
+      $('ptnPwHint').textContent = p.hasPw ? '(바꿀 때만 입력 · 비워 두면 그대로)' : '(정하면 앱 로그인 가능)';
+      $('ptnSubmit').textContent = '수정 저장'; $('ptnCancel').style.display = '';
+      renderPartners(); $('ptnName').focus();
+    };
+    const db = document.createElement('button'); db.type = 'button'; db.className = 'btn btn-del'; db.style.marginLeft = '4px'; db.textContent = '삭제';
+    db.onclick = () => {
+      if (!confirm(`협력업체 '${p.name}'을(를) 삭제할까요?\n삭제하면 이 업체는 로그인할 수 없고 배정 목록에서도 빠집니다.\n(이미 배정된 일정의 업체 이름은 그대로 남습니다)`)) return;
+      employees = employees.filter(x => x.id !== p.id);
+      if (editingPtnId === p.id) resetPtnForm();
+      saveEmp(); renderEmp();
+    };
+    td.append(eb, db); tr.appendChild(td); body.appendChild(tr);
+  });
+}
+$('ptnForm').addEventListener('submit', ev => {
+  ev.preventDefault();
+  if (!isAdmin()) { alert('협력업체 관리는 관리자만 할 수 있습니다.'); return; }
+  const name = $('ptnName').value.trim(), phone = normPhone($('ptnPhone').value.trim());
+  const manager = $('ptnManager').value.trim(), trade = $('ptnTrade').value.trim(), memo = $('ptnMemo').value.trim(), pw = $('ptnPw').value.trim();
+  if (!name) return;
+  if (employees.some(e => e.name === name && e.id !== editingPtnId)) { alert('이미 등록된 이름입니다. (직원·협력업체 이름은 서로 겹칠 수 없어요)'); return; }
+  if (pw && pw.length < 4) { alert('비밀번호는 4자 이상으로 정해 주세요.'); return; }
+  const prev = employees.find(e => e.id === editingPtnId);
+  if (prev && prev.name !== name) {   // 업체 이름을 바꾸면 배정된 일정·외주비의 업체 이름도 같이 바꿈
+    let changed = false;
+    schedules.forEach(x => {
+      if (x.partner === prev.name) { x.partner = name; changed = true; }
+      expList(x).forEach(e => { if (e.vendor === prev.name) { e.vendor = name; changed = true; } });
+    });
+    if (changed) save();
+  }
+  const data = { name, phone, role: '협력업체', manager, trade, memo, _pw: pw };
+  if (prev) employees = employees.map(e => e.id === editingPtnId ? { ...e, ...data } : e);
+  else employees.push({ id: 'e' + Date.now() + Math.random().toString(36).slice(2, 5), ...data });
+  if (pw) alert(`'${name}' 로그인 정보\n이름: ${name}\n비밀번호: ${pw}\n업체에 알려 주세요. 로그인 후 [🔑 비번 변경]으로 바꿀 수 있습니다.`);
+  saveEmp(); resetPtnForm(); renderEmp();
+});
+$('ptnCancel').onclick = () => { resetPtnForm(); renderPartners(); };
 
 /* ===== 계약금 / 잔금 관리 ===== */
 const PAY_STAGES = ['방문시공', '계약', '공사진행', '처리완료'];
