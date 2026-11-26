@@ -1460,13 +1460,16 @@ function expButton(item) {
 
 /* ===== 관리자: 진행 현황표 ===== */
 // 기준: 방문 일시의 날짜. 미수금은 방문시공·계약·공사진행·처리완료 건만 셈. 시공 예정일로 자동 생성된 [시공] 일정은 원래 일정과 같은 공사라서 빼고 셉니다.
-const statJobs = () => schedules.filter(x => !x.installFor);
+// 원래 일정이 지워져 혼자 남은 [시공] 일정은 따로 한 건으로 셈
+const isJob = x => !x.installFor || !schedules.some(p => p.id === x.installFor);
+const statJobs = () => schedules.filter(isJob);
 /* 현황표에 쓰는 공사 상태: 자동 생성된 [시공] 일정의 상태를 기본값(방문시공)에서 바꿨으면 그 상태를 씀
    (예: [시공] 일정이 '보류 및 재방문'이면 그 공사는 보류로 셈). 같은 공사를 두 번 세지는 않습니다. */
 function jobStatus(x) {
   if (!x) return '';
-  const ins = x.installId ? schedules.find(y => y.id === x.installId && y.installFor === x.id) : null;
-  if (ins && ins.status && ins.status !== INSTALL_STAGE) return ins.status;
+  const ins = schedules.filter(y => y.installFor === x.id || (x.installId && y.id === x.installId && y.id !== x.id))
+    .find(y => y.status && y.status !== INSTALL_STAGE);
+  if (ins) return ins.status;
   return x.status || '';
 }
 const statMoney = list => {
@@ -2152,7 +2155,7 @@ function renderCalendar() {
 function renderCalStat() {
   const box = $('calStat'); if (!box) return;
   const ym = `${currentYear}-${String(currentMonth + 1).padStart(2, '0')}`;
-  const jobs = schedules.filter(x => !x.installFor);
+  const jobs = statJobs();
   const month = jobs.filter(x => (visitDay(x) || '').startsWith(ym));
   const stages = [...STAGES]; if (jobs.some(x => !jobStatus(x))) stages.push('');
   const by = (list, st) => list.filter(x => jobStatus(x) === st);
