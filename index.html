@@ -2062,6 +2062,22 @@ function switchTab(tabId) {
   if (tabId === 'calendar') renderCalendar();
 }
 
+/* ===== 달력: 고객별 최종 일정만 표시 =====
+   같은 고객(이름+연락처)의 일정이 여러 개면 방문 일시가 가장 늦은 것(고객 이력의 '최종')만 달력에 보여 줍니다.
+   이름과 연락처가 모두 비어 있는 일정은 각각 따로 보여 줍니다. 지난 일정은 고객 이력·날짜 팝업·검색에서 볼 수 있어요. */
+function calendarLatestIds() {
+  const best = {}, ids = new Set();
+  schedules.forEach(s => {
+    if (!s.visit) return;
+    const name = (s.customer || '').trim(), phone = (s.phone || '').trim();
+    if (!name && !phone) { ids.add(s.id); return; }
+    const k = name + '|' + phone;
+    if (!best[k] || (s.visit || '') >= (best[k].visit || '')) best[k] = s;
+  });
+  Object.values(best).forEach(s => ids.add(s.id));
+  return ids;
+}
+
 function renderCalendar() {
   if (!selDate) selDate = todayStr();
   $('calTitle').textContent = `${currentYear}년 ${currentMonth + 1}월`;
@@ -2076,9 +2092,10 @@ function renderCalendar() {
     n.textContent = prevLastDate - i; c.appendChild(n); calBody.appendChild(c);
   }
   const today = todayStr();
+  const shownIds = calendarLatestIds();
   for (let d = 1; d <= lastDate; d++) {
     const dateStr = `${currentYear}-${String(currentMonth + 1).padStart(2,'0')}-${String(d).padStart(2,'0')}`;
-    const daySchedules = schedules.filter(s => s.visit && s.visit.startsWith(dateStr))
+    const daySchedules = schedules.filter(s => s.visit && s.visit.startsWith(dateStr) && shownIds.has(s.id))
       .sort((a, b) => (a.visit || '').localeCompare(b.visit || ''));
     const mobile = isMobile();
     const cell = mk('cal-cell' + (today === dateStr ? ' today' : '') + (mobile && selDate === dateStr ? ' selected' : ''));
@@ -2146,7 +2163,7 @@ function renderCalStat() {
     ${row(`${mLbl} 건수`, month, cnt, false, 'mc')}
     ${row('전체 건수', jobs, cnt, false, 'ac')}
     </tbody></table></div>
-    <div class="cal-stat-note" style="font-size:12px;color:#868e96;margin-top:6px;">※ '시공 예정일'로 자동 생성된 [시공] 일정은 원래 일정과 같은 공사라 건수에서 제외됩니다. 그래서 달력에 보이는 일정 수보다 적게 나올 수 있어요.</div>`;
+    <div class="cal-stat-note" style="font-size:12px;color:#868e96;margin-top:6px;">※ '시공 예정일'로 자동 생성된 [시공] 일정은 원래 일정과 같은 공사라 건수에서 제외됩니다. 달력에는 고객별 최종 일정만 보이고, 이 표는 지난 일정까지 모두 셉니다.</div>`;
   if (admin) box.querySelectorAll('td.go').forEach(td => td.onclick = () => { const g = groups[td.dataset.k]; if (g) openStatList(g[0], g[1]); });
 }
 
@@ -4018,7 +4035,8 @@ function renderDayPanel() {
   if (!isMobile()) { p.style.display = 'none'; p.innerHTML = ''; return; }
   p.style.display = '';
   p.innerHTML = '';
-  const list = schedules.filter(s => visitDay(s) === selDate).sort(byVisitAsc);
+  const shownIds = calendarLatestIds();
+  const list = schedules.filter(s => visitDay(s) === selDate && shownIds.has(s.id)).sort(byVisitAsc);
   const head = document.createElement('div'); head.className = 'dp-head';
   const t = document.createElement('b'); t.textContent = `${dateLabel(selDate)} · ${list.length}건`;
   const add = document.createElement('button');
