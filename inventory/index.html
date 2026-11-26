@@ -93,6 +93,21 @@ input:focus-visible,select:focus-visible,button:focus-visible{outline:2px solid 
 .links{display:flex;flex-wrap:wrap;gap:8px;align-items:center}
 .links a{color:var(--accent);font-size:.86rem}
 dialog{border:1px solid var(--line);border-radius:12px;background:var(--panel);color:var(--ink);padding:0;width:min(460px,calc(100vw - 32px))}
+#itemDlg.wide{width:min(860px,calc(100vw - 24px))}
+.single{display:grid;gap:10px}
+.multi{display:grid;gap:10px}
+.mrows{display:grid;gap:8px;max-height:min(55vh,460px);overflow-y:auto;padding-right:2px}
+.mrow{display:grid;grid-template-columns:7.2em minmax(0,2fr) minmax(0,1.2fr) minmax(0,1fr) 4em 5em 5.5em 2.2em;gap:6px;align-items:end}
+.mrow label{font-size:.72rem}
+.mrow input,.mrow select{padding:7px 8px}
+.mrow .x{align-self:end;height:38px;padding:0}
+.mrow:not(:first-child) label>span{display:none}
+@media (max-width:700px){
+  .mrow{grid-template-columns:1fr 1fr 1fr;border:1px solid var(--line);border-radius:8px;padding:8px}
+  .mrow .nm{grid-column:span 2}
+  .mrow:not(:first-child) label>span{display:inline}
+  .mrow .x{grid-column:3;height:auto;padding:6px}
+}
 dialog::backdrop{background:rgb(0 0 0 / .35)}
 .dlg{padding:18px;display:grid;gap:12px}
 .acts{display:flex;gap:8px;justify-content:flex-end;flex-wrap:wrap}
@@ -205,8 +220,14 @@ dialog::backdrop{background:rgb(0 0 0 / .35)}
 <dialog id="itemDlg">
   <form class="dlg" id="itemForm" method="dialog">
     <h2 id="itemDlgH">품목 추가</h2>
+    <div id="multiBox" class="multi">
+      <p class="hint">한 줄에 한 품목씩 적어 주세요. 품목명이 빈 줄은 건너뜁니다. 저장해도 창은 닫히지 않으니 계속 추가하시면 됩니다.</p>
+      <div id="mRows" class="mrows"></div>
+      <button class="btn ghost" type="button" id="mAddRow">+ 줄 추가</button>
+    </div>
+    <div id="singleBox" class="single">
     <label>구분<select id="iCat"><option>호차</option><option>락킹기어</option><option>핸들</option><option>기타</option></select></label>
-    <label>품목명<input id="iName" required maxlength="40" placeholder="예: 미서기 호차"></label>
+    <label>품목명<input id="iName" maxlength="40" placeholder="예: 미서기 호차"></label>
     <div class="two">
       <label>규격 (선택)<input id="iSpec" maxlength="40" placeholder="예: 32mm"></label>
       <label>색상 (선택)<input id="iColor" maxlength="20" placeholder="예: 화이트"></label>
@@ -215,7 +236,7 @@ dialog::backdrop{background:rgb(0 0 0 / .35)}
       <label>단위<input id="iUnit" maxlength="6" value="개"></label>
       <label>최소재고<input id="iMin" type="number" min="0" step="1" value="0"></label>
     </div>
-    <label id="iInitWrap">현재 보유 수량 (처음 등록할 때만)<input id="iInit" type="number" min="0" step="1" value="0"></label>
+    </div>
     <p class="msg" id="iMsg" role="status"></p>
     <div class="acts">
       <button class="btn danger" type="button" id="iDelete" hidden>품목 삭제</button>
@@ -384,23 +405,68 @@ const SCRIPT_URL_DEFAULT = 'https://script.google.com/macros/s/AKfycbzdZ6yB6BdtF
     await act('cancelLog',{id:l.id});
   }
 
+  const CAT_OPTS=['호차','락킹기어','핸들','기타'];
+  function addRow(defCat){
+    const r=el('div',{cls:'mrow'});
+    const lab=(t,inp,cls)=>{ const l=el('label',cls?{cls}:null,[el('span',{text:t})]); l.appendChild(inp); return l; };
+    const sel=el('select',{'aria-label':'구분'}); CAT_OPTS.forEach(c=>sel.appendChild(el('option',{text:c}))); sel.value=defCat||'호차';
+    const nm=el('input',{maxlength:'40',placeholder:'품목명','aria-label':'품목명'});
+    const sp=el('input',{maxlength:'40',placeholder:'예: 32mm','aria-label':'규격'});
+    const co=el('input',{maxlength:'20',placeholder:'예: 화이트','aria-label':'색상'});
+    const un=el('input',{maxlength:'6',value:'개','aria-label':'단위'});
+    const mn=el('input',{type:'number',min:'0',step:'1',inputmode:'numeric',placeholder:'0','aria-label':'최소재고'});
+    const st=el('input',{type:'number',min:'0',step:'1',inputmode:'numeric',placeholder:'0','aria-label':'현재 수량'});
+    const x=el('button',{cls:'mini x',type:'button',text:'✕','aria-label':'이 줄 지우기'});
+    x.onclick=()=>{ r.remove(); if(!$('mRows').children.length) addRow(defCat); };
+    [lab('구분',sel),lab('품목명',nm,'nm'),lab('규격',sp),lab('색상',co),lab('단위',un),lab('최소재고',mn),lab('현재 수량',st)].forEach(c=>r.appendChild(c));
+    r.appendChild(x);
+    r._get=()=>({category:sel.value,name:nm.value.trim(),spec:sp.value.trim(),color:co.value.trim(),unit:un.value.trim()||'개',minStock:Math.max(0,Math.floor(+mn.value||0)),initStock:Math.max(0,Math.floor(+st.value||0))});
+    r._cat=sel;
+    $('mRows').appendChild(r);
+    return nm;
+  }
+  function resetRows(n){
+    const keepCat = $('mRows').lastElementChild ? $('mRows').lastElementChild._cat.value : (cat!=='전체'?cat:'호차');
+    $('mRows').textContent='';
+    for(let i=0;i<n;i++) addRow(keepCat);
+  }
+  $('mAddRow').onclick=()=>{ const last=$('mRows').lastElementChild; addRow(last?last._cat.value:'호차').focus(); };
   function openItem(it){
     editingId = it?it.id:null;
+    $('multiBox').hidden=!!it; $('singleBox').hidden=!it; $('itemDlg').classList.toggle('wide',!it);
+    $('iSave').textContent = it?'저장':'모두 저장';
+    if(!it){ $('itemDlgH').textContent='품목 추가'; $('mRows').textContent=''; resetRows(3); $('iDelete').hidden=true; $('iMsg').textContent=''; $('itemDlg').showModal(); $('mRows').querySelector('input').focus(); return; }
     $('itemDlgH').textContent = it?'품목 수정':'품목 추가';
     $('iCat').value = it?(it.category||'기타'):(cat!=='전체'?cat:'호차');
     $('iName').value=it?it.name:''; $('iSpec').value=it?(it.spec||''):''; $('iColor').value=it?(it.color||''):'';
-    $('iUnit').value=it?(it.unit||'개'):'개'; $('iMin').value=it?(it.minStock||0):0; $('iInit').value=0;
-    $('iInitWrap').hidden=!!it; $('iDelete').hidden=!it; $('iMsg').textContent='';
+    $('iUnit').value=it?(it.unit||'개'):'개'; $('iMin').value=it?(it.minStock||0):0;
+    $('iDelete').hidden=!it; $('iMsg').textContent='';
     $('itemDlg').showModal(); $('iName').focus();
   }
   $('addItemBtn').onclick=()=>openItem(null);
   $('iCancel').onclick=()=>$('itemDlg').close();
   $('itemForm').addEventListener('submit', async e=>{
     e.preventDefault();
-    const item={id:editingId||'',category:$('iCat').value,name:$('iName').value.trim(),spec:$('iSpec').value.trim(),color:$('iColor').value.trim(),unit:$('iUnit').value.trim()||'개',minStock:Math.max(0,Math.floor(+$('iMin').value||0)),initStock:Math.max(0,Math.floor(+$('iInit').value||0))};
+    if(!editingId){
+      const rows=[...$('mRows').children].filter(r=>r._get().name);
+      if(!rows.length) return msg('iMsg','품목명을 한 개 이상 입력해 주세요.');
+      $('iSave').disabled=true; $('mAddRow').disabled=true;
+      let done=0, failed=[];
+      for(const r of rows){
+        msg('iMsg','저장 중… ('+(done+1)+' / '+rows.length+')',true);
+        if(await act('saveItem',{item:r._get()})){ done++; r.remove(); }
+        else failed.push(r._get().name);
+      }
+      { const last=$('mRows').lastElementChild; const c=last?last._cat.value:'호차'; while($('mRows').children.length<3) addRow(c); }
+      $('iSave').disabled=false; $('mAddRow').disabled=false;
+      if(failed.length) msg('iMsg',done+'개 저장, '+failed.length+'개 실패 ('+failed.join(', ')+'). 남은 줄을 확인하고 다시 저장해 주세요.');
+      else { msg('iMsg',done+'개 품목을 저장했습니다. 계속 추가하거나 닫기를 눌러 주세요.',true); const f=$('mRows').querySelector('.nm input'); if(f) f.focus(); }
+      return;
+    }
+    const item={id:editingId,category:$('iCat').value,name:$('iName').value.trim(),spec:$('iSpec').value.trim(),color:$('iColor').value.trim(),unit:$('iUnit').value.trim()||'개',minStock:Math.max(0,Math.floor(+$('iMin').value||0))};
     if(!item.name) return msg('iMsg','품목명을 입력해 주세요.');
     $('iSave').disabled=true; msg('iMsg','저장 중…',true);
-    if(await act('saveItem',{item},'iMsg')) $('itemDlg').close();
+    await act('saveItem',{item},'iMsg');
     $('iSave').disabled=false;
   });
   $('iDelete').onclick=async()=>{
