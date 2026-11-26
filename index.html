@@ -1842,11 +1842,20 @@ function checkNewlyDone() {
   }, 400);
 }
 
+/* 고객에게 보여 줄 담당자: 협력업체를 배정했으면 그 업체 이름·연락처, 아니면 담당 기사 (안내장·고객 문자 공통) */
+function custContact(s) {
+  if (s && s.partner) {
+    const pe = (typeof employees !== 'undefined' ? employees : []).find(e => e.name === s.partner);
+    return { name: s.partner, tel: (pe && pe.phone) || '' };
+  }
+  return { name: s && s.engineer ? s.engineer + ' 엔지니어' : '', tel: (s && s.engPhone) || '' };
+}
+
 /* ===== 💬 문자 보내기 (고객·담당 기사·협력업체) — 휴대폰 문자앱을 내용이 채워진 채로 엶 ===== */
 const SMS_SIGN = '[월드네트웍스]';
 function smsWhen(s) { const d = visitDay(s); return d ? `${dateLabel(d).replace(' · 오늘', '')}${visitTime(s) ? ' ' + ampm(visitTime(s)) : ''}` : '(날짜 미정)'; }
 function smsTemplates(s, who) {
-  const eng = s.engineer ? `${s.engineer} 엔지니어${s.engPhone ? ' (' + s.engPhone + ')' : ''}` : '';
+  const cc = custContact(s), eng = cc.name ? `${cc.name}${cc.tel ? ' (' + cc.tel + ')' : ''}` : '';
   const addr = s.note || '', when = smsWhen(s), nm = s.customer ? s.customer + ' 고객님' : '고객님';
   if (who === 'customer') {
     const remain = grandOf(s) ? grandOf(s) - paidSum(s) : 0;
@@ -3347,7 +3356,7 @@ const G = {
   total: i => won(grandOf(i)) ? won(grandOf(i)) + (vatLabel(i) ? ` (${vatLabel(i)})` : '') : i.cost || '', dep: i => won(i.deposit), mid: i => won(i.middle), bal: i => won(i.balance),
   name: i => i.customer || '', phone: i => i.phone || '', visit: i => fmtCardDate(i.visit),
   addr: i => i.note || '', req: i => i.request || '', cost: i => i.cost || '',
-  eng: i => i.engineer ? i.engineer + ' 엔지니어' : '', engTel: i => i.engPhone ? `[ ${i.engPhone} ]` : ''
+  eng: i => custContact(i).name, engTel: i => custContact(i).tel ? `[ ${custContact(i).tel} ]` : ''
 };
 const STAGE_GUIDE = {
   '방문실측': { title:'■ 방문 실측 안내', rows:[['고객명',G.name],['연락처',G.phone],['방문일시',G.visit],['방문주소',G.addr],['요청사항',G.req],['처리비용',G.cost],['담당기사',G.eng],['비고',G.engTel]], footer:'※ 방문 당일 문자나 연락드리고 방문 하겠습니다.' },
