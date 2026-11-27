@@ -31,6 +31,13 @@
 html{padding-top:env(safe-area-inset-top,0px);padding-bottom:env(safe-area-inset-bottom,0px)}
 body{margin:0;background:var(--bg);color:var(--ink);font-family:var(--f-body);font-size:15px;line-height:1.5}
 [hidden]{display:none!important}
+body.empmode .adminonly{display:none!important}
+body:not(.empmode) .emponly{display:none!important}
+.mepick{display:grid;gap:8px;grid-template-columns:repeat(auto-fill,minmax(8em,1fr))}
+.mepick .btn{padding:12px}
+.mepick .hint{grid-column:1/-1}
+body.empmode .ecol{display:none}
+.whoami{display:flex;flex-wrap:wrap;gap:8px;align-items:center}
 .wrap{max-width:1180px;margin:0 auto;padding-block:16px 48px;padding-left:max(16px,env(safe-area-inset-left,0px));padding-right:max(16px,env(safe-area-inset-right,0px));display:grid;gap:16px}
 header{display:flex;flex-wrap:wrap;align-items:flex-end;justify-content:space-between;gap:10px}
 h1{font-size:1.45rem;margin:0;font-weight:700;letter-spacing:-.01em}
@@ -189,16 +196,19 @@ dialog::backdrop{background:rgb(0 0 0 / .35)}
 <div class="wrap" id="app" hidden>
   <header>
     <div>
-      <h1>자재 재고</h1>
-      <p class="sub">호차 · 락킹기어 · 핸들 입고/출고와 현재 재고</p>
+      <h1>자재 재고<span class="emponly"> · 직원</span></h1>
+      <p class="sub adminonly">호차 · 락킹기어 · 핸들 입고/출고와 현재 재고</p>
+      <p class="sub emponly" id="meLine"></p>
     </div>
     <div class="hbtns">
       <span class="sync" id="sync"></span>
       <button class="btn install" id="installBtn" type="button" hidden>📲 앱 설치</button>
       <button class="btn ghost" id="refreshBtn" type="button">새로고침</button>
-      <button class="btn ghost" id="reportBtn" type="button">재고 현황표</button>
+      <button class="btn ghost adminonly" id="reportBtn" type="button">재고 현황표</button>
       <button class="btn ghost" id="eReportBtn2" type="button">직원별 현황표</button>
-      <button class="btn" id="addItemBtn" type="button">+ 품목 추가</button>
+      <button class="btn adminonly" id="addItemBtn" type="button">+ 품목 추가</button>
+      <button class="btn ghost emponly" id="meChange" type="button">다른 직원으로</button>
+      <button class="btn ghost emponly" id="empLogout" type="button">로그아웃</button>
     </div>
   </header>
 
@@ -207,14 +217,29 @@ dialog::backdrop{background:rgb(0 0 0 / .35)}
     <b>아이폰에 앱으로 설치하기</b><br>사파리 아래쪽 <b>공유 버튼(□↑)</b> → <b>'홈 화면에 추가'</b>를 누르세요.
   </div>
 
-  <section class="stats" aria-label="요약">
+  <section class="panel emponly" id="mePanel" hidden>
+    <h2>누구세요?</h2>
+    <p class="hint">이 휴대폰을 쓰는 직원 이름을 눌러 주세요. 한 번 고르면 다음부터는 바로 내 자재 화면이 열립니다.</p>
+    <div class="mepick" id="meList"></div>
+    <form id="meForm" autocomplete="off">
+      <p class="hint">목록에 내 이름이 없으면 여기서 직접 등록하세요.</p>
+      <div class="two">
+        <label>이름<input id="meName" maxlength="20" placeholder="예: 김철수"></label>
+        <label>연락처 (선택)<input id="mePhone" maxlength="20" inputmode="tel" placeholder="010-0000-0000"></label>
+      </div>
+      <button class="btn" type="submit" id="meSave">내 이름 등록하고 시작</button>
+      <p class="msg" id="meMsg" role="status"></p>
+    </form>
+  </section>
+
+  <section class="stats adminonly" aria-label="요약">
     <div class="stat"><div class="k">등록 품목</div><div class="v num" id="sItems">–</div></div>
     <div class="stat" id="sLowBox"><div class="k">최소재고 이하</div><div class="v num" id="sLow">–</div></div>
     <div class="stat"><div class="k">오늘 입고</div><div class="v num" id="sIn">–</div></div>
     <div class="stat"><div class="k">오늘 출고</div><div class="v num" id="sOut">–</div></div>
   </section>
 
-  <div class="main">
+  <div class="main adminonly">
     <section class="panel" aria-labelledby="stockH">
       <div class="ph"><h2 id="stockH">현재 재고</h2><div class="tabs" id="catTabs"></div></div>
       <div class="tbl">
@@ -247,8 +272,8 @@ dialog::backdrop{background:rgb(0 0 0 / .35)}
   </div>
 
   <div class="sechead" id="empTop">
-    <div><h2>직원 재고</h2><p class="sub">본사에서 직원에게 출고하면 그 직원 재고로 입고되고, 직원이 사용·반납하면 줄어듭니다.</p></div>
-    <div class="hbtns">
+    <div class="adminonly"><h2>직원 재고</h2><p class="sub">본사에서 직원에게 출고하면 그 직원 재고로 입고되고, 직원이 사용·반납하면 줄어듭니다.</p></div>
+    <div class="hbtns adminonly">
       <button class="btn ghost" id="eReportBtn" type="button">직원별 현황표</button>
       <button class="btn" id="empMgrBtn" type="button">직원 관리</button>
     </div>
@@ -256,24 +281,24 @@ dialog::backdrop{background:rgb(0 0 0 / .35)}
   <p class="notice" id="empOld" hidden>직원 재고를 쓰려면 구글 Apps Script 서버를 새 버전으로 한 번 다시 배포해야 합니다. (안내를 받은 뒤 진행해 주세요)</p>
   <div class="main" id="empMain">
     <section class="panel" aria-labelledby="eStockH">
-      <div class="ph"><h2 id="eStockH">직원별 보유 현황</h2><div class="tabs" id="empTabs"></div></div>
+      <div class="ph"><h2 id="eStockH">직원별 보유 현황</h2><div class="tabs adminonly" id="empTabs"></div></div>
       <div class="tbl">
         <table>
-          <thead><tr><th>직원</th><th>품목</th><th class="r hide-sm">받음</th><th class="r hide-sm">사용</th><th class="r hide-sm">반납</th><th class="r">잔량</th><th class="r"></th></tr></thead>
+          <thead><tr><th class="ecol">직원</th><th>품목</th><th class="r hide-sm">받음</th><th class="r hide-sm">사용</th><th class="r hide-sm">반납</th><th class="r">잔량</th><th class="r"></th></tr></thead>
           <tbody id="eStockBody"></tbody>
         </table>
       </div>
       <label class="meta" style="display:flex;gap:6px;align-items:center"><input type="checkbox" id="eShowZero" style="width:auto"> 다 쓴 품목(잔량 0)도 보기</label>
     </section>
     <section class="panel" aria-labelledby="eTxH">
-      <h2 id="eTxH">직원 사용 / 반납 기록</h2>
+      <h2 id="eTxH">직원 입고 / 사용 / 반납 기록</h2>
       <form id="eForm" autocomplete="off">
         <div class="seg three" role="radiogroup" aria-label="구분">
+          <label><input type="radio" name="etype" value="own">입고</label>
           <label><input type="radio" name="etype" value="use" checked>사용</label>
           <label><input type="radio" name="etype" value="return">반납</label>
-          <label><input type="radio" name="etype" value="own">보유 등록</label>
         </div>
-        <label>직원<select id="eEmp" required></select></label>
+        <label class="adminonly">직원<select id="eEmp" required></select></label>
         <label>품목<select id="eItem" required></select></label>
         <div class="two">
           <label>수량<input id="eQty" type="number" inputmode="numeric" min="1" step="1" required placeholder="0"></label>
@@ -283,24 +308,24 @@ dialog::backdrop{background:rgb(0 0 0 / .35)}
         <button class="btn" type="submit" id="eSubmit">기록하기</button>
         <p class="msg" id="eMsg" role="status"></p>
       </form>
-      <p class="hint" id="eHint">사용: 현장에서 쓴 수량을 뺍니다. 반납: 남은 자재를 본사로 돌려주면 본사 재고에 입고됩니다. 보유 등록: 본사 출고 없이 직원이 이미 갖고 있던 수량을 처음 한 번 넣을 때 씁니다.</p>
+      <p class="hint" id="eHint">입고: 본사를 거치지 않고 받은 자재(거래처에서 직접 받음, 원래 갖고 있던 것)를 더합니다. 본사에서 출고한 자재는 자동으로 입고되니 따로 넣지 않아도 됩니다. 사용: 현장에서 쓴 수량을 뺍니다. 반납: 남은 자재를 본사로 돌려주면 본사 재고에 입고됩니다.</p>
     </section>
   </div>
   <section class="panel" aria-labelledby="eLogH" id="eLogPanel">
     <div class="ph">
       <h2 id="eLogH">직원 재고 내역</h2>
-      <select id="eLogFilter" aria-label="직원별 보기" style="width:auto"></select>
+      <select id="eLogFilter" class="adminonly" aria-label="직원별 보기" style="width:auto"></select>
     </div>
     <div class="tbl">
       <table>
-        <thead><tr><th>날짜</th><th>직원</th><th>구분</th><th>품목</th><th class="r">수량</th><th class="hide-sm">메모</th><th class="r"></th></tr></thead>
+        <thead><tr><th>날짜</th><th class="ecol">직원</th><th>구분</th><th>품목</th><th class="r">수량</th><th class="hide-sm">메모</th><th class="r"></th></tr></thead>
         <tbody id="eLogBody"></tbody>
       </table>
     </div>
     <p class="hint" id="eLogNote"></p>
   </section>
 
-  <section class="panel" aria-labelledby="logH">
+  <section class="panel adminonly" aria-labelledby="logH">
     <div class="ph">
       <h2 id="logH">입출고 내역</h2>
       <select id="logFilter" aria-label="품목별 보기" style="width:auto"></select>
@@ -314,7 +339,7 @@ dialog::backdrop{background:rgb(0 0 0 / .35)}
     <p class="hint" id="logNote"></p>
   </section>
 
-  <section class="panel" aria-labelledby="gH">
+  <section class="panel adminonly" aria-labelledby="gH">
     <h2 id="gH">구글 드라이브</h2>
     <p class="hint" id="backupInfo">모든 기록은 구글 시트에 바로 저장되고, 매일 새벽 3시쯤 드라이브 "백업" 폴더에 사본이 자동으로 쌓입니다.</p>
     <div class="links">
@@ -385,6 +410,15 @@ dialog::backdrop{background:rgb(0 0 0 / .35)}
   <div class="dlg">
     <h2>직원 관리</h2>
     <div class="elist" id="empList"></div>
+    <form id="epwForm" autocomplete="off" style="border:1px solid var(--line);border-radius:8px;padding:10px">
+      <h2 style="font-size:.95rem">직원용 비밀번호</h2>
+      <p class="hint" id="epwState"></p>
+      <div class="two">
+        <label>새 직원용 비밀번호<input id="epw" type="text" maxlength="30" autocomplete="off" placeholder="4자 이상"></label>
+        <span style="display:flex;gap:6px;align-items:end"><button class="btn" type="submit" id="epwSave">정하기</button><button class="btn ghost" type="button" id="epwOff" hidden>끄기</button></span>
+      </div>
+      <p class="msg" id="epwMsg" role="status"></p>
+    </form>
     <form id="empForm" autocomplete="off">
       <h2 id="empFormH" style="font-size:.95rem">새 직원 추가</h2>
       <div class="two">
@@ -486,7 +520,7 @@ const SCRIPT_URL_DEFAULT = 'https://script.google.com/macros/s/AKfycbzdZ6yB6BdtF
     return j;
   }
   function apply(j){
-    state = { items:j.items||[], logs:j.logs||[], logTotal:j.logTotal||0,
+    state = { role:j.role==='emp'?'emp':'admin', empPwSet:!!j.empPwSet, items:j.items||[], logs:j.logs||[], logTotal:j.logTotal||0,
       empSupported: Array.isArray(j.employees), employees:j.employees||[], empLogs:j.empLogs||[], empLogTotal:j.empLogTotal||0, empStock:j.empStock||[],
       sheetUrl:j.sheetUrl, folderUrl:j.folderUrl, lastBackup:j.lastBackup, at:new Date().toISOString() };
     put(K.cache, JSON.stringify(state));
@@ -510,6 +544,7 @@ const SCRIPT_URL_DEFAULT = 'https://script.google.com/macros/s/AKfycbzdZ6yB6BdtF
   $('tDate').value = today();
 
   function render(){
+    document.body.classList.toggle('empmode', state.role==='emp');
     const items = state.items.slice().sort((a,b)=>CATS.indexOf(a.category)-CATS.indexOf(b.category)||String(a.name).localeCompare(String(b.name),'ko'));
     const body=$('stockBody'); body.textContent='';
     const list=items.filter(it=>cat==='전체'||it.category===cat);
@@ -564,6 +599,8 @@ const SCRIPT_URL_DEFAULT = 'https://script.google.com/macros/s/AKfycbzdZ6yB6BdtF
   const empName = id => { const p=(state.employees||[]).find(x=>x.id===id); return p?p.name:''; };
   const itemOf = id => state.items.find(i=>i.id===id);
   const ETXT = { in:'입고', use:'사용', return:'반납' };
+  const isEmp = () => state.role==='emp';
+  let me = get('inv_me');
   function sortedStock(){
     const order={}; (state.employees||[]).forEach((p,i)=>order[p.id]=i);
     return (state.empStock||[]).slice().sort((a,b)=>(order[a.empId]??999)-(order[b.empId]??999)||String(a.itemName).localeCompare(String(b.itemName),'ko'));
@@ -574,6 +611,16 @@ const SCRIPT_URL_DEFAULT = 'https://script.google.com/macros/s/AKfycbzdZ6yB6BdtF
     ['eReportBtn','eReportBtn2','empMgrBtn'].forEach(id=>$(id).disabled=!ok);
     if(!ok) return;
     const emps=state.employees||[];
+    if(isEmp()){
+      const mine=emps.find(p=>p.id===me);
+      $('mePanel').hidden=!!mine; $('empMain').hidden=!mine; $('eLogPanel').hidden=!mine; $('eReportBtn2').hidden=!mine; $('meChange').hidden=!mine;
+      $('meLine').textContent=mine?mine.name+'님 자재 · 본사에서 출고하면 자동으로 입고됩니다':'';
+      $('eStockH').textContent='내 자재';
+      if(!mine){ renderMePick(); return; }
+      empSel=me;
+    } else {
+      $('mePanel').hidden=true; $('eStockH').textContent='직원별 보유 현황';
+    }
     if(empSel!=='전체' && !emps.some(p=>p.id===empSel)) empSel='전체';
     const tabs=$('empTabs'); tabs.textContent='';
     [{id:'전체',name:'전체'}].concat(emps).forEach(p=>{ const b=el('button',{cls:'chip',type:'button','aria-pressed':String(p.id===empSel),text:p.name}); b.onclick=()=>{ empSel=p.id; if(p.id!=='전체'){ $('eEmp').value=p.id; fillEItems(); } renderEmp(); }; tabs.appendChild(b); });
@@ -581,14 +628,14 @@ const SCRIPT_URL_DEFAULT = 'https://script.google.com/macros/s/AKfycbzdZ6yB6BdtF
     const showZero=$('eShowZero').checked;
     const rows=sortedStock().filter(b=>(empSel==='전체'||b.empId===empSel)&&(showZero||b.bal!==0));
     if(!emps.length) body.appendChild(el('tr',null,[el('td',{colspan:'7',cls:'empty',text:"등록된 직원이 없습니다. 오른쪽 위 '직원 관리'에서 직원을 먼저 추가해 주세요."})]));
-    else if(!rows.length) body.appendChild(el('tr',null,[el('td',{colspan:'7',cls:'empty',text:'갖고 있는 자재가 없습니다. 위쪽 출고 기록에서 받는 직원을 고르면 여기에 잡힙니다.'})]));
+    else if(!rows.length) body.appendChild(el('tr',null,[el('td',{colspan:'7',cls:'empty',text:isEmp()?'갖고 있는 자재가 없습니다. 본사에서 출고하면 자동으로 잡히고, 직접 받은 자재는 입고로 넣으세요.':'갖고 있는 자재가 없습니다. 위쪽 출고 기록에서 받는 직원을 고르면 여기에 잡힙니다.'})]));
     rows.forEach(b=>{
       const it=itemOf(b.itemId), unit=it?(it.unit||'개'):'개';
       const bUse=el('button',{cls:'mini out',type:'button',text:'사용'}); bUse.onclick=()=>prefillE(b.empId,b.itemId,'use');
       const bRet=el('button',{cls:'mini',type:'button',text:'반납'}); bRet.onclick=()=>prefillE(b.empId,b.itemId,'return');
       if(b.bal<=0){ bUse.disabled=true; bRet.disabled=true; }
       body.appendChild(el('tr',null,[
-        el('td',{cls:'iname',text:empName(b.empId)||'(삭제된 직원)'}),
+        el('td',{cls:'iname ecol',text:empName(b.empId)||'(삭제된 직원)'}),
         el('td',null,[el('div',{text:it?it.name:b.itemName}),el('div',{cls:'meta',text:it?[it.spec,it.color].filter(Boolean).join(' · '):''})]),
         el('td',{cls:'r hide-sm num',text:fmt(b.inQty)}),
         el('td',{cls:'r hide-sm num',text:fmt(b.used)}),
@@ -600,12 +647,12 @@ const SCRIPT_URL_DEFAULT = 'https://script.google.com/macros/s/AKfycbzdZ6yB6BdtF
     const se=$('eEmp'), sk=se.value; se.textContent='';
     if(!emps.length) se.appendChild(el('option',{value:'',text:'먼저 직원을 추가해 주세요'}));
     emps.forEach(p=>se.appendChild(el('option',{value:p.id,text:p.name})));
-    se.value=emps.some(p=>p.id===sk)?sk:(empSel!=='전체'?empSel:(emps[0]?emps[0].id:''));
+    se.value=isEmp()?me:(emps.some(p=>p.id===sk)?sk:(empSel!=='전체'?empSel:(emps[0]?emps[0].id:'')));
     fillEItems();
     const f=$('eLogFilter'), fk=f.value; f.textContent='';
     f.appendChild(el('option',{value:'',text:'전체 직원'}));
     emps.forEach(p=>f.appendChild(el('option',{value:p.id,text:p.name})));
-    f.value=emps.some(p=>p.id===fk)?fk:'';
+    f.value=isEmp()?me:(emps.some(p=>p.id===fk)?fk:'');
     renderELogs();
   }
   function fillEItems(){
@@ -614,7 +661,7 @@ const SCRIPT_URL_DEFAULT = 'https://script.google.com/macros/s/AKfycbzdZ6yB6BdtF
     let opts=[];
     if(type==='own') opts=state.items.slice().sort((a,b)=>CATS.indexOf(a.category)-CATS.indexOf(b.category)||String(a.name).localeCompare(String(b.name),'ko')).map(it=>{ const b=(state.empStock||[]).find(x=>x.empId===emp&&x.itemId===it.id); return {id:it.id,text:label(it)+'  (보유 '+fmt(b?b.bal:0)+')'}; });
     else opts=sortedStock().filter(b=>b.empId===emp&&b.bal>0).map(b=>{ const it=itemOf(b.itemId); return {id:b.itemId,text:(it?label(it):b.itemName)+'  (잔량 '+fmt(b.bal)+')'}; }).filter(o=>itemOf(o.id));
-    if(!opts.length) sel.appendChild(el('option',{value:'',text:type==='own'?'먼저 품목을 추가해 주세요':'이 직원이 갖고 있는 자재가 없습니다'}));
+    if(!opts.length) sel.appendChild(el('option',{value:'',text:type==='own'?'본사에서 품목을 먼저 등록해야 합니다':'이 직원이 갖고 있는 자재가 없습니다'}));
     opts.forEach(o=>sel.appendChild(el('option',{value:o.id,text:o.text})));
     if(opts.some(o=>o.id===keep)) sel.value=keep;
   }
@@ -649,10 +696,11 @@ const SCRIPT_URL_DEFAULT = 'https://script.google.com/macros/s/AKfycbzdZ6yB6BdtF
     list.forEach(l=>{
       const it=itemOf(l.itemId);
       const undo=el('button',{cls:'mini',type:'button',text:'취소'}); undo.onclick=()=>cancelELog(l);
+      if(isEmp()&&l.link){ undo.disabled=true; undo.title='본사 출고·반납과 이어진 기록은 본사에서 취소합니다'; }
       const sign=l.type==='in'?'+':'−';
       body.appendChild(el('tr',null,[
         el('td',{cls:'num',text:(l.date||'').slice(5).replace('-','/')}),
-        el('td',{text:empName(l.empId)||l.empName}),
+        el('td',{cls:'ecol',text:empName(l.empId)||l.empName}),
         el('td',null,[el('span',{cls:'type '+l.type,text:ETXT[l.type]||l.type})]),
         el('td',{text:it?label(it):(l.itemName||'(삭제된 품목)')}),
         el('td',{cls:'r num qty '+l.type,text:sign+fmt(l.qty)}),
@@ -689,7 +737,44 @@ const SCRIPT_URL_DEFAULT = 'https://script.google.com/macros/s/AKfycbzdZ6yB6BdtF
     $('pSave').textContent=p?'저장':'추가'; $('pDelete').hidden=!p; $('pNew').hidden=!p;
     $('pName').focus();
   }
-  $('empMgrBtn').onclick=()=>{ renderEmpList(); editEmp(null); $('pMsg').textContent=''; $('empDlg').showModal(); $('pName').focus(); };
+  function renderEpw(){ $('epwState').textContent=state.empPwSet?'지금 직원용 비밀번호가 정해져 있습니다. 직원은 이 비밀번호로 들어오면 자기 자재 화면만 봅니다. 바꾸면 직원 기기는 다시 로그인해야 합니다.':'아직 정하지 않았습니다. 정해서 직원들에게 알려 주면, 직원은 그 비밀번호로 들어와 자기 자재만 입고·사용·반납합니다. (본사 비밀번호는 알려 주지 마세요)'; $('epwOff').hidden=!state.empPwSet; $('epwSave').textContent=state.empPwSet?'바꾸기':'정하기'; }
+  $('empMgrBtn').onclick=()=>{ renderEmpList(); renderEpw(); editEmp(null); $('pMsg').textContent=''; $('epwMsg').textContent=''; $('empDlg').showModal(); $('pName').focus(); };
+  $('epwForm').addEventListener('submit', async e=>{
+    e.preventDefault();
+    const pw=$('epw').value.trim();
+    if(pw.length<4) return msg('epwMsg','직원용 비밀번호는 4자 이상으로 정해 주세요.');
+    $('epwSave').disabled=true; msg('epwMsg','저장 중…',true);
+    if(await act('setEmpPassword',{password:pw},'epwMsg')){ $('epw').value=''; renderEpw(); }
+    $('epwSave').disabled=false;
+  });
+  $('epwOff').onclick=async()=>{
+    $('empDlg').close();
+    if(!await ask('직원용 비밀번호 끄기','직원용 비밀번호를 끌까요? 직원 기기는 모두 로그아웃됩니다.')) return;
+    await act('setEmpPassword',{password:''});
+  };
+
+  /* 직원 화면: 이 기기 사용자 고르기 / 직접 등록 */
+  function renderMePick(){
+    const box=$('meList'); box.textContent='';
+    (state.employees||[]).forEach(p=>{ const b=el('button',{cls:'btn ghost',type:'button',text:p.name}); b.onclick=()=>{ me=p.id; put('inv_me',me); render(); }; box.appendChild(b); });
+    if(!(state.employees||[]).length) box.appendChild(el('p',{cls:'hint',text:'아직 등록된 직원이 없습니다.'}));
+  }
+  $('meChange').onclick=()=>{ me=''; put('inv_me',''); render(); };
+  $('empLogout').onclick=()=>$('logoutBtn').onclick();
+  $('mePhone').addEventListener('input',()=>{ const d=$('mePhone').value.replace(/\D/g,''); if(/^01\d{9}$/.test(d)) $('mePhone').value=d.replace(/(\d{3})(\d{4})(\d{4})/,'$1-$2-$3'); });
+  $('meForm').addEventListener('submit', async e=>{
+    e.preventDefault();
+    const name=$('meName').value.trim();
+    if(!name) return msg('meMsg','이름을 입력해 주세요.');
+    const has=(state.employees||[]).find(p=>p.name===name);
+    if(has){ me=has.id; put('inv_me',me); render(); return; }
+    $('meSave').disabled=true; msg('meMsg','등록 중…',true);
+    if(await act('saveEmp',{emp:{name,phone:$('mePhone').value.trim()}},'meMsg')){
+      const p=(state.employees||[]).find(x=>x.name===name);
+      if(p){ me=p.id; put('inv_me',me); $('meName').value=''; $('mePhone').value=''; render(); }
+    }
+    $('meSave').disabled=false;
+  });
   $('pClose').onclick=()=>$('empDlg').close();
   $('pNew').onclick=()=>{ editEmp(null); $('pMsg').textContent=''; };
   $('pPhone').addEventListener('input',()=>{ const d=$('pPhone').value.replace(/\D/g,''); if(/^01\d{9}$/.test(d)) $('pPhone').value=d.replace(/(\d{3})(\d{4})(\d{4})/,'$1-$2-$3'); });
@@ -765,7 +850,8 @@ const SCRIPT_URL_DEFAULT = 'https://script.google.com/macros/s/AKfycbzdZ6yB6BdtF
     const s=$('erEmp'), k=s.value; s.textContent='';
     s.appendChild(el('option',{value:'',text:'전체 직원'}));
     (state.employees||[]).forEach(p=>s.appendChild(el('option',{value:p.id,text:p.name})));
-    s.value=(state.employees||[]).some(p=>p.id===k)?k:(empSel!=='전체'?empSel:'');
+    s.value=isEmp()?me:((state.employees||[]).some(p=>p.id===k)?k:(empSel!=='전체'?empSel:''));
+    s.disabled=isEmp();
     if(!$('erMonth').value) $('erMonth').value=monthNow();
     buildEReport(); $('eReportDlg').showModal();
   }
@@ -976,7 +1062,7 @@ const SCRIPT_URL_DEFAULT = 'https://script.google.com/macros/s/AKfycbzdZ6yB6BdtF
       setupMode = !!st.needsSetup;
     }catch(e){ $('gMsg').textContent='서버에 연결하지 못했습니다. 주소와 인터넷 연결을 확인해 주세요.'; if(!SCRIPT_URL_DEFAULT){ $('gUrlBox').hidden=false; $('gUrl').value=URL_; } }
     $('gPw2Wrap').hidden=!setupMode;
-    $('gHint').textContent = setupMode ? '처음 사용입니다. 이 앱에서 쓸 비밀번호를 정해 주세요 (4자 이상). 휴대폰과 PC에서 같은 비밀번호로 로그인합니다.' : '비밀번호를 입력해 주세요.';
+    $('gHint').textContent = setupMode ? '처음 사용입니다. 이 앱에서 쓸 비밀번호를 정해 주세요 (4자 이상). 휴대폰과 PC에서 같은 비밀번호로 로그인합니다.' : '본사 비밀번호 또는 직원용 비밀번호를 입력해 주세요.';
     $('gBtn').textContent = setupMode ? '비밀번호 정하고 시작' : '로그인';
     $('gPw').autocomplete = setupMode ? 'new-password' : 'current-password';
   }

@@ -23,6 +23,7 @@ const MAX_LOGS_SENT = 500;
 const TOKEN_DAYS = 365;
 
 const P = PropertiesService.getScriptProperties();
+let ROLE = '';   // 'admin'(본사) 또는 'emp'(직원)
 
 /* ---------- 입구 ---------- */
 function doGet() {
@@ -31,6 +32,7 @@ function doGet() {
 
 function doPost(e) {
   let req;
+  ROLE = '';
   try { req = JSON.parse(e.postData.contents); } catch (err) { return out({ ok: false, error: '요청 형식이 잘못되었습니다.' }); }
   const lock = LockService.getScriptLock();
   try {
@@ -51,7 +53,18 @@ function handle(req) {
   const a = req.action;
   if (a === 'setup') return setup(req);
   if (a === 'login') return login(req);
-  if (!checkToken(req.token)) return { ok: false, error: 'AUTH' };
+  ROLE = checkToken(req.token);
+  if (!ROLE) return { ok: false, error: 'AUTH' };
+  // 직원 비밀번호로 들어온 기기는 직원 재고 일만 할 수 있음
+  if (ROLE === 'emp') {
+    const EMP_OK = { logout: 1, list: 1, saveEmp: 1, addEmpLog: 1, cancelEmpLog: 1 };
+    if (!EMP_OK[a]) return { ok: false, error: '직원 화면에서는 할 수 없는 일입니다. 본사(관리자) 비밀번호로 들어와 주세요.' };
+    if (a === 'saveEmp' && req.emp && req.emp.id) return { ok: false, error: '직원 정보 수정은 본사에서만 할 수 있습니다.' };
+    if (a === 'cancelEmpLog') {
+      const el = readEmpLogs().find(x => x.id === req.id);
+      if (el && el.link) return { ok: false, error: '본사 출고·반납과 이어진 기록은 본사에서만 취소할 수 있습니다.' };
+    }
+  }
   switch (a) {
     case 'logout': dropToken(req.token); return { ok: true };
     case 'list': return listAll();
@@ -65,6 +78,7 @@ function handle(req) {
     case 'cancelEmpLog': cancelEmpLog(req.id); return listAll('직원 기록을 취소하고 재고를 되돌렸습니다.');
     case 'backupNow': dailyBackup(); return listAll('지금 상태를 드라이브에 백업했습니다.');
     case 'changePassword': return changePassword(req);
+    case 'setEmpPassword': return setEmpPassword(req);
   }
   return { ok: false, error: '알 수 없는 요청입니다: ' + a };
 }
@@ -84,18 +98,37 @@ function setup(req) {
   P.setProperty('PW_HASH', hash(pw, salt));
   ensureStore();
   ensureTrigger();
-  return { ok: true, token: newToken(req.device) };
+  return { ok: true, role: 'admin', token: newToken(req.device, 'admin') };
 }
 
 function login(req) {
   const salt = P.getProperty('PW_SALT');
   if (!salt) return { ok: false, error: '아직 처음 설정이 안 되어 있습니다.' };
-  if (hash(String(req.password || ''), salt) !== P.getProperty('PW_HASH')) {
+  const pw = String(req.password || '');
+  let role = '';
+  if (hash(pw, salt) === P.getProperty('PW_HASH')) role = 'admin';
+  else if (P.getProperty('EMP_PW_HASH') && hash(pw, P.getProperty('EMP_PW_SALT')) === P.getProperty('EMP_PW_HASH')) role = 'emp';
+  if (!role) {
     Utilities.sleep(800);
     return { ok: false, error: '비밀번호가 맞지 않습니다.' };
   }
   ensureStore();
-  return { ok: true, token: newToken(req.device) };
+  return { ok: true, role, token: newToken(req.device, role) };
+}
+
+/** 본사에서 직원용 비밀번호를 정하거나 바꿈 (빈 값이면 직원 로그인 끔). 바꾸면 직원 기기는 다시 로그인 */
+function setEmpPassword(req) {
+  const pw = String(req.password || '');
+  if (pw && pw.length < 4) return { ok: false, error: '직원용 비밀번호는 4자 이상으로 정해 주세요.' };
+  if (pw && hash(pw, P.getProperty('PW_SALT')) === P.getProperty('PW_HASH')) return { ok: false, error: '본사 비밀번호와 다르게 정해 주세요.' };
+  const t = tokens();
+  Object.keys(t).forEach(k => { if (t[k].role === 'emp') delete t[k]; });
+  P.setProperty('TOKENS', JSON.stringify(t));
+  if (!pw) { P.deleteProperty('EMP_PW_HASH'); P.deleteProperty('EMP_PW_SALT'); return listAll('직원용 비밀번호를 껐습니다.'); }
+  const salt = Utilities.getUuid();
+  P.setProperty('EMP_PW_SALT', salt);
+  P.setProperty('EMP_PW_HASH', hash(pw, salt));
+  return listAll('직원용 비밀번호를 정했습니다. 직원들은 이 비밀번호로 들어오면 직원 화면만 보입니다.');
 }
 
 function changePassword(req) {
@@ -107,25 +140,26 @@ function changePassword(req) {
   P.setProperty('PW_SALT', ns);
   P.setProperty('PW_HASH', hash(pw, ns));
   P.setProperty('TOKENS', '{}');   // 다른 기기는 모두 로그아웃
-  return { ok: true, token: newToken(req.device) };
+  return { ok: true, role: 'admin', token: newToken(req.device, 'admin') };
 }
 
 function tokens() { try { return JSON.parse(P.getProperty('TOKENS') || '{}'); } catch (e) { return {}; } }
-function newToken(device) {
+function newToken(device, role) {
   const t = tokens();
   const now = Date.now();
   Object.keys(t).forEach(k => { if (now - t[k].at > TOKEN_DAYS * 864e5) delete t[k]; });
   const keys = Object.keys(t).sort((x, y) => t[x].at - t[y].at);
-  while (keys.length >= 20) delete t[keys.shift()];
+  while (keys.length >= 60) delete t[keys.shift()];
   const tok = Utilities.getUuid() + Utilities.getUuid().slice(0, 8);
-  t[tok] = { at: now, device: String(device || '').slice(0, 40) };
+  t[tok] = { at: now, device: String(device || '').slice(0, 40), role: role === 'emp' ? 'emp' : 'admin' };
   P.setProperty('TOKENS', JSON.stringify(t));
   return tok;
 }
 function checkToken(tok) {
   if (!tok) return false;
   const t = tokens()[tok];
-  return !!t && (Date.now() - t.at) < TOKEN_DAYS * 864e5;
+  if (!t || (Date.now() - t.at) >= TOKEN_DAYS * 864e5) return '';
+  return t.role === 'emp' ? 'emp' : 'admin';   // 예전 기기(역할 없음)는 본사
 }
 function dropToken(tok) { const t = tokens(); delete t[tok]; P.setProperty('TOKENS', JSON.stringify(t)); }
 
@@ -264,8 +298,12 @@ function listAll(message) {
   const empStock = empBalances(elogs);
   elogs.sort((a, b) => b.row - a.row);
   const esent = elogs.slice(0, MAX_LOGS_SENT * 2).map(l => { delete l.row; return l; });
+  if (ROLE === 'emp') {
+    return { ok: true, role: 'emp', message: message || '', items: items.map(i => ({ id: i.id, category: i.category, name: i.name, spec: i.spec, color: i.color, unit: i.unit })),
+      logs: [], logTotal: 0, employees: emps, empLogs: esent, empLogTotal: elogs.length, empStock, serverTime: fmtTime() };
+  }
   return {
-    ok: true, message: message || '', items, logs: sent, logTotal: logs.length,
+    ok: true, role: 'admin', empPwSet: !!P.getProperty('EMP_PW_HASH'), message: message || '', items, logs: sent, logTotal: logs.length,
     employees: emps, empLogs: esent, empLogTotal: elogs.length, empStock,
     sheetUrl: 'https://docs.google.com/spreadsheets/d/' + P.getProperty('SHEET_ID'),
     folderUrl: 'https://drive.google.com/drive/folders/' + P.getProperty('FOLDER_ID'),
@@ -403,9 +441,9 @@ function addEmpLog(l, device) {
     sh.getRange(it.row, 10).setValue(now);
   }
   const ko = type === 'own' ? '입고' : ETYPE_KO[type];
-  sheet('직원재고').appendRow([newId('E'), day, ko, emp.id, emp.name, it.id, itemLabel(it), qty, memo || (type === 'own' ? '기존 보유분 등록' : ''), link, now, clean(device, 40)]);
+  sheet('직원재고').appendRow([newId('E'), day, ko, emp.id, emp.name, it.id, itemLabel(it), qty, memo || (type === 'own' ? '직접 입고' : ''), link, now, clean(device, 40)]);
   const left = empBal(emp.id, it.id);
-  const what = type === 'use' ? '사용' : type === 'return' ? '본사로 반납' : '보유 등록';
+  const what = type === 'use' ? '사용' : type === 'return' ? '본사로 반납' : '입고';
   return emp.name + '님 ' + itemLabel(it) + ' ' + qty + it.unit + ' ' + what + ' 기록했습니다. 남은 재고 ' + left + it.unit;
 }
 
