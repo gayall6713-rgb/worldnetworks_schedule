@@ -187,7 +187,7 @@ body.role-partner #filterSource,body.role-partner #filterPay,body.role-partner .
 img.thumb.t전{outline:3px solid #ffa94d;outline-offset:-3px}img.thumb.t후{outline:3px solid #69db7c;outline-offset:-3px}
 .exp-tbl input,.exp-tbl select{padding:5px 6px;font-size:.82rem;min-width:0}.exp-tbl td{white-space:normal}
 .exp-btn{display:inline-block;margin-top:5px;padding:3px 8px;font-size:.74rem;border:1px solid #f59f00;background:#fff9db;color:#a15c00;border-radius:5px;cursor:pointer;font-weight:bold}
-body:not(.role-admin) .exp-btn{display:none!important}
+body:not(.role-admin):not(.role-staff) .exp-btn{display:none!important}
 .stat-tbl{min-width:0;font-size:.8rem;width:100%}.stat-tbl td,.stat-tbl th{padding:6px 6px;white-space:nowrap}
 .stat-tbl td.n{text-align:right;font-variant-numeric:tabular-nums}.stat-tbl tr.sum td{font-weight:bold;background:#f1f3f5}
 .stat-tbl tr.clickable{cursor:pointer}.stat-tbl tr.clickable:hover td{background:#e7f5ff}.stat-tbl tr.clickable td:first-child{color:#1c7ed6;text-decoration:underline}
@@ -458,7 +458,7 @@ body.role-partner .q-only{display:none!important}
 <div id="expModal" class="modal" style="z-index:70;">
   <div class="modal-box" style="max-width:860px;width:100%;">
     <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:6px;gap:8px;">
-      <h4 style="margin:0;font-size:1.15rem;color:var(--primary);">💸 지출·외주비 입력 <span style="font-weight:normal;font-size:.8rem;color:#888;">(관리자 전용)</span></h4>
+      <h4 style="margin:0;font-size:1.15rem;color:var(--primary);">💸 지출·외주비 입력 <span style="font-weight:normal;font-size:.8rem;color:#888;">(관리자·직원)</span></h4>
       <button type="button" id="expClose" style="background:none;border:none;font-size:1.2rem;cursor:pointer;">✖</button>
     </div>
     <div id="expWho" style="font-weight:bold;margin-bottom:8px;"></div>
@@ -904,7 +904,7 @@ body.role-partner .q-only{display:none!important}
     <div style="margin-top:8px;display:flex;align-items:center;gap:6px;font-size:.85rem;">기간 <select id="peMonth" class="filter-sel" style="min-width:140px;"></select></div>
     <div class="pe-sum" id="peSum"></div>
     <div class="table-responsive"><table><thead><tr><th>날짜</th><th>고객</th><th>작업 내용</th><th>구분</th><th>금액</th><th>지급</th><th>메모</th></tr></thead><tbody id="peBody"></tbody></table></div>
-    <div class="hint" style="margin-top:8px;">줄을 누르면 그 일정의 상세 화면이 열립니다. 외주비 입력·수정은 상세 화면의 💸 지출·외주비에서 (관리자).</div>
+    <div class="hint" style="margin-top:8px;">줄을 누르면 그 일정의 상세 화면이 열립니다. 외주비 입력·수정은 상세 화면의 💸 지출·외주비에서 (관리자·직원).</div>
   </div>
 </div>
 <div id="detailModal" class="modal">
@@ -1466,8 +1466,9 @@ const expSum = s => expList(s).reduce((a, e) => a + toNum(e.amount), 0);
 const expOut = s => expList(s).filter(isOutsource).reduce((a, e) => a + toNum(e.amount), 0);
 const profitOf = s => vatOf(s).supply - expSum(s);   // 순이익은 부가세를 뺀 공급가액 기준
 let expItemId = null, expDraft = [];
+const canExpense = () => canEdit() && !isPartner();   // 지출·외주비 입력: 관리자·직원 (매출·순이익은 관리자만 보임)
 function openExpense(id) {
-  if (!isAdmin()) return;
+  if (!canExpense()) return;
   const it = schedules.find(x => x.id === id); if (!it) return;
   expItemId = id; expDraft = expList(it).map(e => Object.assign({}, e));
   $('expWho').textContent = `👤 ${it.customer || '이름 없음'} · ${it.request || ''} · ${visitDay(it) ? dateLabel(visitDay(it)) : '방문일 미정'}`;
@@ -1482,6 +1483,10 @@ function expSummary() {
   const sales = vatOf(it).supply, cost = expSum(tmp), out = expOut(tmp), pf = sales - cost;
   const paidOut = expDraft.filter(e => e.paid).reduce((a, e) => a + toNum(e.amount), 0);
   const card = (t, v, c, sub) => `<div class="stat-card" style="border-left-color:${c}"><small>${t}</small><b>${v}</b>${sub ? `<small>${sub}</small>` : ''}</div>`;
+  if (!isAdmin()) {   // 직원: 지출·미지급만 보이고 매출·순이익은 숨김
+    $('expSum').innerHTML = card('지출 합계', statWon(cost) + '원', '#f08c00', `외주비 ${statWon(out)}원`) + card('미지급', statWon(cost - paidOut) + '원', '#e03131');
+    return;
+  }
   $('expSum').innerHTML = card('매출 (최종 계약금액)', sales ? statWon(sales) + '원' : '미입력', '#1c7ed6') +
     card('지출 합계', statWon(cost) + '원', '#f08c00', `외주비 ${statWon(out)}원`) +
     card('미지급', statWon(cost - paidOut) + '원', '#e03131') +
@@ -1519,7 +1524,7 @@ $('expAdd').onclick = () => { expDraft.push({ id: uid(), type: '자재비', vend
 const closeExpense = () => { $('expModal').classList.remove('show'); expItemId = null; expDraft = []; };
 $('expClose').onclick = closeExpense; $('expCancel').onclick = closeExpense;
 $('expSave').onclick = () => {
-  if (!isAdmin()) return;
+  if (!canExpense()) return;
   const live = schedules.find(x => x.id === expItemId); if (!live) { closeExpense(); return; }
   live.expenses = expDraft.filter(e => toNum(e.amount) || (e.vendor || '').trim() || (e.memo || '').trim())
     .map(e => ({ id: e.id || uid(), type: e.type || '기타', vendor: (e.vendor || '').trim(), amount: toNum(e.amount) ? toNum(e.amount).toLocaleString('ko-KR') : '', date: e.date || '', paid: !!e.paid, memo: (e.memo || '').trim() }));
@@ -1531,7 +1536,7 @@ $('expSave').onclick = () => {
 function expButton(item) {
   const b = document.createElement('button'); b.type = 'button'; b.className = 'exp-btn';
   const c = expSum(item);
-  b.textContent = c ? `💸 지출 ${statWon(c)}원 · 이익 ${statWon(profitOf(item))}원` : '💸 지출·외주비 입력';
+  b.textContent = c ? (isAdmin() ? `💸 지출 ${statWon(c)}원 · 이익 ${statWon(profitOf(item))}원` : `💸 지출 ${statWon(c)}원`) : '💸 지출·외주비 입력';
   b.onclick = ev => { ev.stopPropagation(); openExpense(item.id); };
   return b;
 }
@@ -3128,7 +3133,7 @@ function payCell(item) {
     if (remain <= 0) line('완납 ✅', 'color:#2f9e44;font-weight:bold;');
     else line('미수금 ' + remain.toLocaleString('ko-KR') + '원', 'color:#e03131;font-weight:bold;');
   }
-  if (isAdmin()) td.appendChild(expButton(item));
+  if (canExpense()) td.appendChild(expButton(item));
   return td;
 }
 
@@ -4784,12 +4789,13 @@ function renderDetail() {
     if (s.receiptType) lines.push('🧾 ' + receiptText(s));
     row('입금 현황', lines.join('\n'));
   }
-  if (isAdmin()) {
+  if (canExpense()) {
     const ex = expList(s), t = vatOf(s).supply, c = expSum(s);
     const lines = ex.map(e => `${e.type} · ${e.vendor || '-'} ${won(e.amount) || '0원'} ${e.paid ? '✅ 지급' + (e.date ? ' (' + e.date + ')' : '') : '⬜ 미지급'}`);
-    if (ex.length) lines.push(`지출 합계 ${statWon(c)}원 · 순이익 ${statWon(t - c)}원${t ? ' (이익률 ' + Math.round((t - c) / t * 1000) / 10 + '%)' : ''}`);
+    if (ex.length && !isAdmin()) lines.push(`지출 합계 ${statWon(c)}원`);
+    else if (ex.length) lines.push(`지출 합계 ${statWon(c)}원 · 순이익 ${statWon(t - c)}원${t ? ' (이익률 ' + Math.round((t - c) / t * 1000) / 10 + '%)' : ''}`);
     const b = document.createElement('button'); b.type = 'button'; b.className = 'qbtn'; b.style.cssText = 'background:#fff9db;border:1px solid #f59f00;color:#a15c00;cursor:pointer;'; b.textContent = ex.length ? '💸 지출 수정' : '💸 지출·외주비 입력'; b.onclick = () => openExpense(s.id);
-    row('💸 지출·손익', ex.length ? lines.join('\n') : '입력된 지출 없음', [b]);
+    row(isAdmin() ? '💸 지출·손익' : '💸 지출·외주비', ex.length ? lines.join('\n') : '입력된 지출 없음', [b]);
   }
   row('담당 기사', [s.engineer || '미배정', s.engPhone].filter(Boolean).join('  '), tel(s.engPhone) ? [qa('call', 'tel:' + tel(s.engPhone), '📞 기사 전화'), Object.assign(document.createElement('button'), { type: 'button', className: 'qbtn sms', textContent: '💬 기사 문자', onclick: () => openSms(s.id, 'engineer') })] : null);
   if (s.partner) { const pe = employees.find(e => e.name === s.partner); row('🤝 협력업체', [s.partner, pe && pe.phone].filter(Boolean).join('  '), pe && tel(pe.phone) ? [qa('call', 'tel:' + tel(pe.phone), '📞 업체 전화'), Object.assign(document.createElement('button'), { type: 'button', className: 'qbtn sms', textContent: '💬 업체 문자', onclick: () => openSms(s.id, 'partner') })] : null); }
