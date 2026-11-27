@@ -156,6 +156,20 @@ input:focus-visible,select:focus-visible,button:focus-visible{outline:2px solid 
 .posheet .tot td{font-weight:700;background:#f6f7f8}
 .posheet .foot{margin-top:12px;white-space:pre-wrap}
 #recvDlg{width:min(560px,calc(100vw - 24px))}
+#scanDlg{width:min(520px,calc(100vw - 16px))}
+.camwrap{position:relative;background:#000;border-radius:10px;overflow:hidden;aspect-ratio:3/4;max-height:60vh;margin:0 auto;width:100%}
+.camwrap video{width:100%;height:100%;object-fit:cover;display:block}
+.camwrap .aim{position:absolute;inset:18%;border:3px solid rgb(255 255 255 / .85);border-radius:14px;box-shadow:0 0 0 999px rgb(0 0 0 / .35)}
+#qDlg{width:min(460px,calc(100vw - 16px))}
+.qhead{display:grid;gap:2px;justify-items:start}
+.qhead .stock{font-size:1.6rem}
+#lblDlg{width:min(1000px,calc(100vw - 16px));max-height:calc(100vh - 24px);overflow-y:auto}
+.labels{display:grid;grid-template-columns:repeat(auto-fill,minmax(var(--lw,5.6cm),1fr));gap:0}
+.label{border:1px dashed #999;padding:6px 8px;display:grid;grid-template-columns:auto minmax(0,1fr);gap:8px;align-items:center;background:#fff;color:#111;break-inside:avoid;page-break-inside:avoid}
+.label img{width:var(--qs,2.4cm);height:var(--qs,2.4cm);image-rendering:pixelated}
+.label b{display:block;font-size:13px;line-height:1.25;word-break:keep-all}
+.label span{display:block;font-size:11px;color:#333}
+.label small{display:block;font-size:9px;color:#666;margin-top:2px}
 .loginbox{border:1px solid var(--line);border-radius:8px;padding:10px;display:grid;gap:8px}
 #eReportDlg{width:min(1100px,calc(100vw - 16px));max-height:calc(100vh - 24px);overflow-y:auto}
 #erTable{font-size:.86rem}
@@ -225,6 +239,7 @@ dialog::backdrop{background:rgb(0 0 0 / .35)}
   .rtbl{max-height:none;overflow:visible;border:0}
   #rTable th,#erTable th,#sTable th,#auTable th{position:static}
   #poView .dlg{padding:0} .posheet{border:0;padding:0}
+  #lblDlg .dlg{padding:0} #lblDlg{overflow:visible}
 }
 @media (max-width:860px){.main{grid-template-columns:1fr}.stats{grid-template-columns:repeat(2,minmax(0,1fr))}}
 @media (max-width:520px){.hide-sm{display:none}}
@@ -265,10 +280,12 @@ dialog::backdrop{background:rgb(0 0 0 / .35)}
     <div class="hbtns">
       <span class="sync" id="sync"></span>
       <button class="btn install" id="installBtn" type="button" hidden>📲 앱 설치</button>
+      <button class="btn" id="scanBtn" type="button">📷 스캔</button>
       <button class="btn ghost" id="refreshBtn" type="button">새로고침</button>
       <button class="btn ghost adminonly" id="reportBtn" type="button">재고 현황표</button>
       <button class="btn ghost adminonly" id="siteBtn" type="button">현장별 집계</button>
       <button class="btn ghost adminonly" id="poBtn" type="button">발주</button>
+      <button class="btn ghost adminonly" id="lblBtn" type="button">QR 라벨</button>
       <button class="btn ghost" id="eReportBtn2" type="button">직원별 현황표</button>
       <button class="btn ghost adminonly" id="auditBtn" type="button">변경 기록</button>
       <button class="btn adminonly" id="addItemBtn" type="button">+ 품목 추가</button>
@@ -652,6 +669,58 @@ dialog::backdrop{background:rgb(0 0 0 / .35)}
   </form>
 </dialog>
 
+<dialog id="scanDlg">
+  <div class="dlg">
+    <div class="ph"><h2>QR 스캔</h2><button class="btn ghost" type="button" id="scClose">닫기</button></div>
+    <div class="camwrap"><video id="scVideo" playsinline muted></video><div class="aim"></div></div>
+    <p class="hint" id="scHint">자재 상자나 선반에 붙인 QR 라벨을 네모 안에 맞춰 주세요.</p>
+    <p class="msg" id="scMsg" role="status"></p>
+  </div>
+</dialog>
+
+<dialog id="qDlg">
+  <form class="dlg" id="qForm" autocomplete="off">
+    <div class="qhead">
+      <span class="cat" id="qCat"></span>
+      <h2 id="qName"></h2>
+      <p class="meta" id="qSub"></p>
+      <div><span class="stock num" id="qStock"></span> <span class="meta" id="qStockL"></span></div>
+    </div>
+    <div class="seg three" role="radiogroup" aria-label="구분" id="qSeg"></div>
+    <label id="qEmpWrap" hidden>받는 직원<select id="qEmp"></select></label>
+    <div class="two">
+      <label>수량<input id="qQty" type="number" inputmode="numeric" min="1" step="1" required placeholder="0"></label>
+      <label>날짜<input id="qDate" type="date" required></label>
+    </div>
+    <label id="qSiteWrap" hidden>현장<input id="qSite" type="text" list="siteList" maxlength="40" placeholder="예: OO아파트"></label>
+    <label>메모 (선택)<input id="qMemo" type="text" maxlength="80"></label>
+    <p class="msg" id="qMsg" role="status"></p>
+    <div class="acts">
+      <button class="btn ghost" type="button" id="qClose">닫기</button>
+      <button class="btn ghost" type="button" id="qNext">다음 스캔</button>
+      <button class="btn" type="submit" id="qSave">기록하기</button>
+    </div>
+  </form>
+</dialog>
+
+<dialog id="lblDlg">
+  <div class="dlg">
+    <div class="rhead noprint">
+      <div><h2>QR 라벨 인쇄</h2><p class="hint">라벨을 잘라 자재 상자·선반에 붙이면, 휴대폰 카메라나 앱의 📷 스캔으로 찍어 바로 입출고·사용을 기록할 수 있어요.</p></div>
+      <div class="hbtns">
+        <label class="rmonth">구분<select id="lbCat"></select></label>
+        <label class="rmonth">크기<select id="lbSize"><option value="m">보통 (3열)</option><option value="s">작게 (4열)</option><option value="l">크게 (2열)</option></select></label>
+        <label class="rmonth">장수<input id="lbCopies" type="number" min="1" max="10" value="1" style="width:5em"></label>
+      </div>
+    </div>
+    <div class="labels" id="lbGrid"></div>
+    <div class="acts noprint">
+      <button class="btn ghost" type="button" id="lbPrint">인쇄 / PDF</button>
+      <button class="btn" type="button" id="lbClose">닫기</button>
+    </div>
+  </div>
+</dialog>
+
 <dialog id="siteDlg">
   <div class="dlg">
     <div class="rhead">
@@ -891,6 +960,7 @@ const SCRIPT_URL_DEFAULT = 'https://script.google.com/macros/s/AKfycbzdZ6yB6BdtF
     renderLogs();
     renderEmp();
     renderSiteList(); syncESite();
+    if(typeof checkPendingQuick==='function') setTimeout(checkPendingQuick,0);
   }
   function syncTxType(){
     const out=document.querySelector('input[name="ttype"]:checked').value==='out';
@@ -1633,6 +1703,112 @@ const SCRIPT_URL_DEFAULT = 'https://script.google.com/macros/s/AKfycbzdZ6yB6BdtF
       $('rvOk').disabled=false; };
   }
   $('rvNo').onclick=()=>{ $('recvDlg').close(); openPo('list'); };
+
+  /* ---------- QR 라벨 · 스캔 ---------- */
+  const QR_BASE = location.origin + location.pathname.replace(/index\.html$/,'');
+  const qrUrl = id => QR_BASE + '#i=' + encodeURIComponent(id);
+  function loadScript(src){ return new Promise((res,rej)=>{ const s=document.createElement('script'); s.src=src; s.onload=res; s.onerror=()=>rej(new Error('불러오지 못했습니다')); document.head.appendChild(s); }); }
+  let qrLib=null, jsqrLib=null;
+  async function needQR(){ if(!qrLib){ await loadScript('lib/qrcode.js'); qrLib=window.qrcode; } return qrLib; }
+  async function needJsQR(){ if(!jsqrLib){ await loadScript('lib/jsQR.js'); jsqrLib=window.jsQR; } return jsqrLib; }
+  async function buildLabels(){
+    await needQR();
+    const c=$('lbCat').value, size=$('lbSize').value, n=Math.min(10,Math.max(1,Math.floor(+$('lbCopies').value||1)));
+    const g=$('lbGrid'); g.textContent='';
+    g.style.setProperty('--lw',{s:'4.2cm',m:'5.6cm',l:'8.6cm'}[size]); g.style.setProperty('--qs',{s:'1.8cm',m:'2.4cm',l:'3.6cm'}[size]);
+    const items=state.items.slice().sort((a,b)=>CATS.indexOf(a.category)-CATS.indexOf(b.category)||String(a.name).localeCompare(String(b.name),'ko')).filter(it=>!c||it.category===c);
+    if(!items.length) g.appendChild(el('p',{cls:'empty',text:'품목이 없습니다.'}));
+    items.forEach(it=>{
+      const q=qrLib(0,'M'); q.addData(qrUrl(it.id)); q.make();
+      const img=el('img',{src:q.createDataURL(6,2),alt:'QR'});
+      for(let i=0;i<n;i++) g.appendChild(el('div',{cls:'label'},[img.cloneNode(),el('div',null,[el('b',{text:it.name}),el('span',{text:[it.spec,it.color].filter(Boolean).join(' · ')}),el('small',{text:(it.category||'')+' · 월드네트웍스 자재'})])]));
+    });
+  }
+  $('lblBtn').onclick=async()=>{ const s=$('lbCat'),k=s.value; s.textContent=''; s.appendChild(el('option',{value:'',text:'전체'})); CATS.slice(1).forEach(c=>s.appendChild(el('option',{value:c,text:c}))); s.value=k; $('lblDlg').showModal(); try{ await buildLabels(); }catch(e){ $('lbGrid').textContent='QR을 만들지 못했습니다. 인터넷 연결을 확인해 주세요.'; } };
+  ['lbCat','lbSize','lbCopies'].forEach(id=>$(id).onchange=()=>buildLabels().catch(()=>{}));
+  $('lbClose').onclick=()=>$('lblDlg').close();
+  $('lbPrint').onclick=()=>window.print();
+
+  /* 스캔 → 빠른 기록 */
+  let scanStream=null, scanTimer=null, detector=null;
+  function stopScan(){ if(scanTimer){ cancelAnimationFrame(scanTimer); scanTimer=null; } if(scanStream){ scanStream.getTracks().forEach(t=>t.stop()); scanStream=null; } }
+  function idFromText(t){ t=String(t||'').trim(); const m=t.match(/[#&?]i=([^&\s]+)/); if(m) return decodeURIComponent(m[1]); return t; }
+  async function startScan(){
+    $('scMsg').textContent=''; $('scanDlg').showModal();
+    if(!navigator.mediaDevices||!navigator.mediaDevices.getUserMedia){ msg('scMsg','이 브라우저는 카메라를 쓸 수 없습니다. 휴대폰 기본 카메라 앱으로 QR을 찍어도 바로 열립니다.'); return; }
+    try{ scanStream=await navigator.mediaDevices.getUserMedia({video:{facingMode:{ideal:'environment'}},audio:false}); }
+    catch(e){ msg('scMsg','카메라를 켜지 못했습니다. 브라우저에서 카메라 권한을 허용해 주세요. (휴대폰 기본 카메라 앱으로 QR을 찍어도 됩니다)'); return; }
+    const v=$('scVideo'); v.srcObject=scanStream; await v.play().catch(()=>{});
+    detector=null;
+    if('BarcodeDetector' in window){ try{ const f=await BarcodeDetector.getSupportedFormats(); if(f.includes('qr_code')) detector=new BarcodeDetector({formats:['qr_code']}); }catch(e){} }
+    if(!detector){ try{ await needJsQR(); }catch(e){ msg('scMsg','QR 읽기 도구를 불러오지 못했습니다. 인터넷 연결을 확인해 주세요.'); return; } }
+    const cv=document.createElement('canvas'), cx=cv.getContext('2d',{willReadFrequently:true});
+    let busyScan=false;
+    const tick=async()=>{
+      if(!scanStream) return;
+      if(!busyScan && v.readyState>=2){
+        busyScan=true;
+        let text='';
+        try{
+          if(detector){ const r=await detector.detect(v); if(r&&r[0]) text=r[0].rawValue; }
+          else { const w=v.videoWidth, h=v.videoHeight, k=Math.min(1,640/Math.max(w,h)); cv.width=w*k; cv.height=h*k; cx.drawImage(v,0,0,cv.width,cv.height); const r=jsqrLib(cx.getImageData(0,0,cv.width,cv.height).data,cv.width,cv.height,{inversionAttempts:'dontInvert'}); if(r) text=r.data; }
+        }catch(e){}
+        busyScan=false;
+        if(text){ const id=idFromText(text); if(itemOf(id)){ if(navigator.vibrate) navigator.vibrate(80); stopScan(); $('scanDlg').close(); openQuick(id); return; } msg('scMsg','등록된 품목의 QR이 아닙니다: '+text.slice(0,40)); }
+      }
+      scanTimer=requestAnimationFrame(tick);
+    };
+    tick();
+  }
+  $('scanBtn').onclick=startScan;
+  $('scClose').onclick=()=>{ stopScan(); $('scanDlg').close(); };
+  $('scanDlg').addEventListener('close',stopScan);
+
+  let quickId=null;
+  function quickTypes(){ return isEmp()?[['use','사용'],['return','반납'],['own','입고']]:[['in','입고'],['out','출고']]; }
+  function openQuick(id){
+    const it=itemOf(id); if(!it) return;
+    if(isEmp()&&!(state.employees||[]).some(p=>p.id===me)){ sync('먼저 내 이름을 골라 주세요',true); return; }
+    quickId=id;
+    $('qCat').textContent=it.category||''; $('qName').textContent=it.name; $('qSub').textContent=[it.spec,it.color].filter(Boolean).join(' · ');
+    const seg=$('qSeg'); seg.textContent=''; seg.classList.toggle('three',isEmp());
+    const prev=(seg.dataset.last||'');
+    quickTypes().forEach(([v,t],i)=>{ const inp=el('input',{type:'radio',name:'qtype',value:v}); if(v===prev||(!prev&&i===(isEmp()?0:1))) inp.checked=true; const l=el('label',null,[inp,document.createTextNode(t)]); seg.appendChild(l); inp.addEventListener('change',syncQuick); });
+    if(!seg.querySelector('input:checked')) seg.querySelector('input').checked=true;
+    if(!isEmp()){ const s=$('qEmp'), k=s.value; s.textContent=''; s.appendChild(el('option',{value:'',text:'직원 아님 (현장으로 바로 출고)'})); (state.employees||[]).forEach(p=>s.appendChild(el('option',{value:p.id,text:p.name}))); s.value=(state.employees||[]).some(p=>p.id===k)?k:''; }
+    $('qQty').value=''; $('qMemo').value=''; if(!$('qDate').value) $('qDate').value=today(); $('qMsg').textContent='';
+    syncQuick(); $('qDlg').showModal(); setTimeout(()=>$('qQty').focus(),50);
+  }
+  function syncQuick(){
+    const it=itemOf(quickId); if(!it) return;
+    const t=(document.querySelector('input[name="qtype"]:checked')||{}).value;
+    $('qSeg').dataset.last=t||'';
+    let have;
+    if(isEmp()){ const b=(state.empStock||[]).find(x=>x.empId===me&&x.itemId===it.id); have=b?b.bal:0; $('qStockL').textContent=(it.unit||'개')+' · 내 잔량'; }
+    else { have=+it.stock||0; const h=(state.empStock||[]).filter(b=>b.itemId===it.id).reduce((s,b)=>s+(+b.bal||0),0); $('qStockL').textContent=(it.unit||'개')+' · 본사 재고'+(h?' (직원 보유 '+fmt(h)+')':'')+(+it.minStock?' · 최소 '+fmt(it.minStock):''); }
+    $('qStock').textContent=fmt(have);
+    $('qEmpWrap').hidden=isEmp()||t!=='out'||!(state.employees||[]).length;
+    $('qSiteWrap').hidden=!((t==='out'&&!$('qEmp').value)||t==='use');
+  }
+  $('qEmp').addEventListener('change',syncQuick);
+  $('qClose').onclick=()=>$('qDlg').close();
+  $('qNext').onclick=()=>{ $('qDlg').close(); startScan(); };
+  $('qForm').addEventListener('submit',async e=>{
+    e.preventDefault();
+    const it=itemOf(quickId); if(!it) return;
+    const t=document.querySelector('input[name="qtype"]:checked').value, qty=Math.floor(+$('qQty').value), date=$('qDate').value||today(), memo=$('qMemo').value.trim(), site=$('qSiteWrap').hidden?'':$('qSite').value.trim();
+    if(!(qty>0)) return msg('qMsg','수량을 1 이상으로 입력해 주세요.');
+    $('qSave').disabled=true; msg('qMsg','저장 중…',true);
+    let ok;
+    if(isEmp()) ok=await act('addEmpLog',{log:{empId:me,itemId:it.id,type:t,qty,date,memo,site}},'qMsg');
+    else ok=await act('addLog',{log:{itemId:it.id,type:t,qty,empId:t==='out'?$('qEmp').value:'',date,memo,site}},'qMsg');
+    $('qSave').disabled=false;
+    if(ok){ $('qQty').value=''; $('qMemo').value=''; syncQuick(); }
+  });
+  /* 휴대폰 카메라로 라벨을 찍어 앱이 열린 경우 (#i=품목ID) */
+  let pendingQuick=(location.hash.match(/[#&]i=([^&]+)/)||[])[1]; if(pendingQuick){ pendingQuick=decodeURIComponent(pendingQuick); history.replaceState(null,'',location.pathname+location.search); }
+  function checkPendingQuick(){ if(pendingQuick&&state.items.length&&itemOf(pendingQuick)&&!document.querySelector('dialog[open]')){ const id=pendingQuick; pendingQuick=null; openQuick(id); } }
+  addEventListener('hashchange',()=>{ const m=location.hash.match(/[#&]i=([^&]+)/); if(m){ pendingQuick=decodeURIComponent(m[1]); history.replaceState(null,'',location.pathname+location.search); checkPendingQuick(); } });
 
   $('sLowBox').onclick=()=>{ const t=$('lowPanel').hidden?$('lowOk'):$('lowPanel'); t.scrollIntoView({behavior:'smooth',block:'center'}); };
   function openAlert(){
