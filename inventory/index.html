@@ -110,6 +110,16 @@ input:focus-visible,select:focus-visible,button:focus-visible{outline:2px solid 
 .role.admin{background:var(--accent-soft);color:var(--accent)}
 .role.emp{background:var(--in-soft);color:var(--in)}
 .role.none{background:var(--warn-soft);color:var(--warn)}
+.lowpanel{border-color:var(--warn);background:var(--warn-soft)}
+.lowpanel h2{color:var(--warn)}
+.lowlist{display:flex;flex-wrap:wrap;gap:6px}
+.lowitem{background:var(--panel);border:1px solid var(--line);border-radius:8px;padding:6px 10px;font-size:.88rem;cursor:pointer;color:var(--ink);font:inherit;text-align:left}
+.lowitem b{font-family:var(--f-num)}
+.lowitem .meta{display:block}
+#sLowBox{cursor:pointer}
+.checks{display:grid;gap:6px}
+.checks label{display:flex;gap:8px;align-items:flex-start;font-size:.9rem;color:var(--ink)}
+.checks input{width:auto;margin-top:4px}
 .loginbox{border:1px solid var(--line);border-radius:8px;padding:10px;display:grid;gap:8px}
 #eReportDlg{width:min(1100px,calc(100vw - 16px));max-height:calc(100vh - 24px);overflow-y:auto}
 #erTable{font-size:.86rem}
@@ -256,6 +266,13 @@ dialog::backdrop{background:rgb(0 0 0 / .35)}
     <div class="stat"><div class="k">오늘 출고</div><div class="v num" id="sOut">–</div></div>
   </section>
 
+  <section class="panel lowpanel adminonly" id="lowPanel" hidden aria-labelledby="lowH">
+    <div class="ph"><h2 id="lowH">재고 부족</h2><button class="mini" type="button" id="alertBtn">알림 설정</button></div>
+    <div class="lowlist" id="lowList"></div>
+    <p class="hint" id="lowNote"></p>
+  </section>
+  <p class="hint adminonly" id="lowOk" hidden>최소재고 이하인 품목이 없습니다. <button class="mini" type="button" id="alertBtn2">재고 부족 알림 설정</button></p>
+
   <div class="main adminonly">
     <section class="panel" aria-labelledby="stockH">
       <div class="ph"><h2 id="stockH">현재 재고</h2><div class="tabs" id="catTabs"></div></div>
@@ -387,6 +404,7 @@ dialog::backdrop{background:rgb(0 0 0 / .35)}
       <label>단위<input id="iUnit" maxlength="6" value="개"></label>
       <label>최소재고<input id="iMin" type="number" min="0" step="1" value="0"></label>
     </div>
+    <label>적정재고 (선택 · 발주할 때 채울 목표 수량, 비우면 최소재고의 2배)<input id="iTarget" type="number" min="0" step="1" placeholder="예: 50"></label>
     </div>
     <p class="msg" id="iMsg" role="status"></p>
     <div class="acts">
@@ -497,6 +515,26 @@ dialog::backdrop{background:rgb(0 0 0 / .35)}
   </div>
 </dialog>
 
+<dialog id="alertDlg">
+  <form class="dlg" id="alertForm" autocomplete="off">
+    <h2>재고 부족 알림</h2>
+    <p class="hint">본사 재고가 최소재고 이하가 되면 이메일로 알려 드립니다. 휴대폰 Gmail 앱에서도 바로 받을 수 있어요.</p>
+    <label>받을 이메일 (여러 개는 쉼표로)<input id="alEmail" type="text" inputmode="email" maxlength="200" placeholder="예: name@gmail.com"></label>
+    <div class="checks">
+      <label><input type="checkbox" id="alInstant"> 출고해서 최소재고 이하로 떨어지면 바로 알림</label>
+      <label><input type="checkbox" id="alDaily"> 매일 아침 8시에 부족 품목 목록 보내기 (부족한 게 없으면 안 보냄)</label>
+    </div>
+    <p class="hint" id="alLast"></p>
+    <p class="msg" id="alMsg" role="status"></p>
+    <div class="acts">
+      <button class="btn ghost" type="button" id="alTest">테스트 메일 보내기</button>
+      <span style="flex:1"></span>
+      <button class="btn ghost" type="button" id="alClose">닫기</button>
+      <button class="btn" type="submit" id="alSave">저장</button>
+    </div>
+  </form>
+</dialog>
+
 <dialog id="auditDlg">
   <div class="dlg">
     <div class="rhead">
@@ -605,7 +643,7 @@ const SCRIPT_URL_DEFAULT = 'https://script.google.com/macros/s/AKfycbzdZ6yB6BdtF
   function apply(j){
     state = { role:j.role==='emp'?'emp':'admin', me:j.me||null, empPwSet:!!j.empPwSet, items:j.items||[], logs:j.logs||[], logTotal:j.logTotal||0,
       empSupported: Array.isArray(j.employees), employees:j.employees||[], empLogs:j.empLogs||[], empLogTotal:j.empLogTotal||0, empStock:j.empStock||[],
-      sheetUrl:j.sheetUrl, folderUrl:j.folderUrl, lastBackup:j.lastBackup, at:new Date().toISOString() };
+      sheetUrl:j.sheetUrl, folderUrl:j.folderUrl, lastBackup:j.lastBackup, alert:j.alert||null, at:new Date().toISOString() };
     put(K.cache, JSON.stringify(state));
     render();
     sync('✓ 최신 상태 · '+new Date().toTimeString().slice(0,5));
@@ -653,6 +691,7 @@ const SCRIPT_URL_DEFAULT = 'https://script.google.com/macros/s/AKfycbzdZ6yB6BdtF
     $('sItems').textContent=fmt(items.length);
     const low=items.filter(it=>stateOf(it)[0]!=='ok').length;
     $('sLow').textContent=fmt(low); $('sLowBox').classList.toggle('alert',low>0);
+    renderLow(items);
 
     const sel=$('tItem'), keep=sel.value; sel.textContent='';
     if(!items.length) sel.appendChild(el('option',{value:'',text:'먼저 품목을 추가해 주세요'}));
@@ -1138,7 +1177,7 @@ const SCRIPT_URL_DEFAULT = 'https://script.google.com/macros/s/AKfycbzdZ6yB6BdtF
     $('itemDlgH').textContent = it?'품목 수정':'품목 추가';
     $('iCat').value = it?(it.category||'기타'):(cat!=='전체'?cat:'호차');
     $('iName').value=it?it.name:''; $('iSpec').value=it?(it.spec||''):''; $('iColor').value=it?(it.color||''):'';
-    $('iUnit').value=it?(it.unit||'개'):'개'; $('iMin').value=it?(it.minStock||0):0;
+    $('iUnit').value=it?(it.unit||'개'):'개'; $('iMin').value=it?(it.minStock||0):0; $('iTarget').value=it&&it.target?it.target:'';
     $('iDelete').hidden=!it; $('iMsg').textContent='';
     $('itemDlg').showModal(); $('iName').focus();
   }
@@ -1162,7 +1201,7 @@ const SCRIPT_URL_DEFAULT = 'https://script.google.com/macros/s/AKfycbzdZ6yB6BdtF
       else { msg('iMsg',done+'개 품목을 저장했습니다. 계속 추가하거나 닫기를 눌러 주세요.',true); const f=$('mRows').querySelector('.nm input'); if(f) f.focus(); }
       return;
     }
-    const item={id:editingId,category:$('iCat').value,name:$('iName').value.trim(),spec:$('iSpec').value.trim(),color:$('iColor').value.trim(),unit:$('iUnit').value.trim()||'개',minStock:Math.max(0,Math.floor(+$('iMin').value||0))};
+    const item={id:editingId,category:$('iCat').value,name:$('iName').value.trim(),spec:$('iSpec').value.trim(),color:$('iColor').value.trim(),unit:$('iUnit').value.trim()||'개',minStock:Math.max(0,Math.floor(+$('iMin').value||0)),target:Math.max(0,Math.floor(+$('iTarget').value||0))};
     if(!item.name) return msg('iMsg','품목명을 입력해 주세요.');
     $('iSave').disabled=true; msg('iMsg','저장 중…',true);
     await act('saveItem',{item},'iMsg');
@@ -1231,6 +1270,44 @@ const SCRIPT_URL_DEFAULT = 'https://script.google.com/macros/s/AKfycbzdZ6yB6BdtF
     a.download='재고현황_'+($('rMonth').value||monthNow())+'.csv'; document.body.appendChild(a); a.click(); a.remove();
     setTimeout(()=>URL.revokeObjectURL(a.href),2000);
   };
+  /* ---------- 재고 부족 · 알림 ---------- */
+  const needOf = it => { const mn=+it.minStock||0, tg=+it.target||0; return Math.max(0,(tg>mn?tg:mn*2)-(+it.stock||0)); };
+  function renderLow(items){
+    const low=items.filter(it=>(+it.minStock||0)>0&&(+it.stock||0)<=(+it.minStock||0));
+    $('lowPanel').hidden=!low.length; $('lowOk').hidden=!!low.length||!items.length;
+    const box=$('lowList'); box.textContent='';
+    low.forEach(it=>{
+      const b=el('button',{cls:'lowitem',type:'button',title:'눌러서 입고 기록'},[
+        el('span',{text:label(it)+' '}),el('b',{text:fmt(it.stock)}),el('span',{cls:'meta',text:'최소 '+fmt(it.minStock)+' · 발주 추천 '+fmt(needOf(it))+(it.unit||'개')})]);
+      b.onclick=()=>prefill(it.id,'in'); box.appendChild(b);
+    });
+    const a=state.alert;
+    $('lowNote').textContent='발주 추천 = 적정재고(없으면 최소재고의 2배) − 현재 재고. '+(a&&a.email&&(a.daily||a.instant)?'이메일 알림 켜짐: '+a.email:'이메일 알림은 꺼져 있습니다. "알림 설정"에서 켤 수 있어요.');
+  }
+  $('sLowBox').onclick=()=>{ const t=$('lowPanel').hidden?$('lowOk'):$('lowPanel'); t.scrollIntoView({behavior:'smooth',block:'center'}); };
+  function openAlert(){
+    const a=state.alert||{};
+    if(!state.alert){ msg('alMsg','알림을 쓰려면 구글 Apps Script 서버를 새 버전으로 다시 배포해야 합니다.'); }
+    else $('alMsg').textContent='';
+    $('alEmail').value=a.email||''; $('alInstant').checked=!!a.instant; $('alDaily').checked=!!a.daily;
+    $('alLast').textContent=a.last?'마지막으로 보낸 알림: '+a.last:'';
+    $('alertDlg').showModal();
+  }
+  $('alertBtn').onclick=openAlert; $('alertBtn2').onclick=openAlert;
+  $('alClose').onclick=()=>$('alertDlg').close();
+  $('alertForm').addEventListener('submit', async e=>{
+    e.preventDefault();
+    $('alSave').disabled=true; msg('alMsg','저장 중…',true);
+    await act('setAlert',{email:$('alEmail').value.trim(),instant:$('alInstant').checked,daily:$('alDaily').checked},'alMsg');
+    $('alSave').disabled=false;
+  });
+  $('alTest').onclick=async()=>{
+    $('alTest').disabled=true; msg('alMsg','보내는 중…',true);
+    if(state.alert&&$('alEmail').value.trim()!==(state.alert.email||'')) { if(!await act('setAlert',{email:$('alEmail').value.trim(),instant:$('alInstant').checked,daily:$('alDaily').checked},'alMsg')){ $('alTest').disabled=false; return; } }
+    await act('testAlert',{},'alMsg');
+    $('alTest').disabled=false;
+  };
+
   $('backupBtn').onclick=async()=>{ $('backupBtn').disabled=true; if(await act('backupNow',{})) sync('✓ 드라이브에 백업했습니다'); $('backupBtn').disabled=false; };
   $('logoutBtn').onclick=async()=>{
     if(!await ask('로그아웃','이 기기에서 로그아웃할까요? 기록은 구글 시트에 그대로 남습니다.')) return;

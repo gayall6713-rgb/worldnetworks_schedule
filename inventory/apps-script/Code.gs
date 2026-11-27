@@ -9,6 +9,7 @@
  *    ("직원", "직원재고" 시트는 처음 쓸 때 자동으로 만들어지며 기존 "품목", "입출고" 시트는 그대로입니다.)
  *  - 사람별 로그인과 권한: 직원마다 이름 + 개인 비밀번호로 들어오고, 권한(관리자/직원)에 따라 할 수 있는 일이 다릅니다.
  *    예전 공용 비밀번호(본사·직원용)도 관리자가 끌 때까지 그대로 됩니다.
+ *  - 재고 미달 알림: 본사 재고가 최소재고 이하로 떨어지면 정해 둔 이메일로 바로 알리고, 매일 아침 부족 목록을 보냅니다.
  *  - 변경 기록: 누가 언제 어느 기기에서 무엇을 바꿨는지 "변경기록" 시트에 한 줄씩 남습니다.
  *
  * 설치 방법은 같은 폴더의 설치안내.md 를 보세요.
@@ -16,7 +17,7 @@
 
 const APP_NAME = '월드네트웍스 재고관리';
 const TZ = 'Asia/Seoul';
-const ITEM_HEAD = ['ID', '구분', '품목명', '규격', '색상', '단위', '최소재고', '현재재고', '등록일시', '수정일시'];
+const ITEM_HEAD = ['ID', '구분', '품목명', '규격', '색상', '단위', '최소재고', '현재재고', '등록일시', '수정일시', '적정재고'];
 const LOG_HEAD = ['ID', '날짜', '입출고', '품목ID', '품목명', '수량', '메모', '기록일시', '기록기기'];
 const EMP_HEAD = ['ID', '이름', '연락처', '메모', '등록일시', '수정일시', '권한'];
 const AUDIT_HEAD = ['일시', '이름', '권한', '기기', '작업', '내용'];
@@ -102,6 +103,8 @@ function handle(req) {
     case 'setEmpPassword': return setEmpPassword(req);
     case 'setUserLogin': m = setUserLogin(req); audit('로그인 설정', m); return listAll(m);
     case 'myPassword': return myPassword(req);
+    case 'setAlert': m = setAlert(req); audit('알림 설정', m); return listAll(m);
+    case 'testAlert': m = sendLowMail('테스트'); audit('알림 테스트', m); return listAll(m);
     case 'assignOut': m = assignOut(req.id, req.empId, d); audit('직원 지정', m); return listAll(m);
   }
   return { ok: false, error: '알 수 없는 요청입니다: ' + a };
@@ -328,13 +331,15 @@ function clean(v, max) { return String(v == null ? '' : v).replace(/[\r\n\t]+/g,
 function newId(prefix) { return prefix + Utilities.formatDate(new Date(), TZ, 'yyMMddHHmmss') + Math.floor(Math.random() * 1e4); }
 
 function readItems() {
-  const v = sheet('품목').getDataRange().getValues();
+  const sh = sheet('품목');
+  if (sh.getRange(1, 11).getValue() !== '적정재고') sh.getRange(1, 11).setValue('적정재고').setFontWeight('bold').setBackground('#e2edf5');
+  const v = sh.getDataRange().getValues();
   const out = [];
   for (let r = 1; r < v.length; r++) {
     const x = v[r];
     if (!x[0]) continue;
     out.push({ id: String(x[0]), category: String(x[1] || '기타'), name: String(x[2] || ''), spec: String(x[3] || ''), color: String(x[4] || ''),
-      unit: String(x[5] || '개'), minStock: num(x[6]), stock: num(x[7]), row: r + 1 });
+      unit: String(x[5] || '개'), minStock: num(x[6]), stock: num(x[7]), target: num(x[10]), row: r + 1 });
   }
   return out;
 }
@@ -440,7 +445,7 @@ function listAll(message) {
     employees: emps, empLogs: esent, empLogTotal: elogs.length, empStock,
     sheetUrl: 'https://docs.google.com/spreadsheets/d/' + P.getProperty('SHEET_ID'),
     folderUrl: 'https://drive.google.com/drive/folders/' + P.getProperty('FOLDER_ID'),
-    lastBackup: P.getProperty('LAST_BACKUP') || '', serverTime: fmtTime()
+    lastBackup: P.getProperty('LAST_BACKUP') || '', alert: alertSettings(), serverTime: fmtTime()
   };
 }
 
@@ -449,7 +454,7 @@ function saveItem(it, device) {
   const sh = sheet('품목');
   const data = {
     category: clean(it.category, 10) || '기타', name: clean(it.name, 40), spec: clean(it.spec, 40), color: clean(it.color, 20),
-    unit: clean(it.unit, 6) || '개', minStock: Math.max(0, Math.floor(num(it.minStock)))
+    unit: clean(it.unit, 6) || '개', minStock: Math.max(0, Math.floor(num(it.minStock))), target: Math.max(0, Math.floor(num(it.target)))
   };
   if (!data.name) throw new Error('품목명을 입력해 주세요.');
   const now = fmtTime();
@@ -457,14 +462,14 @@ function saveItem(it, device) {
     const cur = readItems().find(x => x.id === it.id);
     if (!cur) throw new Error('품목을 찾지 못했습니다. 다른 기기에서 삭제했을 수 있습니다.');
     sh.getRange(cur.row, 2, 1, 6).setValues([[data.category, data.name, data.spec, data.color, data.unit, data.minStock]]);
-    sh.getRange(cur.row, 10).setValue(now);
-    const KO = { category: '구분', name: '품목명', spec: '규격', color: '색상', unit: '단위', minStock: '최소재고' };
+    sh.getRange(cur.row, 10, 1, 2).setValues([[now, data.target || '']]);
+    const KO = { category: '구분', name: '품목명', spec: '규격', color: '색상', unit: '단위', minStock: '최소재고', target: '적정재고' };
     const ch = Object.keys(KO).filter(k => String(cur[k]) !== String(data[k])).map(k => KO[k] + ' ' + (cur[k] === '' ? '(빈칸)' : cur[k]) + ' → ' + (data[k] === '' ? '(빈칸)' : data[k]));
     return itemLabel(cur) + (ch.length ? ': ' + ch.join(', ') : ': 바뀐 것 없음');
   }
   const init = Math.max(0, Math.floor(num(it.initStock)));
   const id = newId('I');
-  sh.appendRow([id, data.category, data.name, data.spec, data.color, data.unit, data.minStock, init, now, now]);
+  sh.appendRow([id, data.category, data.name, data.spec, data.color, data.unit, data.minStock, init, now, now, data.target || '']);
   if (init > 0) {
     sheet('입출고').appendRow([newId('L'), Utilities.formatDate(new Date(), TZ, 'yyyy-MM-dd'), '입고', id, itemLabel(data), init, '처음 등록 (기초 재고)', now, who(device)]);
   }
@@ -499,6 +504,7 @@ function addLog(l, device) {
   const sh = sheet('품목');
   sh.getRange(it.row, 8).setValue(next);
   sh.getRange(it.row, 10).setValue(now);
+  if (type === 'out' && it.minStock > 0 && it.stock > it.minStock && next <= it.minStock) instantAlert(it, next);
   if (emp) {
     sheet('직원재고').appendRow([newId('E'), day, '입고', emp.id, emp.name, it.id, itemLabel(it), qty, memo || '본사 출고', lid, now, who(device)]);
     return itemLabel(it) + ' ' + qty + it.unit + ' ' + emp.name + '님에게 출고했습니다. 본사 재고 ' + next + it.unit + ', ' + emp.name + '님 재고 ' + empBal(emp.id, it.id) + it.unit;
@@ -617,6 +623,72 @@ function cancelEmpLog(id) {
   return desc;
 }
 
+/* ---------- 재고 미달 알림 ---------- */
+function alertSettings() {
+  return { email: P.getProperty('ALERT_EMAIL') || '', daily: P.getProperty('ALERT_DAILY') === '1', instant: P.getProperty('ALERT_INSTANT') === '1', last: P.getProperty('ALERT_LAST') || '' };
+}
+function setAlert(req) {
+  const emails = String(req.email || '').split(/[,\s;]+/).map(x => x.trim()).filter(Boolean);
+  if (emails.some(x => !/^[^@\s]+@[^@\s]+\.[^@\s]+$/.test(x))) throw new Error('이메일 주소 모양이 맞지 않습니다.');
+  if (emails.length > 5) throw new Error('이메일은 5개까지 넣을 수 있습니다.');
+  if ((req.daily || req.instant) && !emails.length) throw new Error('알림 받을 이메일을 넣어 주세요.');
+  P.setProperty('ALERT_EMAIL', emails.join(', '));
+  P.setProperty('ALERT_DAILY', req.daily ? '1' : '0');
+  P.setProperty('ALERT_INSTANT', req.instant ? '1' : '0');
+  ensureAlertTrigger();
+  return '알림 설정을 저장했습니다' + (emails.length ? ' (' + emails.join(', ') + (req.daily ? ', 매일 아침 8시 요약' : '') + (req.instant ? ', 부족 즉시 알림' : '') + ')' : ' (알림 끔)');
+}
+function ensureAlertTrigger() {
+  const has = ScriptApp.getProjectTriggers().some(t => t.getHandlerFunction() === 'dailyAlert');
+  if (!has) ScriptApp.newTrigger('dailyAlert').timeBased().everyDays(1).atHour(8).inTimezone(TZ).create();
+}
+function lowItems() {
+  return readItems().filter(it => it.minStock > 0 && it.stock <= it.minStock)
+    .map(it => ({ it: it, need: Math.max(0, (it.target > it.minStock ? it.target : it.minStock * 2) - it.stock) }));
+}
+function appUrl() { return 'https://gayall6713-rgb.github.io/worldnetworks_schedule/inventory/'; }
+function lowTable(list) {
+  const esc = t => String(t).replace(/[&<>"]/g, c => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;' }[c]));
+  const td = 'style="border:1px solid #ccc;padding:4px 8px"';
+  return '<table style="border-collapse:collapse;font-size:14px"><tr><th ' + td + '>구분</th><th ' + td + '>품목</th><th ' + td + '>현재</th><th ' + td + '>최소</th><th ' + td + '>발주 추천</th></tr>' +
+    list.map(x => '<tr><td ' + td + '>' + esc(x.it.category) + '</td><td ' + td + '>' + esc(itemLabel(x.it)) + '</td><td ' + td + ' align="right"><b>' + x.it.stock + '</b></td><td ' + td + ' align="right">' + x.it.minStock + '</td><td ' + td + ' align="right">' + x.need + ' ' + esc(x.it.unit) + '</td></tr>').join('') + '</table>';
+}
+/** 부족 목록 메일. why: '매일' / '테스트' */
+function sendLowMail(why) {
+  const to = P.getProperty('ALERT_EMAIL');
+  if (!to) throw new Error('먼저 알림 받을 이메일을 저장해 주세요.');
+  const list = lowItems();
+  if (why === '매일' && !list.length) return '부족 품목 없음';
+  const subject = '[자재 재고] ' + (list.length ? '최소재고 이하 ' + list.length + '개 품목' : '부족 품목 없음') + (why === '테스트' ? ' (테스트)' : '');
+  const html = '<p>' + fmtTime() + ' 기준 ' + (list.length ? '최소재고 이하인 품목입니다. 발주 추천 = 적정재고(없으면 최소재고의 2배) − 현재 재고.' : '최소재고 이하인 품목이 없습니다.') + '</p>' +
+    (list.length ? lowTable(list) : '') + '<p><a href="' + appUrl() + '">재고 앱 열기</a></p>';
+  MailApp.sendEmail({ to: to, subject: subject, htmlBody: html, name: APP_NAME });
+  P.setProperty('ALERT_LAST', fmtTime());
+  return to + '로 ' + (why === '테스트' ? '테스트 메일을' : '알림을') + ' 보냈습니다 (부족 ' + list.length + '개)';
+}
+function instantAlert(it, next) {
+  if (P.getProperty('ALERT_INSTANT') !== '1' || !P.getProperty('ALERT_EMAIL')) return;
+  try {
+    const x = { it: Object.assign({}, it, { stock: next }), need: 0 };
+    x.need = Math.max(0, (it.target > it.minStock ? it.target : it.minStock * 2) - next);
+    MailApp.sendEmail({ to: P.getProperty('ALERT_EMAIL'), name: APP_NAME,
+      subject: '[자재 재고] ' + itemLabel(it) + ' 최소재고 이하 (' + next + it.unit + ')',
+      htmlBody: '<p>' + (USER.name || '') + '님이 출고해서 아래 품목이 최소재고 이하로 떨어졌습니다.</p>' + lowTable([x]) + '<p><a href="' + appUrl() + '">재고 앱 열기</a></p>' });
+    P.setProperty('ALERT_LAST', fmtTime());
+  } catch (e) {}
+}
+/** 배포 후 편집기에서 한 번 실행: 메일 보내기 권한 승인 + 아침 알림 트리거 만들기 */
+function authorizeMail() {
+  ensureAlertTrigger();
+  Logger.log('메일 권한 확인됨. 오늘 남은 메일 수: ' + MailApp.getRemainingDailyQuota());
+}
+
+/** 매일 아침 8시 트리거 */
+function dailyAlert() {
+  if (P.getProperty('ALERT_DAILY') !== '1') return;
+  sendLowMail('매일');
+}
+
 /* ---------- 자동 백업 ---------- */
 function ensureTrigger() {
   const has = ScriptApp.getProjectTriggers().some(t => t.getHandlerFunction() === 'dailyBackup');
@@ -640,5 +712,6 @@ function dailyBackup() {
 function firstRun() {
   ensureStore();
   ensureTrigger();
+  ensureAlertTrigger();
   Logger.log('준비 완료. 시트: https://docs.google.com/spreadsheets/d/' + P.getProperty('SHEET_ID'));
 }
