@@ -11,6 +11,7 @@
  *    예전 공용 비밀번호(본사·직원용)도 관리자가 끌 때까지 그대로 됩니다.
  *  - 재고 미달 알림: 본사 재고가 최소재고 이하로 떨어지면 정해 둔 이메일로 바로 알리고, 매일 아침 부족 목록을 보냅니다.
  *  - 현장별 사용 집계: 출고·직원 사용 때 현장을 적으면 현장별로 어떤 자재를 얼마나 썼는지 모아 봅니다.
+ *  - 거래처별 발주서: 거래처와 품목별 주거래처·단가를 등록하고, 부족 품목으로 발주서를 만들어 인쇄·전송하고 입고 처리합니다.
  *  - 변경 기록: 누가 언제 어느 기기에서 무엇을 바꿨는지 "변경기록" 시트에 한 줄씩 남습니다.
  *
  * 설치 방법은 같은 폴더의 설치안내.md 를 보세요.
@@ -18,12 +19,14 @@
 
 const APP_NAME = '월드네트웍스 재고관리';
 const TZ = 'Asia/Seoul';
-const ITEM_HEAD = ['ID', '구분', '품목명', '규격', '색상', '단위', '최소재고', '현재재고', '등록일시', '수정일시', '적정재고'];
+const ITEM_HEAD = ['ID', '구분', '품목명', '규격', '색상', '단위', '최소재고', '현재재고', '등록일시', '수정일시', '적정재고', '거래처ID', '단가'];
+const SUP_HEAD = ['ID', '거래처명', '담당자', '연락처', '이메일', '메모', '등록일시', '수정일시'];
+const PO_HEAD = ['발주번호', '날짜', '거래처ID', '거래처명', '품목ID', '품목명', '수량', '단가', '상태', '입고일', '입고수량', '메모', '작성자', '기록일시'];
 const LOG_HEAD = ['ID', '날짜', '입출고', '품목ID', '품목명', '수량', '메모', '기록일시', '기록기기', '현장'];
 const EMP_HEAD = ['ID', '이름', '연락처', '메모', '등록일시', '수정일시', '권한'];
 const AUDIT_HEAD = ['일시', '이름', '권한', '기기', '작업', '내용'];
 const ELOG_HEAD = ['ID', '날짜', '구분', '직원ID', '직원이름', '품목ID', '품목명', '수량', '메모', '본사기록ID', '기록일시', '기록기기', '현장'];
-const HEADS = { '품목': ITEM_HEAD, '입출고': LOG_HEAD, '직원': EMP_HEAD, '직원재고': ELOG_HEAD, '변경기록': AUDIT_HEAD };
+const HEADS = { '품목': ITEM_HEAD, '입출고': LOG_HEAD, '직원': EMP_HEAD, '직원재고': ELOG_HEAD, '변경기록': AUDIT_HEAD, '거래처': SUP_HEAD, '발주': PO_HEAD };
 const MAX_AUDIT_SENT = 1000;
 const KEEP_BACKUPS = 60;
 const MAX_LOGS_SENT = 500;
@@ -105,6 +108,12 @@ function handle(req) {
     case 'setUserLogin': m = setUserLogin(req); audit('로그인 설정', m); return listAll(m);
     case 'myPassword': return myPassword(req);
     case 'setSite': m = setSite(req); audit('현장 지정', m); return listAll(m);
+    case 'saveSup': audit(req.sup && req.sup.id ? '거래처 수정' : '거래처 추가', saveSup(req.sup || {})); return listAll('거래처를 저장했습니다.');
+    case 'deleteSup': audit('거래처 삭제', deleteSup(req.id)); return listAll('거래처를 삭제했습니다.');
+    case 'createPO': m = createPO(req.po || {}); audit('발주서 작성', m); return listAll(m);
+    case 'receivePO': m = receivePO(req, d); audit('발주 입고', m); return listAll(m);
+    case 'cancelPO': m = cancelPO(req.no); audit('발주 취소', m); return listAll(m);
+    case 'setPoInfo': P.setProperty('PO_INFO', JSON.stringify({ company: clean(req.info && req.info.company, 40), person: clean(req.info && req.info.person, 20), phone: clean(req.info && req.info.phone, 30), address: clean(req.info && req.info.address, 80), note: clean(req.info && req.info.note, 120) })); audit('발주서 회사 정보', ''); return listAll('발주서에 들어갈 우리 회사 정보를 저장했습니다.');
     case 'setAlert': m = setAlert(req); audit('알림 설정', m); return listAll(m);
     case 'testAlert': m = sendLowMail('테스트'); audit('알림 테스트', m); return listAll(m);
     case 'assignOut': m = assignOut(req.id, req.empId, d); audit('직원 지정', m); return listAll(m);
@@ -318,7 +327,8 @@ function sheet(name) {
   if (!sh) {
     sh = ss.insertSheet(name);
     initSheet(sh, HEADS[name] || LOG_HEAD);
-    if (name === '입출고' || name === '직원재고') sh.getRange('B:B').setNumberFormat('@');
+    if (name === '입출고' || name === '직원재고' || name === '발주') sh.getRange('B:B').setNumberFormat('@');
+    if (name === '발주') sh.getRange('J:J').setNumberFormat('@');
   }
   return sh;
 }
@@ -335,13 +345,14 @@ function newId(prefix) { return prefix + Utilities.formatDate(new Date(), TZ, 'y
 function readItems() {
   const sh = sheet('품목');
   if (sh.getRange(1, 11).getValue() !== '적정재고') sh.getRange(1, 11).setValue('적정재고').setFontWeight('bold').setBackground('#e2edf5');
+  if (sh.getRange(1, 12).getValue() !== '거래처ID') sh.getRange(1, 12, 1, 2).setValues([['거래처ID', '단가']]).setFontWeight('bold').setBackground('#e2edf5');
   const v = sh.getDataRange().getValues();
   const out = [];
   for (let r = 1; r < v.length; r++) {
     const x = v[r];
     if (!x[0]) continue;
     out.push({ id: String(x[0]), category: String(x[1] || '기타'), name: String(x[2] || ''), spec: String(x[3] || ''), color: String(x[4] || ''),
-      unit: String(x[5] || '개'), minStock: num(x[6]), stock: num(x[7]), target: num(x[10]), row: r + 1 });
+      unit: String(x[5] || '개'), minStock: num(x[6]), stock: num(x[7]), target: num(x[10]), supplierId: String(x[11] || ''), price: num(x[12]), row: r + 1 });
   }
   return out;
 }
@@ -455,7 +466,9 @@ function listAll(message) {
     employees: emps, empLogs: esent, empLogTotal: elogs.length, empStock,
     sheetUrl: 'https://docs.google.com/spreadsheets/d/' + P.getProperty('SHEET_ID'),
     folderUrl: 'https://drive.google.com/drive/folders/' + P.getProperty('FOLDER_ID'),
-    lastBackup: P.getProperty('LAST_BACKUP') || '', alert: alertSettings(), serverTime: fmtTime()
+    lastBackup: P.getProperty('LAST_BACKUP') || '', alert: alertSettings(),
+    suppliers: readSups().map(x => { delete x.row; return x; }), orders: readPOs().slice(-MAX_LOGS_SENT).map(x => { delete x.row; return x; }),
+    poInfo: poInfo(), serverTime: fmtTime()
   };
 }
 
@@ -464,7 +477,8 @@ function saveItem(it, device) {
   const sh = sheet('품목');
   const data = {
     category: clean(it.category, 10) || '기타', name: clean(it.name, 40), spec: clean(it.spec, 40), color: clean(it.color, 20),
-    unit: clean(it.unit, 6) || '개', minStock: Math.max(0, Math.floor(num(it.minStock))), target: Math.max(0, Math.floor(num(it.target)))
+    unit: clean(it.unit, 6) || '개', minStock: Math.max(0, Math.floor(num(it.minStock))), target: Math.max(0, Math.floor(num(it.target))),
+    supplierId: clean(it.supplierId, 30), price: Math.max(0, Math.round(num(it.price)))
   };
   if (!data.name) throw new Error('품목명을 입력해 주세요.');
   const now = fmtTime();
@@ -472,14 +486,17 @@ function saveItem(it, device) {
     const cur = readItems().find(x => x.id === it.id);
     if (!cur) throw new Error('품목을 찾지 못했습니다. 다른 기기에서 삭제했을 수 있습니다.');
     sh.getRange(cur.row, 2, 1, 6).setValues([[data.category, data.name, data.spec, data.color, data.unit, data.minStock]]);
-    sh.getRange(cur.row, 10, 1, 2).setValues([[now, data.target || '']]);
-    const KO = { category: '구분', name: '품목명', spec: '규격', color: '색상', unit: '단위', minStock: '최소재고', target: '적정재고' };
-    const ch = Object.keys(KO).filter(k => String(cur[k]) !== String(data[k])).map(k => KO[k] + ' ' + (cur[k] === '' ? '(빈칸)' : cur[k]) + ' → ' + (data[k] === '' ? '(빈칸)' : data[k]));
+    if (!('supplierId' in it)) { data.supplierId = cur.supplierId; data.price = cur.price; }   // 예전 화면에서 저장하면 거래처·단가는 그대로
+    sh.getRange(cur.row, 10, 1, 4).setValues([[now, data.target || '', data.supplierId, data.price || '']]);
+    const KO = { category: '구분', name: '품목명', spec: '규격', color: '색상', unit: '단위', minStock: '최소재고', target: '적정재고', supplierId: '거래처', price: '단가' };
+    const sname = id => { if (!id) return ''; const x = readSups().find(v => v.id === id); return x ? x.name : id; };
+    const show = (k, v) => k === 'supplierId' ? sname(v) : v;
+    const ch = Object.keys(KO).filter(k => String(cur[k]) !== String(data[k])).map(k => KO[k] + ' ' + (show(k, cur[k]) === '' ? '(빈칸)' : show(k, cur[k])) + ' → ' + (show(k, data[k]) === '' ? '(빈칸)' : show(k, data[k])));
     return itemLabel(cur) + (ch.length ? ': ' + ch.join(', ') : ': 바뀐 것 없음');
   }
   const init = Math.max(0, Math.floor(num(it.initStock)));
   const id = newId('I');
-  sh.appendRow([id, data.category, data.name, data.spec, data.color, data.unit, data.minStock, init, now, now, data.target || '']);
+  sh.appendRow([id, data.category, data.name, data.spec, data.color, data.unit, data.minStock, init, now, now, data.target || '', data.supplierId, data.price || '']);
   if (init > 0) {
     sheet('입출고').appendRow([newId('L'), Utilities.formatDate(new Date(), TZ, 'yyyy-MM-dd'), '입고', id, itemLabel(data), init, '처음 등록 (기초 재고)', now, who(device)]);
   }
@@ -650,6 +667,92 @@ function setSite(req) {
   if (readEmpLogs().some(x => x.link === lg.id)) throw new Error('직원에게 준 출고는 직원이 사용할 때 현장을 적습니다.');
   sheet('입출고').getRange(lg.row, 10).setValue(site);
   return lg.date + ' 출고 ' + lg.itemName + ' ' + lg.qty + ': 현장 ' + (lg.site || '(없음)') + ' → ' + (site || '(없음)');
+}
+
+/* ---------- 거래처 · 발주 ---------- */
+function readSups() {
+  const v = sheet('거래처').getDataRange().getValues();
+  const out = [];
+  for (let r = 1; r < v.length; r++) {
+    const x = v[r];
+    if (!x[0]) continue;
+    out.push({ id: String(x[0]), name: String(x[1] || ''), person: String(x[2] || ''), phone: String(x[3] || ''), email: String(x[4] || ''), memo: String(x[5] || ''), row: r + 1 });
+  }
+  return out;
+}
+function saveSup(x) {
+  const sh = sheet('거래처');
+  const d = { name: clean(x.name, 40), person: clean(x.person, 20), phone: clean(x.phone, 30), email: clean(x.email, 60), memo: clean(x.memo, 80) };
+  if (!d.name) throw new Error('거래처명을 입력해 주세요.');
+  const all = readSups();
+  if (all.some(v => v.name === d.name && v.id !== x.id)) throw new Error('같은 이름의 거래처가 이미 있습니다.');
+  const now = fmtTime();
+  if (x.id) {
+    const cur = all.find(v => v.id === x.id);
+    if (!cur) throw new Error('거래처를 찾지 못했습니다.');
+    sh.getRange(cur.row, 2, 1, 5).setValues([[d.name, d.person, d.phone, d.email, d.memo]]);
+    sh.getRange(cur.row, 8).setValue(now);
+    return cur.name + (cur.name !== d.name ? ' → ' + d.name : '');
+  }
+  sh.appendRow([newId('S'), d.name, d.person, d.phone, d.email, d.memo, now, now]);
+  return d.name;
+}
+function deleteSup(id) {
+  const cur = readSups().find(v => v.id === id);
+  if (!cur) return '';
+  if (readPOs().some(o => o.supplierId === id && o.status === '발주')) throw new Error(cur.name + '에 아직 입고 안 된 발주가 있습니다. 입고 처리나 발주 취소 후 삭제해 주세요.');
+  sheet('거래처').deleteRow(cur.row);
+  return cur.name;
+}
+function poInfo() { try { return JSON.parse(P.getProperty('PO_INFO') || 'null') || { company: '월드네트웍스' }; } catch (e) { return { company: '월드네트웍스' }; } }
+function readPOs() {
+  const v = sheet('발주').getDataRange().getValues();
+  const out = [];
+  for (let r = 1; r < v.length; r++) {
+    const x = v[r];
+    if (!x[0]) continue;
+    out.push({ no: String(x[0]), date: fmtDay(x[1]), supplierId: String(x[2] || ''), supplierName: String(x[3] || ''), itemId: String(x[4] || ''), itemName: String(x[5] || ''),
+      qty: num(x[6]), price: num(x[7]), status: String(x[8] || '발주'), recvDate: fmtDay(x[9]), recvQty: num(x[10]), memo: String(x[11] || ''), by: String(x[12] || ''), row: r + 1 });
+  }
+  return out;
+}
+/** po: { supplierId, date, memo, lines: [{itemId, qty, price}] } → 발주번호 PO-yyMMdd-NN */
+function createPO(po) {
+  const sup = readSups().find(v => v.id === po.supplierId);
+  if (!sup) throw new Error('거래처를 골라 주세요.');
+  const items = readItems();
+  const lines = (po.lines || []).map(l => ({ it: items.find(i => i.id === l.itemId), qty: Math.floor(num(l.qty)), price: Math.max(0, Math.round(num(l.price))) })).filter(l => l.it && l.qty > 0);
+  if (!lines.length) throw new Error('발주할 품목과 수량을 넣어 주세요.');
+  const day = dayOf(po.date);
+  const prefix = 'PO-' + day.slice(2).replace(/-/g, '') + '-';
+  const used = readPOs().filter(o => o.no.indexOf(prefix) === 0).map(o => Number(o.no.slice(prefix.length)) || 0);
+  const no = prefix + String((used.length ? Math.max.apply(null, used) : 0) + 1).padStart(2, '0');
+  const now = fmtTime(), memo = clean(po.memo, 100);
+  const sh = sheet('발주');
+  lines.forEach(l => sh.appendRow([no, day, sup.id, sup.name, l.it.id, itemLabel(l.it), l.qty, l.price || '', '발주', '', '', memo, USER.name || '', now]));
+  return no + ' ' + sup.name + ' ' + lines.length + '개 품목 (' + lines.map(l => itemLabel(l.it) + ' ' + l.qty + l.it.unit).join(', ') + ')';
+}
+/** 발주 입고 처리: req.no, req.date, req.qty = { itemId: 받은 수량 } → 본사 재고에 입고 기록 */
+function receivePO(req, device) {
+  const rows = readPOs().filter(o => o.no === req.no && o.status === '발주');
+  if (!rows.length) throw new Error('입고할 발주를 찾지 못했습니다. 이미 입고됐거나 취소됐을 수 있습니다.');
+  const day = dayOf(req.date), got = req.qty || {};
+  const out = [];
+  rows.slice().sort((a, b) => b.row - a.row).forEach(o => {
+    const q = Math.max(0, Math.floor(num(got[o.itemId] != null ? got[o.itemId] : o.qty)));
+    if (q > 0 && readItems().some(i => i.id === o.itemId)) {
+      addLog({ itemId: o.itemId, type: 'in', qty: q, date: day, memo: o.no + ' ' + o.supplierName + ' 입고' }, device);
+      out.push(o.itemName + ' ' + q + (q !== o.qty ? '/' + o.qty : ''));
+    }
+    sheet('발주').getRange(o.row, 9, 1, 3).setValues([['입고완료', day, q]]);
+  });
+  return req.no + ' ' + rows[0].supplierName + ' 입고 처리 (' + (out.join(', ') || '받은 수량 없음') + ')';
+}
+function cancelPO(no) {
+  const rows = readPOs().filter(o => o.no === no && o.status === '발주');
+  if (!rows.length) throw new Error('취소할 발주를 찾지 못했습니다.');
+  rows.forEach(o => sheet('발주').getRange(o.row, 9).setValue('취소'));
+  return no + ' ' + rows[0].supplierName + ' 발주 취소';
 }
 
 /* ---------- 재고 미달 알림 ---------- */

@@ -1,5 +1,5 @@
 // 자재 재고 앱 서비스워커 — 화면 파일만 저장, 구글 시트 자료는 항상 실시간으로 받음
-const CACHE = 'inventory-app-v8';
+const CACHE = 'inventory-app-v9';
 const FILES = ['./', './index.html', './manifest.webmanifest', './icon-192.png', './icon-512.png', './apple-touch-icon.png'];
 
 self.addEventListener('install', e => {
