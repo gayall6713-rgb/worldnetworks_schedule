@@ -80,6 +80,25 @@ input:focus-visible,select:focus-visible,button:focus-visible{outline:2px solid 
 .seg input{position:absolute;opacity:0;width:1px;height:1px}
 .seg label:has(input[value="in"]:checked){background:var(--in-soft);color:var(--in)}
 .seg label:has(input[value="out"]:checked){background:var(--out-soft);color:var(--out)}
+.seg.three{grid-template-columns:1fr 1fr 1fr}
+.seg label:has(input[value="use"]:checked){background:var(--out-soft);color:var(--out)}
+.seg label:has(input[value="return"]:checked){background:var(--accent-soft);color:var(--accent)}
+.seg label:has(input[value="own"]:checked){background:var(--in-soft);color:var(--in)}
+.type.use,.qty.use{color:var(--out)} .type.return,.qty.return{color:var(--accent)}
+.sechead{display:flex;flex-wrap:wrap;gap:8px;align-items:center;justify-content:space-between;margin-top:8px}
+.sechead h2{font-size:1.2rem}
+.notice{background:var(--warn-soft);color:var(--warn);border-radius:8px;padding:10px 12px;font-size:.88rem;margin:0}
+.elist{display:grid;gap:6px}
+.erow{display:grid;grid-template-columns:minmax(0,1fr) auto;gap:8px;align-items:center;border:1px solid var(--line);border-radius:8px;padding:8px 10px}
+#empDlg{width:min(520px,calc(100vw - 24px))}
+#eReportDlg{width:min(1100px,calc(100vw - 16px));max-height:calc(100vh - 24px);overflow-y:auto}
+#erTable{font-size:.86rem}
+#erTable th{position:sticky;top:0;background:var(--panel);z-index:1}
+#erTable td{padding:7px 8px}
+#erTable td,#erTable th{white-space:nowrap}
+#erTable td.r{font-family:var(--f-num);font-variant-numeric:tabular-nums}
+#erTable tr.sub td{background:var(--accent-soft);font-weight:600}
+#erTable tr.total td{background:var(--ink);color:var(--bg);font-weight:700}
 .btn{font:inherit;font-weight:600;border:0;border-radius:8px;padding:10px 14px;background:var(--accent);color:var(--accent-ink);cursor:pointer;text-decoration:none;text-align:center}
 .btn.install{background:var(--in);color:#fff}
 .iosguide{position:relative;background:var(--accent-soft);border:1px solid var(--line);border-radius:10px;padding:12px 44px 12px 14px;font-size:.9rem;line-height:1.6}
@@ -134,11 +153,11 @@ dialog::backdrop{background:rgb(0 0 0 / .35)}
 #rTable tr.total td{background:var(--ink);color:var(--bg);font-weight:700}
 #rTable td.short{color:var(--out);font-weight:600}
 @media print{
-  body>*:not(#reportDlg){display:none!important}
-  #reportDlg{position:static;border:0;width:100%;max-height:none}
+  body>*:not(dialog[open]){display:none!important}
+  dialog[open]{position:static;border:0;width:100%!important;max-height:none!important}
   .noprint{display:none!important}
   .rtbl{max-height:none;overflow:visible;border:0}
-  #rTable th{position:static}
+  #rTable th,#erTable th{position:static}
 }
 @media (max-width:860px){.main{grid-template-columns:1fr}.stats{grid-template-columns:repeat(2,minmax(0,1fr))}}
 @media (max-width:520px){.hide-sm{display:none}}
@@ -178,6 +197,7 @@ dialog::backdrop{background:rgb(0 0 0 / .35)}
       <button class="btn install" id="installBtn" type="button" hidden>📲 앱 설치</button>
       <button class="btn ghost" id="refreshBtn" type="button">새로고침</button>
       <button class="btn ghost" id="reportBtn" type="button">재고 현황표</button>
+      <button class="btn ghost" id="eReportBtn2" type="button">직원별 현황표</button>
       <button class="btn" id="addItemBtn" type="button">+ 품목 추가</button>
     </div>
   </header>
@@ -199,7 +219,7 @@ dialog::backdrop{background:rgb(0 0 0 / .35)}
       <div class="ph"><h2 id="stockH">현재 재고</h2><div class="tabs" id="catTabs"></div></div>
       <div class="tbl">
         <table>
-          <thead><tr><th>품목</th><th class="hide-sm">구분</th><th class="r">재고</th><th class="r hide-sm">최소</th><th class="hide-sm">상태</th><th class="r">기록</th></tr></thead>
+          <thead><tr><th>품목</th><th class="hide-sm">구분</th><th class="r">재고</th><th class="r hide-sm">최소</th><th class="r hide-sm">직원 보유</th><th class="hide-sm">상태</th><th class="r">기록</th></tr></thead>
           <tbody id="stockBody"></tbody>
         </table>
       </div>
@@ -213,6 +233,7 @@ dialog::backdrop{background:rgb(0 0 0 / .35)}
           <label><input type="radio" name="ttype" id="tOut" value="out">출고</label>
         </div>
         <label>품목<select id="tItem" required></select></label>
+        <label id="tEmpWrap" hidden>받는 직원 (직원에게 주면 그 직원 재고로 자동 입고)<select id="tEmp"></select></label>
         <div class="two">
           <label>수량<input id="tQty" type="number" inputmode="numeric" min="1" step="1" required placeholder="0"></label>
           <label>날짜<input id="tDate" type="date" required></label>
@@ -224,6 +245,60 @@ dialog::backdrop{background:rgb(0 0 0 / .35)}
       <p class="hint">출고 수량이 현재 재고보다 많으면 기록되지 않습니다. 잘못 넣은 기록은 아래 내역에서 취소하면 재고가 되돌아갑니다.</p>
     </section>
   </div>
+
+  <div class="sechead" id="empTop">
+    <div><h2>직원 재고</h2><p class="sub">본사에서 직원에게 출고하면 그 직원 재고로 입고되고, 직원이 사용·반납하면 줄어듭니다.</p></div>
+    <div class="hbtns">
+      <button class="btn ghost" id="eReportBtn" type="button">직원별 현황표</button>
+      <button class="btn" id="empMgrBtn" type="button">직원 관리</button>
+    </div>
+  </div>
+  <p class="notice" id="empOld" hidden>직원 재고를 쓰려면 구글 Apps Script 서버를 새 버전으로 한 번 다시 배포해야 합니다. (안내를 받은 뒤 진행해 주세요)</p>
+  <div class="main" id="empMain">
+    <section class="panel" aria-labelledby="eStockH">
+      <div class="ph"><h2 id="eStockH">직원별 보유 현황</h2><div class="tabs" id="empTabs"></div></div>
+      <div class="tbl">
+        <table>
+          <thead><tr><th>직원</th><th>품목</th><th class="r hide-sm">받음</th><th class="r hide-sm">사용</th><th class="r hide-sm">반납</th><th class="r">잔량</th><th class="r"></th></tr></thead>
+          <tbody id="eStockBody"></tbody>
+        </table>
+      </div>
+      <label class="meta" style="display:flex;gap:6px;align-items:center"><input type="checkbox" id="eShowZero" style="width:auto"> 다 쓴 품목(잔량 0)도 보기</label>
+    </section>
+    <section class="panel" aria-labelledby="eTxH">
+      <h2 id="eTxH">직원 사용 / 반납 기록</h2>
+      <form id="eForm" autocomplete="off">
+        <div class="seg three" role="radiogroup" aria-label="구분">
+          <label><input type="radio" name="etype" value="use" checked>사용</label>
+          <label><input type="radio" name="etype" value="return">반납</label>
+          <label><input type="radio" name="etype" value="own">보유 등록</label>
+        </div>
+        <label>직원<select id="eEmp" required></select></label>
+        <label>품목<select id="eItem" required></select></label>
+        <div class="two">
+          <label>수량<input id="eQty" type="number" inputmode="numeric" min="1" step="1" required placeholder="0"></label>
+          <label>날짜<input id="eDate" type="date" required></label>
+        </div>
+        <label>현장 / 메모 (선택)<input id="eMemo" type="text" maxlength="80" placeholder="예: OO아파트 101동 1203호"></label>
+        <button class="btn" type="submit" id="eSubmit">기록하기</button>
+        <p class="msg" id="eMsg" role="status"></p>
+      </form>
+      <p class="hint" id="eHint">사용: 현장에서 쓴 수량을 뺍니다. 반납: 남은 자재를 본사로 돌려주면 본사 재고에 입고됩니다. 보유 등록: 본사 출고 없이 직원이 이미 갖고 있던 수량을 처음 한 번 넣을 때 씁니다.</p>
+    </section>
+  </div>
+  <section class="panel" aria-labelledby="eLogH" id="eLogPanel">
+    <div class="ph">
+      <h2 id="eLogH">직원 재고 내역</h2>
+      <select id="eLogFilter" aria-label="직원별 보기" style="width:auto"></select>
+    </div>
+    <div class="tbl">
+      <table>
+        <thead><tr><th>날짜</th><th>직원</th><th>구분</th><th>품목</th><th class="r">수량</th><th class="hide-sm">메모</th><th class="r"></th></tr></thead>
+        <tbody id="eLogBody"></tbody>
+      </table>
+    </div>
+    <p class="hint" id="eLogNote"></p>
+  </section>
 
   <section class="panel" aria-labelledby="logH">
     <div class="ph">
@@ -306,6 +381,58 @@ dialog::backdrop{background:rgb(0 0 0 / .35)}
   </div>
 </dialog>
 
+<dialog id="empDlg">
+  <div class="dlg">
+    <h2>직원 관리</h2>
+    <div class="elist" id="empList"></div>
+    <form id="empForm" autocomplete="off">
+      <h2 id="empFormH" style="font-size:.95rem">새 직원 추가</h2>
+      <div class="two">
+        <label>이름<input id="pName" maxlength="20" placeholder="예: 김철수"></label>
+        <label>연락처 (선택)<input id="pPhone" maxlength="20" inputmode="tel" placeholder="010-0000-0000"></label>
+      </div>
+      <label>메모 (선택)<input id="pMemo" maxlength="60" placeholder="예: 시공팀 A"></label>
+      <p class="msg" id="pMsg" role="status"></p>
+      <div class="acts">
+        <button class="btn danger" type="button" id="pDelete" hidden>이 직원 삭제</button>
+        <button class="btn ghost" type="button" id="pNew" hidden>새로 추가로</button>
+        <span style="flex:1"></span>
+        <button class="btn ghost" type="button" id="pClose">닫기</button>
+        <button class="btn" type="submit" id="pSave">추가</button>
+      </div>
+    </form>
+  </div>
+</dialog>
+
+<dialog id="eReportDlg">
+  <div class="dlg">
+    <div class="rhead">
+      <div>
+        <h2>직원별 재고 현황표</h2>
+        <p class="meta" id="erBase"></p>
+      </div>
+      <div class="hbtns noprint">
+        <label class="rmonth">직원<select id="erEmp"></select></label>
+        <label class="rmonth">기간<select id="erMode"><option value="all">처음부터 지금까지</option><option value="month">월별</option></select></label>
+        <label class="rmonth" id="erMonthWrap" hidden>월<input id="erMonth" type="month"></label>
+      </div>
+    </div>
+    <div class="rsum" id="erSum"></div>
+    <div class="tbl rtbl">
+      <table id="erTable">
+        <thead id="erHead"></thead>
+        <tbody id="erBody"></tbody>
+      </table>
+    </div>
+    <p class="hint" id="erNote"></p>
+    <div class="acts noprint">
+      <button class="btn ghost" type="button" id="erCsv">엑셀 파일로 저장</button>
+      <button class="btn ghost" type="button" id="erPrint">인쇄 / PDF</button>
+      <button class="btn" type="button" id="erClose">닫기</button>
+    </div>
+  </div>
+</dialog>
+
 <dialog id="confirmDlg">
   <div class="dlg">
     <h2 id="cTitle">확인</h2>
@@ -328,7 +455,8 @@ const SCRIPT_URL_DEFAULT = 'https://script.google.com/macros/s/AKfycbzdZ6yB6BdtF
   const put = (k,v) => { try { v ? localStorage.setItem(k,v) : localStorage.removeItem(k); } catch(e){} };
   let URL_ = SCRIPT_URL_DEFAULT || get(K.url);
   let token = get(K.token);
-  let state = { items:[], logs:[] };
+  let state = { items:[], logs:[], employees:[], empLogs:[], empStock:[] };
+  let empSel = '전체';
   let cat = '전체', editingId = null, busy = false;
   const CATS = ['전체','호차','락킹기어','핸들','기타'];
 
@@ -358,7 +486,9 @@ const SCRIPT_URL_DEFAULT = 'https://script.google.com/macros/s/AKfycbzdZ6yB6BdtF
     return j;
   }
   function apply(j){
-    state = { items:j.items||[], logs:j.logs||[], logTotal:j.logTotal||0, sheetUrl:j.sheetUrl, folderUrl:j.folderUrl, lastBackup:j.lastBackup, at:new Date().toISOString() };
+    state = { items:j.items||[], logs:j.logs||[], logTotal:j.logTotal||0,
+      empSupported: Array.isArray(j.employees), employees:j.employees||[], empLogs:j.empLogs||[], empLogTotal:j.empLogTotal||0, empStock:j.empStock||[],
+      sheetUrl:j.sheetUrl, folderUrl:j.folderUrl, lastBackup:j.lastBackup, at:new Date().toISOString() };
     put(K.cache, JSON.stringify(state));
     render();
     sync('✓ 최신 상태 · '+new Date().toTimeString().slice(0,5));
@@ -383,8 +513,9 @@ const SCRIPT_URL_DEFAULT = 'https://script.google.com/macros/s/AKfycbzdZ6yB6BdtF
     const items = state.items.slice().sort((a,b)=>CATS.indexOf(a.category)-CATS.indexOf(b.category)||String(a.name).localeCompare(String(b.name),'ko'));
     const body=$('stockBody'); body.textContent='';
     const list=items.filter(it=>cat==='전체'||it.category===cat);
-    if(!items.length) body.appendChild(el('tr',null,[el('td',{colspan:'6',cls:'empty',text:"등록된 품목이 없습니다. 오른쪽 위 '+ 품목 추가'로 호차·락킹기어·핸들을 등록해 주세요."})]));
-    else if(!list.length) body.appendChild(el('tr',null,[el('td',{colspan:'6',cls:'empty',text:cat+' 품목이 없습니다.'})]));
+    const held={}; (state.empStock||[]).forEach(b=>{ held[b.itemId]=(held[b.itemId]||0)+(+b.bal||0); });
+    if(!items.length) body.appendChild(el('tr',null,[el('td',{colspan:'7',cls:'empty',text:"등록된 품목이 없습니다. 오른쪽 위 '+ 품목 추가'로 호차·락킹기어·핸들을 등록해 주세요."})]));
+    else if(!list.length) body.appendChild(el('tr',null,[el('td',{colspan:'7',cls:'empty',text:cat+' 품목이 없습니다.'})]));
     list.forEach(it=>{
       const [st,stT]=stateOf(it);
       const bIn=el('button',{cls:'mini in',type:'button',text:'입고'}); bIn.onclick=()=>prefill(it.id,'in');
@@ -395,6 +526,7 @@ const SCRIPT_URL_DEFAULT = 'https://script.google.com/macros/s/AKfycbzdZ6yB6BdtF
         el('td',{cls:'hide-sm'},[el('span',{cls:'cat',text:it.category||'기타'})]),
         el('td',{cls:'r'},[el('span',{cls:'stock num s-'+st,text:fmt(it.stock)}),el('span',{cls:'meta',text:' '+(it.unit||'개')})]),
         el('td',{cls:'r hide-sm num meta',text:it.minStock?fmt(it.minStock):'–'}),
+        el('td',{cls:'r hide-sm num meta',text:held[it.id]?fmt(held[it.id]):'–'}),
         el('td',{cls:'hide-sm'},[el('span',{cls:'pill '+st,text:stT})]),
         el('td',null,[el('div',{cls:'rowbtns'},[bIn,bOut,bEd])])
       ]));
@@ -414,8 +546,240 @@ const SCRIPT_URL_DEFAULT = 'https://script.google.com/macros/s/AKfycbzdZ6yB6BdtF
 
     if(state.sheetUrl){ $('sheetLink').href=state.sheetUrl; $('folderLink').href=state.folderUrl; }
     $('backupInfo').textContent='모든 기록은 구글 시트에 바로 저장되고, 매일 새벽 3시쯤 드라이브 "백업" 폴더에 사본이 자동으로 쌓입니다.'+(state.lastBackup?' 마지막 백업: '+state.lastBackup:'');
+    const te=$('tEmp'), tk=te.value; te.textContent='';
+    te.appendChild(el('option',{value:'',text:'직원 아님 (현장·거래처 등으로 출고)'}));
+    (state.employees||[]).forEach(p=>te.appendChild(el('option',{value:p.id,text:p.name})));
+    te.value=(state.employees||[]).some(p=>p.id===tk)?tk:'';
+    syncTxType();
     renderLogs();
+    renderEmp();
   }
+  function syncTxType(){
+    const out=document.querySelector('input[name="ttype"]:checked').value==='out';
+    $('tEmpWrap').hidden=!(out && state.empSupported && (state.employees||[]).length);
+  }
+  document.querySelectorAll('input[name="ttype"]').forEach(r=>r.addEventListener('change',syncTxType));
+
+  /* ---------- 직원 재고 ---------- */
+  const empName = id => { const p=(state.employees||[]).find(x=>x.id===id); return p?p.name:''; };
+  const itemOf = id => state.items.find(i=>i.id===id);
+  const ETXT = { in:'입고', use:'사용', return:'반납' };
+  function sortedStock(){
+    const order={}; (state.employees||[]).forEach((p,i)=>order[p.id]=i);
+    return (state.empStock||[]).slice().sort((a,b)=>(order[a.empId]??999)-(order[b.empId]??999)||String(a.itemName).localeCompare(String(b.itemName),'ko'));
+  }
+  function renderEmp(){
+    const ok=!!state.empSupported;
+    $('empOld').hidden=ok; $('empMain').hidden=!ok; $('eLogPanel').hidden=!ok;
+    ['eReportBtn','eReportBtn2','empMgrBtn'].forEach(id=>$(id).disabled=!ok);
+    if(!ok) return;
+    const emps=state.employees||[];
+    if(empSel!=='전체' && !emps.some(p=>p.id===empSel)) empSel='전체';
+    const tabs=$('empTabs'); tabs.textContent='';
+    [{id:'전체',name:'전체'}].concat(emps).forEach(p=>{ const b=el('button',{cls:'chip',type:'button','aria-pressed':String(p.id===empSel),text:p.name}); b.onclick=()=>{ empSel=p.id; if(p.id!=='전체'){ $('eEmp').value=p.id; fillEItems(); } renderEmp(); }; tabs.appendChild(b); });
+    const body=$('eStockBody'); body.textContent='';
+    const showZero=$('eShowZero').checked;
+    const rows=sortedStock().filter(b=>(empSel==='전체'||b.empId===empSel)&&(showZero||b.bal!==0));
+    if(!emps.length) body.appendChild(el('tr',null,[el('td',{colspan:'7',cls:'empty',text:"등록된 직원이 없습니다. 오른쪽 위 '직원 관리'에서 직원을 먼저 추가해 주세요."})]));
+    else if(!rows.length) body.appendChild(el('tr',null,[el('td',{colspan:'7',cls:'empty',text:'갖고 있는 자재가 없습니다. 위쪽 출고 기록에서 받는 직원을 고르면 여기에 잡힙니다.'})]));
+    rows.forEach(b=>{
+      const it=itemOf(b.itemId), unit=it?(it.unit||'개'):'개';
+      const bUse=el('button',{cls:'mini out',type:'button',text:'사용'}); bUse.onclick=()=>prefillE(b.empId,b.itemId,'use');
+      const bRet=el('button',{cls:'mini',type:'button',text:'반납'}); bRet.onclick=()=>prefillE(b.empId,b.itemId,'return');
+      if(b.bal<=0){ bUse.disabled=true; bRet.disabled=true; }
+      body.appendChild(el('tr',null,[
+        el('td',{cls:'iname',text:empName(b.empId)||'(삭제된 직원)'}),
+        el('td',null,[el('div',{text:it?it.name:b.itemName}),el('div',{cls:'meta',text:it?[it.spec,it.color].filter(Boolean).join(' · '):''})]),
+        el('td',{cls:'r hide-sm num',text:fmt(b.inQty)}),
+        el('td',{cls:'r hide-sm num',text:fmt(b.used)}),
+        el('td',{cls:'r hide-sm num',text:fmt(b.returned)}),
+        el('td',{cls:'r'},[el('span',{cls:'stock num'+(b.bal<=0?' s-zero':''),text:fmt(b.bal)}),el('span',{cls:'meta',text:' '+unit})]),
+        el('td',null,[el('div',{cls:'rowbtns'},[bUse,bRet])])
+      ]));
+    });
+    const se=$('eEmp'), sk=se.value; se.textContent='';
+    if(!emps.length) se.appendChild(el('option',{value:'',text:'먼저 직원을 추가해 주세요'}));
+    emps.forEach(p=>se.appendChild(el('option',{value:p.id,text:p.name})));
+    se.value=emps.some(p=>p.id===sk)?sk:(empSel!=='전체'?empSel:(emps[0]?emps[0].id:''));
+    fillEItems();
+    const f=$('eLogFilter'), fk=f.value; f.textContent='';
+    f.appendChild(el('option',{value:'',text:'전체 직원'}));
+    emps.forEach(p=>f.appendChild(el('option',{value:p.id,text:p.name})));
+    f.value=emps.some(p=>p.id===fk)?fk:'';
+    renderELogs();
+  }
+  function fillEItems(){
+    const type=document.querySelector('input[name="etype"]:checked').value, emp=$('eEmp').value;
+    const sel=$('eItem'), keep=sel.value; sel.textContent='';
+    let opts=[];
+    if(type==='own') opts=state.items.slice().sort((a,b)=>CATS.indexOf(a.category)-CATS.indexOf(b.category)||String(a.name).localeCompare(String(b.name),'ko')).map(it=>{ const b=(state.empStock||[]).find(x=>x.empId===emp&&x.itemId===it.id); return {id:it.id,text:label(it)+'  (보유 '+fmt(b?b.bal:0)+')'}; });
+    else opts=sortedStock().filter(b=>b.empId===emp&&b.bal>0).map(b=>{ const it=itemOf(b.itemId); return {id:b.itemId,text:(it?label(it):b.itemName)+'  (잔량 '+fmt(b.bal)+')'}; }).filter(o=>itemOf(o.id));
+    if(!opts.length) sel.appendChild(el('option',{value:'',text:type==='own'?'먼저 품목을 추가해 주세요':'이 직원이 갖고 있는 자재가 없습니다'}));
+    opts.forEach(o=>sel.appendChild(el('option',{value:o.id,text:o.text})));
+    if(opts.some(o=>o.id===keep)) sel.value=keep;
+  }
+  $('eEmp').onchange=fillEItems;
+  document.querySelectorAll('input[name="etype"]').forEach(r=>r.addEventListener('change',fillEItems));
+  $('eShowZero').onchange=renderEmp;
+  $('eDate').value=today();
+  function prefillE(empId,itemId,type){
+    document.querySelector('input[name="etype"][value="'+type+'"]').checked=true;
+    $('eEmp').value=empId; fillEItems(); $('eItem').value=itemId; $('eQty').focus();
+    $('eForm').scrollIntoView({behavior:'smooth',block:'nearest'});
+  }
+  $('eForm').addEventListener('submit', async e=>{
+    e.preventDefault();
+    const type=document.querySelector('input[name="etype"]:checked').value;
+    const empId=$('eEmp').value, itemId=$('eItem').value, qty=Math.floor(+$('eQty').value);
+    if(!empId) return msg('eMsg','직원을 선택해 주세요.');
+    if(!itemId) return msg('eMsg','품목을 선택해 주세요.');
+    if(!(qty>0)) return msg('eMsg','수량을 1 이상으로 입력해 주세요.');
+    const b=(state.empStock||[]).find(x=>x.empId===empId&&x.itemId===itemId), bal=b?b.bal:0;
+    if(type!=='own'&&qty>bal) return msg('eMsg',empName(empId)+'님 잔량이 '+fmt(bal)+'라서 '+fmt(qty)+' '+(type==='use'?'사용':'반납')+'할 수 없습니다.');
+    $('eSubmit').disabled=true; msg('eMsg','저장 중…',true);
+    const ok=await act('addEmpLog',{log:{empId,itemId,type,qty,date:$('eDate').value||today(),memo:$('eMemo').value.trim()}},'eMsg');
+    if(ok){ $('eQty').value=''; $('eMemo').value=''; }
+    $('eSubmit').disabled=false;
+  });
+  function renderELogs(){
+    const body=$('eLogBody'); body.textContent='';
+    const fid=$('eLogFilter').value;
+    const list=(state.empLogs||[]).filter(l=>!fid||l.empId===fid);
+    if(!list.length) body.appendChild(el('tr',null,[el('td',{colspan:'7',cls:'empty',text:'직원 재고 기록이 아직 없습니다.'})]));
+    list.forEach(l=>{
+      const it=itemOf(l.itemId);
+      const undo=el('button',{cls:'mini',type:'button',text:'취소'}); undo.onclick=()=>cancelELog(l);
+      const sign=l.type==='in'?'+':'−';
+      body.appendChild(el('tr',null,[
+        el('td',{cls:'num',text:(l.date||'').slice(5).replace('-','/')}),
+        el('td',{text:empName(l.empId)||l.empName}),
+        el('td',null,[el('span',{cls:'type '+l.type,text:ETXT[l.type]||l.type})]),
+        el('td',{text:it?label(it):(l.itemName||'(삭제된 품목)')}),
+        el('td',{cls:'r num qty '+l.type,text:sign+fmt(l.qty)}),
+        el('td',{cls:'hide-sm meta',text:l.memo||''}),
+        el('td',{cls:'r'},[undo])
+      ]));
+    });
+    $('eLogNote').textContent = state.empLogTotal>(state.empLogs||[]).length ? '최근 '+fmt(state.empLogs.length)+'건만 보입니다. 전체는 구글 시트 "직원재고" 탭에서 볼 수 있습니다.' : '';
+  }
+  $('eLogFilter').onchange=renderELogs;
+  async function cancelELog(l){
+    const nm=empName(l.empId)||l.empName;
+    const extra = l.link ? (l.type==='in'?' 본사 출고 기록도 함께 취소되어 본사 재고가 되돌아갑니다.':' 본사 입고(반납) 기록도 함께 취소됩니다.') : '';
+    if(!await ask('직원 기록 취소',(l.date||'')+' '+nm+' '+(ETXT[l.type]||'')+' '+fmt(l.qty)+' 기록을 지울까요?'+extra)) return;
+    await act('cancelEmpLog',{id:l.id});
+  }
+
+  /* 직원 관리 */
+  let editingEmp=null;
+  function renderEmpList(){
+    const box=$('empList'); box.textContent='';
+    const emps=state.employees||[];
+    if(!emps.length) box.appendChild(el('p',{cls:'hint',text:'아직 등록된 직원이 없습니다. 아래에서 추가해 주세요.'}));
+    emps.forEach(p=>{
+      const tot=(state.empStock||[]).filter(b=>b.empId===p.id).reduce((s,b)=>s+(+b.bal||0),0);
+      const ed=el('button',{cls:'mini',type:'button',text:'수정'}); ed.onclick=()=>editEmp(p);
+      box.appendChild(el('div',{cls:'erow'},[el('div',null,[el('div',{cls:'iname',text:p.name}),el('div',{cls:'meta',text:[p.phone,p.memo,'보유 '+fmt(tot)].filter(Boolean).join(' · ')})]),ed]));
+    });
+  }
+  function editEmp(p){
+    editingEmp=p?p.id:null;
+    $('empFormH').textContent=p?p.name+' 수정':'새 직원 추가';
+    $('pName').value=p?p.name:''; $('pPhone').value=p?(p.phone||''):''; $('pMemo').value=p?(p.memo||''):'';
+    $('pSave').textContent=p?'저장':'추가'; $('pDelete').hidden=!p; $('pNew').hidden=!p;
+    $('pName').focus();
+  }
+  $('empMgrBtn').onclick=()=>{ renderEmpList(); editEmp(null); $('pMsg').textContent=''; $('empDlg').showModal(); $('pName').focus(); };
+  $('pClose').onclick=()=>$('empDlg').close();
+  $('pNew').onclick=()=>{ editEmp(null); $('pMsg').textContent=''; };
+  $('pPhone').addEventListener('input',()=>{ const d=$('pPhone').value.replace(/\D/g,''); if(/^01\d{9}$/.test(d)) $('pPhone').value=d.replace(/(\d{3})(\d{4})(\d{4})/,'$1-$2-$3'); });
+  $('empForm').addEventListener('submit', async e=>{
+    e.preventDefault();
+    const emp={id:editingEmp||'',name:$('pName').value.trim(),phone:$('pPhone').value.trim(),memo:$('pMemo').value.trim()};
+    if(!emp.name) return msg('pMsg','직원 이름을 입력해 주세요.');
+    $('pSave').disabled=true; msg('pMsg','저장 중…',true);
+    if(await act('saveEmp',{emp},'pMsg')){ renderEmpList(); editEmp(null); }
+    $('pSave').disabled=false;
+  });
+  $('pDelete').onclick=async()=>{
+    const p=(state.employees||[]).find(x=>x.id===editingEmp); if(!p) return;
+    $('empDlg').close();
+    if(!await ask('직원 삭제',p.name+'님을 삭제할까요? 지난 기록은 구글 시트에 남습니다.')) return;
+    await act('deleteEmp',{id:p.id});
+  };
+
+  /* 직원별 현황표 */
+  let eReportRows=[], eReportHead=[];
+  function buildEReport(){
+    const emp=$('erEmp').value, mode=$('erMode').value, ym=$('erMonth').value||monthNow();
+    $('erMonthWrap').hidden=mode!=='month';
+    const from=mode==='month'?ym+'-01':'', to=mode==='month'?lastDay(ym):'';
+    const emps=(state.employees||[]).filter(p=>!emp||p.id===emp);
+    const stock=sortedStock();
+    const logs=state.empLogs||[];
+    const oldest=logs.length?logs.reduce((m,l)=>l.date<m?l.date:m,logs[0].date):'';
+    const partial=mode==='month'&&state.empLogTotal>logs.length&&oldest>from;
+    eReportHead = mode==='month'
+      ? ['직원','구분','품목','규격','색상','단위','월초','입고','사용','반납','월말','현재 잔량']
+      : ['직원','구분','품목','규격','색상','단위','받은 수량','사용','반납','현재 잔량'];
+    const head=$('erHead'); head.textContent='';
+    head.appendChild(el('tr',null,eReportHead.map((h,i)=>el('th',{cls:i>=6?'r':'',text:h}))));
+    const body=$('erBody'); body.textContent=''; eReportRows=[];
+    const tr=(cells,cls)=>{ const r=el('tr',cls?{cls}:null); cells.forEach((c,i)=>r.appendChild(el('td',{cls:i>=6?'r':'',text:c==null?'':String(i>=6&&typeof c==='number'?fmt(c):c)}))); body.appendChild(r); eReportRows.push(cells); };
+    const T={a:0,in:0,use:0,ret:0,b:0,cur:0,n:0};
+    emps.forEach(p=>{
+      const mine=stock.filter(b=>b.empId===p.id);
+      const S={a:0,in:0,use:0,ret:0,b:0,cur:0};
+      let shown=0;
+      mine.forEach(b=>{
+        const it=itemOf(b.itemId);
+        const base=[p.name,it?it.category:'',it?it.name:b.itemName,it?it.spec:'',it?it.color:'',it?(it.unit||'개'):'개'];
+        if(mode==='month'){
+          let inQ=0,uQ=0,rQ=0,after=0;
+          logs.forEach(l=>{ if(l.empId!==p.id||l.itemId!==b.itemId) return; const q=+l.qty||0, sg=l.type==='in'?1:-1;
+            if(l.date>to) after+=sg*q; else if(l.date>=from){ if(l.type==='in') inQ+=q; else if(l.type==='return') rQ+=q; else uQ+=q; } });
+          const end=b.bal-after, start=end-inQ+uQ+rQ;
+          if(!start&&!inQ&&!uQ&&!rQ&&!end&&!b.bal) return;
+          tr(base.concat([start,inQ,uQ,rQ,end,b.bal])); shown++;
+          S.a+=start; S.in+=inQ; S.use+=uQ; S.ret+=rQ; S.b+=end; S.cur+=b.bal;
+        } else {
+          tr(base.concat([b.inQty,b.used,b.returned,b.bal])); shown++;
+          S.in+=b.inQty; S.use+=b.used; S.ret+=b.returned; S.cur+=b.bal;
+        }
+      });
+      if(!shown){ tr([p.name,'','기록 없음','','','']); return; }
+      T.n++;
+      tr(mode==='month'?[p.name+' 소계',shown+'개 품목','','','','',S.a,S.in,S.use,S.ret,S.b,S.cur]:[p.name+' 소계',shown+'개 품목','','','','',S.in,S.use,S.ret,S.cur],'sub');
+      ['a','in','use','ret','b','cur'].forEach(k=>T[k]+=S[k]);
+    });
+    if(!emps.length) tr(['등록된 직원이 없습니다.']);
+    else if(emps.length>1) tr(mode==='month'?['합계',emps.length+'명','','','','',T.a,T.in,T.use,T.ret,T.b,T.cur]:['합계',emps.length+'명','','','','',T.in,T.use,T.ret,T.cur],'total');
+    const who=emp?empName(emp):'전체 직원';
+    const [y,m]=ym.split('-');
+    $('erBase').textContent=who+' · '+(mode==='month'?y+'년 '+Number(m)+'월':'처음부터 지금까지')+' · '+new Date().toLocaleString('ko-KR',{dateStyle:'medium',timeStyle:'short'})+' 기준';
+    const sum=$('erSum'); sum.textContent='';
+    [[mode==='month'?'이달 입고':'받은 수량',fmt(T.in)],[mode==='month'?'이달 사용':'사용',fmt(T.use)],[mode==='month'?'이달 반납':'반납',fmt(T.ret)],['현재 잔량 합계',fmt(T.cur)]].forEach(([k,v])=>sum.appendChild(el('div',null,[el('span',{text:k}),el('b',{text:v})])));
+    $('erNote').textContent='잔량 = 받은 수량(본사 출고·보유 등록) − 사용 − 반납. 단위가 다른 품목도 합계에는 숫자만 더합니다.'+(partial?' 앱에는 최근 '+fmt(logs.length)+'건만 불러와서 이 달 숫자가 덜 잡혔을 수 있습니다. 전체는 구글 시트에서 확인해 주세요.':'');
+  }
+  function openEReport(){
+    const s=$('erEmp'), k=s.value; s.textContent='';
+    s.appendChild(el('option',{value:'',text:'전체 직원'}));
+    (state.employees||[]).forEach(p=>s.appendChild(el('option',{value:p.id,text:p.name})));
+    s.value=(state.employees||[]).some(p=>p.id===k)?k:(empSel!=='전체'?empSel:'');
+    if(!$('erMonth').value) $('erMonth').value=monthNow();
+    buildEReport(); $('eReportDlg').showModal();
+  }
+  $('eReportBtn').onclick=openEReport; $('eReportBtn2').onclick=openEReport;
+  ['erEmp','erMode','erMonth'].forEach(id=>$(id).onchange=buildEReport);
+  $('erClose').onclick=()=>$('eReportDlg').close();
+  $('erPrint').onclick=()=>window.print();
+  $('erCsv').onclick=()=>{
+    const esc=v=>{ const t=String(v==null?'':v); return /[",\n]/.test(t)?'"'+t.replace(/"/g,'""')+'"':t; };
+    const csv='\ufeff'+[[$('erBase').textContent],eReportHead].concat(eReportRows).map(r=>r.map(esc).join(',')).join('\r\n');
+    const a=document.createElement('a'); a.href=URL.createObjectURL(new Blob([csv],{type:'text/csv;charset=utf-8'}));
+    a.download='직원재고현황_'+($('erMode').value==='month'?($('erMonth').value||monthNow()):today())+'.csv'; document.body.appendChild(a); a.click(); a.remove();
+    setTimeout(()=>URL.revokeObjectURL(a.href),2000);
+  };
 
   function renderLogs(){
     const body=$('logBody'); body.textContent='';
@@ -446,11 +810,12 @@ const SCRIPT_URL_DEFAULT = 'https://script.google.com/macros/s/AKfycbzdZ6yB6BdtF
     const it=state.items.find(i=>i.id===$('tItem').value);
     const qty=Math.floor(+$('tQty').value);
     const type=document.querySelector('input[name="ttype"]:checked').value;
+    const empId=(type==='out'&&!$('tEmpWrap').hidden)?$('tEmp').value:'';
     if(!it) return msg('tMsg','품목을 선택해 주세요.');
     if(!(qty>0)) return msg('tMsg','수량을 1 이상으로 입력해 주세요.');
     if(type==='out'&&qty>(+it.stock||0)) return msg('tMsg','현재 재고가 '+fmt(it.stock)+(it.unit||'개')+'라서 '+fmt(qty)+' 출고할 수 없습니다.');
     $('tSubmit').disabled=true; msg('tMsg','저장 중…',true);
-    const ok = await act('addLog',{log:{itemId:it.id,type,qty,date:$('tDate').value||today(),memo:$('tMemo').value.trim()}},'tMsg');
+    const ok = await act('addLog',{log:{itemId:it.id,type,qty,empId,date:$('tDate').value||today(),memo:$('tMemo').value.trim()}},'tMsg');
     if(ok){ $('tQty').value=''; $('tMemo').value=''; }
     $('tSubmit').disabled=false;
   });
@@ -460,7 +825,9 @@ const SCRIPT_URL_DEFAULT = 'https://script.google.com/macros/s/AKfycbzdZ6yB6BdtF
     $('cYes').onclick=()=>done(true); $('cNo').onclick=()=>done(false); d.onclose=()=>res(false); d.showModal(); }); }
 
   async function cancelLog(l){
-    if(!await ask('기록 취소',(l.date||'')+' '+(l.type==='in'?'입고':'출고')+' '+fmt(l.qty)+' 기록을 지우고 재고를 되돌릴까요?')) return;
+    const linked=(state.empLogs||[]).find(x=>x.link===l.id);
+    const extra=linked?' '+(empName(linked.empId)||linked.empName)+'님 직원 재고 기록도 함께 취소됩니다.':'';
+    if(!await ask('기록 취소',(l.date||'')+' '+(l.type==='in'?'입고':'출고')+' '+fmt(l.qty)+' 기록을 지우고 재고를 되돌릴까요?'+extra)) return;
     await act('cancelLog',{id:l.id});
   }
 
