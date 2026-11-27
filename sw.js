@@ -1,6 +1,6 @@
 // 현장스케줄 앱 서비스워커 — 화면 파일만 저장, 구글 연동 데이터는 항상 실시간으로 받음
 // v2: 새로 올린 화면이 바로 보이도록 브라우저 임시 저장(캐시)을 건너뛰고 항상 서버에서 새로 받음
-const CACHE = 'schedule-app-v7';
+const CACHE = 'schedule-app-v8';
 const FILES = ['./', './index.html', './manifest.webmanifest', './icon-192.png', './icon-512.png', './apple-touch-icon.png'];
 
 self.addEventListener('install', e => {
