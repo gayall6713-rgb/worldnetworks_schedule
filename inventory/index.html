@@ -120,6 +120,15 @@ input:focus-visible,select:focus-visible,button:focus-visible{outline:2px solid 
 .checks{display:grid;gap:6px}
 .checks label{display:flex;gap:8px;align-items:flex-start;font-size:.9rem;color:var(--ink)}
 .checks input{width:auto;margin-top:4px}
+.site{display:inline-block;font-size:.74rem;padding:0 7px;border-radius:4px;background:var(--in-soft);color:var(--in);white-space:nowrap}
+#siteDlg{width:min(1000px,calc(100vw - 16px));max-height:calc(100vh - 24px);overflow-y:auto}
+#sTable{font-size:.86rem}
+#sTable th{position:sticky;top:0;background:var(--panel);z-index:1}
+#sTable td{padding:7px 8px;white-space:nowrap}
+#sTable td.r{font-family:var(--f-num);font-variant-numeric:tabular-nums}
+#sTable tr.sub td{background:var(--accent-soft);font-weight:600}
+#sTable tr.total td{background:var(--ink);color:var(--bg);font-weight:700}
+#sTable tr.nosite td{color:var(--warn)}
 .loginbox{border:1px solid var(--line);border-radius:8px;padding:10px;display:grid;gap:8px}
 #eReportDlg{width:min(1100px,calc(100vw - 16px));max-height:calc(100vh - 24px);overflow-y:auto}
 #erTable{font-size:.86rem}
@@ -187,7 +196,7 @@ dialog::backdrop{background:rgb(0 0 0 / .35)}
   dialog[open]{position:static;border:0;width:100%!important;max-height:none!important}
   .noprint{display:none!important}
   .rtbl{max-height:none;overflow:visible;border:0}
-  #rTable th,#erTable th{position:static}
+  #rTable th,#erTable th,#sTable th,#auTable th{position:static}
 }
 @media (max-width:860px){.main{grid-template-columns:1fr}.stats{grid-template-columns:repeat(2,minmax(0,1fr))}}
 @media (max-width:520px){.hide-sm{display:none}}
@@ -230,6 +239,7 @@ dialog::backdrop{background:rgb(0 0 0 / .35)}
       <button class="btn install" id="installBtn" type="button" hidden>📲 앱 설치</button>
       <button class="btn ghost" id="refreshBtn" type="button">새로고침</button>
       <button class="btn ghost adminonly" id="reportBtn" type="button">재고 현황표</button>
+      <button class="btn ghost adminonly" id="siteBtn" type="button">현장별 집계</button>
       <button class="btn ghost" id="eReportBtn2" type="button">직원별 현황표</button>
       <button class="btn ghost adminonly" id="auditBtn" type="button">변경 기록</button>
       <button class="btn adminonly" id="addItemBtn" type="button">+ 품목 추가</button>
@@ -297,7 +307,8 @@ dialog::backdrop{background:rgb(0 0 0 / .35)}
           <label>수량<input id="tQty" type="number" inputmode="numeric" min="1" step="1" required placeholder="0"></label>
           <label>날짜<input id="tDate" type="date" required></label>
         </div>
-        <label>거래처 / 현장 / 메모 (선택)<input id="tMemo" type="text" maxlength="80" placeholder="예: OO현장 3동, OO상사 입고"></label>
+        <label id="tSiteWrap" hidden>현장 (현장별 집계에 쓰여요)<input id="tSite" type="text" list="siteList" maxlength="40" placeholder="예: OO아파트"></label>
+        <label>거래처 / 메모 (선택)<input id="tMemo" type="text" maxlength="80" placeholder="예: 3동, OO상사 입고"></label>
         <button class="btn" type="submit" id="tSubmit">기록하기</button>
         <p class="msg" id="tMsg" role="status"></p>
       </form>
@@ -338,7 +349,8 @@ dialog::backdrop{background:rgb(0 0 0 / .35)}
           <label>수량<input id="eQty" type="number" inputmode="numeric" min="1" step="1" required placeholder="0"></label>
           <label>날짜<input id="eDate" type="date" required></label>
         </div>
-        <label>현장 / 메모 (선택)<input id="eMemo" type="text" maxlength="80" placeholder="예: OO아파트 101동 1203호"></label>
+        <label id="eSiteWrap">현장 (어느 현장에 썼나요?)<input id="eSite" type="text" list="siteList" maxlength="40" placeholder="예: OO아파트"></label>
+        <label>메모 (선택)<input id="eMemo" type="text" maxlength="80" placeholder="예: 101동 1203호"></label>
         <button class="btn" type="submit" id="eSubmit">기록하기</button>
         <p class="msg" id="eMsg" role="status"></p>
       </form>
@@ -513,6 +525,50 @@ dialog::backdrop{background:rgb(0 0 0 / .35)}
       <button class="btn" type="button" id="erClose">닫기</button>
     </div>
   </div>
+</dialog>
+
+<datalist id="siteList"></datalist>
+
+<dialog id="siteDlg">
+  <div class="dlg">
+    <div class="rhead">
+      <div>
+        <h2>현장별 자재 사용 집계</h2>
+        <p class="meta" id="sBase"></p>
+      </div>
+      <div class="hbtns noprint">
+        <label class="rmonth">기간<select id="sMode"><option value="month">월별</option><option value="all">처음부터 지금까지</option></select></label>
+        <label class="rmonth" id="sMonthWrap">월<input id="sMonth" type="month"></label>
+        <label class="rmonth">현장<select id="sSite"></select></label>
+      </div>
+    </div>
+    <div class="rsum" id="sSum"></div>
+    <div class="tbl rtbl">
+      <table id="sTable">
+        <thead><tr><th>현장</th><th>구분</th><th>품목</th><th>규격</th><th>색상</th><th class="r">사용 수량</th><th>단위</th><th class="r">본사 직접 출고</th><th class="r">직원 사용</th><th>마지막 날짜</th></tr></thead>
+        <tbody id="sBody"></tbody>
+      </table>
+    </div>
+    <p class="hint" id="sNote"></p>
+    <div class="acts noprint">
+      <button class="btn ghost" type="button" id="sCsv">엑셀 파일로 저장</button>
+      <button class="btn ghost" type="button" id="sPrint">인쇄 / PDF</button>
+      <button class="btn" type="button" id="sClose">닫기</button>
+    </div>
+  </div>
+</dialog>
+
+<dialog id="setSiteDlg">
+  <form class="dlg" id="setSiteForm" autocomplete="off">
+    <h2>현장 지정</h2>
+    <p id="ssText" style="margin:0"></p>
+    <label>현장<input id="ssSite" type="text" list="siteList" maxlength="40" placeholder="비우면 현장 없음"></label>
+    <p class="msg" id="ssMsg" role="status"></p>
+    <div class="acts">
+      <button class="btn ghost" type="button" id="ssNo">닫기</button>
+      <button class="btn" type="submit" id="ssOk">저장</button>
+    </div>
+  </form>
 </dialog>
 
 <dialog id="alertDlg">
@@ -711,12 +767,32 @@ const SCRIPT_URL_DEFAULT = 'https://script.google.com/macros/s/AKfycbzdZ6yB6BdtF
     syncTxType();
     renderLogs();
     renderEmp();
+    renderSiteList(); syncESite();
   }
   function syncTxType(){
     const out=document.querySelector('input[name="ttype"]:checked').value==='out';
     $('tEmpWrap').hidden=!(out && state.empSupported && (state.employees||[]).length);
+    $('tSiteWrap').hidden=!out || !!(!$('tEmpWrap').hidden && $('tEmp').value);
   }
   document.querySelectorAll('input[name="ttype"]').forEach(r=>r.addEventListener('change',syncTxType));
+  $('tEmp').addEventListener('change',syncTxType);
+  function syncESite(){ $('eSiteWrap').hidden=document.querySelector('input[name="etype"]:checked').value!=='use'; }
+  document.querySelectorAll('input[name="etype"]').forEach(r=>r.addEventListener('change',syncESite));
+  /* 현장 이름 목록 (지난 기록에서 모음, 최근 것 먼저) */
+  function sites(){
+    const seen=new Map();
+    (state.logs||[]).concat(state.empLogs||[]).forEach(l=>{ const k=(l.site||'').trim(); if(k&&(!seen.has(k)||seen.get(k)<l.date)) seen.set(k,l.date); });
+    return [...seen.entries()].sort((a,b)=>a[1]<b[1]?1:a[1]>b[1]?-1:a[0].localeCompare(b[0],'ko')).map(x=>x[0]);
+  }
+  function renderSiteList(){ const d=$('siteList'); d.textContent=''; sites().forEach(n=>d.appendChild(el('option',{value:n}))); }
+  const siteTag = l => l.site ? el('span',{cls:'site',text:'📍 '+l.site}) : null;
+  function openSetSite(kind,l){
+    const it=itemOf(l.itemId);
+    $('ssText').textContent=(l.date||'')+' '+(kind==='emp'?(empName(l.empId)||l.empName)+' 사용 ':'출고 ')+(it?label(it):l.itemName)+' '+fmt(l.qty)+(l.memo?' ('+l.memo+')':'');
+    $('ssSite').value=l.site||''; $('ssMsg').textContent=''; $('setSiteDlg').showModal(); $('ssSite').focus();
+    $('setSiteForm').onsubmit=async e=>{ e.preventDefault(); $('ssOk').disabled=true; if(await act('setSite',{kind,id:l.id,site:$('ssSite').value.trim()},'ssMsg')) $('setSiteDlg').close(); $('ssOk').disabled=false; };
+  }
+  $('ssNo').onclick=()=>$('setSiteDlg').close();
 
   /* ---------- 직원 재고 ---------- */
   const empName = id => { const p=(state.employees||[]).find(x=>x.id===id); return p?p.name:''; };
@@ -820,7 +896,7 @@ const SCRIPT_URL_DEFAULT = 'https://script.google.com/macros/s/AKfycbzdZ6yB6BdtF
     const b=(state.empStock||[]).find(x=>x.empId===empId&&x.itemId===itemId), bal=b?b.bal:0;
     if(type!=='own'&&qty>bal) return msg('eMsg',empName(empId)+'님 잔량이 '+fmt(bal)+'라서 '+fmt(qty)+' '+(type==='use'?'사용':'반납')+'할 수 없습니다.');
     $('eSubmit').disabled=true; msg('eMsg','저장 중…',true);
-    const ok=await act('addEmpLog',{log:{empId,itemId,type,qty,date:$('eDate').value||today(),memo:$('eMemo').value.trim()}},'eMsg');
+    const ok=await act('addEmpLog',{log:{empId,itemId,type,qty,date:$('eDate').value||today(),memo:$('eMemo').value.trim(),site:type==='use'?$('eSite').value.trim():''}},'eMsg');
     if(ok){ $('eQty').value=''; $('eMemo').value=''; }
     $('eSubmit').disabled=false;
   });
@@ -834,14 +910,16 @@ const SCRIPT_URL_DEFAULT = 'https://script.google.com/macros/s/AKfycbzdZ6yB6BdtF
       const undo=el('button',{cls:'mini',type:'button',text:'취소'}); undo.onclick=()=>cancelELog(l);
       if(isEmp()&&l.link){ undo.disabled=true; undo.title='본사 출고·반납과 이어진 기록은 본사에서 취소합니다'; }
       const sign=l.type==='in'?'+':'−';
+      let sb=null;
+      if(!isEmp()&&l.type==='use'){ sb=el('button',{cls:'mini',type:'button',text:'현장',title:'이 사용 기록의 현장을 정하거나 고칩니다'}); sb.onclick=()=>openSetSite('emp',l); }
       body.appendChild(el('tr',null,[
         el('td',{cls:'num',text:(l.date||'').slice(5).replace('-','/')}),
         el('td',{cls:'ecol',text:empName(l.empId)||l.empName}),
         el('td',null,[el('span',{cls:'type '+l.type,text:ETXT[l.type]||l.type})]),
-        el('td',{text:it?label(it):(l.itemName||'(삭제된 품목)')}),
+        el('td',null,[el('div',{text:it?label(it):(l.itemName||'(삭제된 품목)')}),siteTag(l)]),
         el('td',{cls:'r num qty '+l.type,text:sign+fmt(l.qty)}),
         el('td',{cls:'hide-sm meta',text:l.memo||''}),
-        el('td',{cls:'r'},[undo])
+        el('td',{cls:'r'},[el('div',{cls:'rowbtns'},[sb,undo])])
       ]));
     });
     $('eLogNote').textContent = state.empLogTotal>(state.empLogs||[]).length ? '최근 '+fmt(state.empLogs.length)+'건만 보입니다. 전체는 구글 시트 "직원재고" 탭에서 볼 수 있습니다.' : '';
@@ -1093,13 +1171,15 @@ const SCRIPT_URL_DEFAULT = 'https://script.google.com/macros/s/AKfycbzdZ6yB6BdtF
       if(l.type==='out' && state.empSupported && (state.employees||[]).length && !(state.empLogs||[]).some(x=>x.link===l.id)){
         asg=el('button',{cls:'mini',type:'button',text:'직원 지정',title:'이 출고를 직원에게 준 것으로 바꿔 직원 재고에 넣습니다'}); asg.onclick=()=>assignOut(l);
       }
+      let sb=null;
+      if(l.type==='out' && !(state.empLogs||[]).some(x=>x.link===l.id)){ sb=el('button',{cls:'mini',type:'button',text:'현장',title:'이 출고의 현장을 정하거나 고칩니다'}); sb.onclick=()=>openSetSite('log',l); }
       body.appendChild(el('tr',null,[
         el('td',{cls:'num',text:(l.date||'').slice(5).replace('-','/')}),
         el('td',null,[el('span',{cls:'type '+l.type,text:l.type==='in'?'입고':'출고'})]),
-        el('td',{text:it?label(it):(l.itemName||'(삭제된 품목)')}),
+        el('td',null,[el('div',{text:it?label(it):(l.itemName||'(삭제된 품목)')}),siteTag(l)]),
         el('td',{cls:'r num qty '+l.type,text:(l.type==='in'?'+':'−')+fmt(l.qty)}),
         el('td',{cls:'hide-sm meta',text:l.memo||''}),
-        el('td',{cls:'r'},[el('div',{cls:'rowbtns'},[asg,undo])])
+        el('td',{cls:'r'},[el('div',{cls:'rowbtns'},[sb,asg,undo])])
       ]));
     });
     $('logNote').textContent = state.logTotal>state.logs.length ? '최근 '+fmt(state.logs.length)+'건만 보입니다. 전체 '+fmt(state.logTotal)+'건은 구글 시트에서 볼 수 있습니다.' : '';
@@ -1117,7 +1197,7 @@ const SCRIPT_URL_DEFAULT = 'https://script.google.com/macros/s/AKfycbzdZ6yB6BdtF
     if(!(qty>0)) return msg('tMsg','수량을 1 이상으로 입력해 주세요.');
     if(type==='out'&&qty>(+it.stock||0)) return msg('tMsg','현재 재고가 '+fmt(it.stock)+(it.unit||'개')+'라서 '+fmt(qty)+' 출고할 수 없습니다.');
     $('tSubmit').disabled=true; msg('tMsg','저장 중…',true);
-    const ok = await act('addLog',{log:{itemId:it.id,type,qty,empId,date:$('tDate').value||today(),memo:$('tMemo').value.trim()}},'tMsg');
+    const ok = await act('addLog',{log:{itemId:it.id,type,qty,empId,date:$('tDate').value||today(),memo:$('tMemo').value.trim(),site:(type==='out'&&!empId)?$('tSite').value.trim():''}},'tMsg');
     if(ok){ $('tQty').value=''; $('tMemo').value=''; }
     $('tSubmit').disabled=false;
   });
@@ -1306,6 +1386,58 @@ const SCRIPT_URL_DEFAULT = 'https://script.google.com/macros/s/AKfycbzdZ6yB6BdtF
     if(state.alert&&$('alEmail').value.trim()!==(state.alert.email||'')) { if(!await act('setAlert',{email:$('alEmail').value.trim(),instant:$('alInstant').checked,daily:$('alDaily').checked},'alMsg')){ $('alTest').disabled=false; return; } }
     await act('testAlert',{},'alMsg');
     $('alTest').disabled=false;
+  };
+
+  /* ---------- 현장별 집계 ---------- */
+  let siteRows=[];
+  const SITE_HEAD=['현장','구분','품목','규격','색상','사용 수량','단위','본사 직접 출고','직원 사용','마지막 날짜'];
+  function buildSite(){
+    const mode=$('sMode').value, ym=$('sMonth').value||monthNow();
+    $('sMonthWrap').hidden=mode!=='month';
+    const from=mode==='month'?ym+'-01':'', to=mode==='month'?lastDay(ym):'9999';
+    const linked=new Set((state.empLogs||[]).filter(x=>x.link).map(x=>x.link));
+    const uses=[];
+    (state.logs||[]).forEach(l=>{ if(l.type==='out'&&!linked.has(l.id)&&!/^\[직원 출고\]/.test(l.memo||'')) uses.push({site:l.site||'',itemId:l.itemId,itemName:l.itemName,qty:+l.qty||0,date:l.date,src:'hq',memo:l.memo}); });
+    (state.empLogs||[]).forEach(l=>{ if(l.type==='use') uses.push({site:l.site||'',itemId:l.itemId,itemName:l.itemName,qty:+l.qty||0,date:l.date,src:'emp',memo:l.memo}); });
+    const inRange=uses.filter(u=>u.date>=from&&u.date<=to);
+    const pick=$('sSite').value;
+    const all=[...new Set(inRange.map(u=>u.site))].sort((a,b)=>!a?1:!b?-1:a.localeCompare(b,'ko'));
+    const ss=$('sSite'); ss.textContent=''; ss.appendChild(el('option',{value:'*',text:'모든 현장'})); all.forEach(n=>ss.appendChild(el('option',{value:n,text:n||'(현장 미지정)'}))); ss.value=all.includes(pick)?pick:'*';
+    const list=inRange.filter(u=>ss.value==='*'||u.site===ss.value);
+    const g={}; list.forEach(u=>{ const k=u.site+'\u0001'+u.itemId; const r=g[k]||(g[k]={site:u.site,itemId:u.itemId,itemName:u.itemName,qty:0,hq:0,emp:0,last:''}); r.qty+=u.qty; r[u.src]+=u.qty; if(u.date>r.last) r.last=u.date; });
+    const body=$('sBody'); body.textContent=''; siteRows=[];
+    const tr=(cells,cls)=>{ const r=el('tr',cls?{cls}:null); cells.forEach((c,i)=>r.appendChild(el('td',{cls:(i===5||i===7||i===8)?'r':'',text:c==null?'':String((i===5||i===7||i===8)&&typeof c==='number'?fmt(c):c)}))); body.appendChild(r); siteRows.push(cells); };
+    const bySite={}; Object.values(g).forEach(r=>(bySite[r.site]=bySite[r.site]||[]).push(r));
+    const order=Object.keys(bySite).sort((a,b)=>!a?1:!b?-1:a.localeCompare(b,'ko'));
+    let T={q:0,hq:0,emp:0};
+    order.forEach(sn=>{
+      const rows=bySite[sn].map(r=>({r,it:itemOf(r.itemId)})).sort((a,b)=>CATS.indexOf(a.it?a.it.category:'기타')-CATS.indexOf(b.it?b.it.category:'기타')||String(a.it?a.it.name:a.r.itemName).localeCompare(String(b.it?b.it.name:b.r.itemName),'ko'));
+      const S={q:0,hq:0,emp:0};
+      rows.forEach(({r,it})=>{ tr([sn||'(현장 미지정)',it?it.category:'',it?it.name:r.itemName,it?it.spec:'',it?it.color:'',r.qty,it?(it.unit||'개'):'개',r.hq,r.emp,r.last],sn?'':'nosite'); S.q+=r.qty; S.hq+=r.hq; S.emp+=r.emp; });
+      tr([(sn||'(현장 미지정)')+' 소계',rows.length+'개 품목','','','',S.q,'',S.hq,S.emp,''],'sub');
+      T.q+=S.q; T.hq+=S.hq; T.emp+=S.emp;
+    });
+    if(!order.length) tr(['이 기간에 출고·사용 기록이 없습니다.']);
+    else if(order.length>1) tr(['합계',order.length+'개 현장','','','',T.q,'',T.hq,T.emp,''],'total');
+    const [y,m]=ym.split('-');
+    $('sBase').textContent=(ss.value==='*'?'모든 현장':(ss.value||'(현장 미지정)'))+' · '+(mode==='month'?y+'년 '+Number(m)+'월':'처음부터 지금까지')+' · '+new Date().toLocaleString('ko-KR',{dateStyle:'medium',timeStyle:'short'})+' 기준';
+    const named=order.filter(Boolean).length, unnamed=list.filter(u=>!u.site).length;
+    const sum=$('sSum'); sum.textContent='';
+    [['현장 수',named+'곳'],['사용 수량 합계',fmt(T.q)],['본사 직접 출고',fmt(T.hq)],['직원 사용',fmt(T.emp)],['현장 미지정 기록',unnamed+'건']].forEach(([k,v])=>sum.appendChild(el('div',null,[el('span',{text:k}),el('b',{text:v})])));
+    const oldest=(state.logs||[]).concat(state.empLogs||[]).reduce((mn,l)=>!mn||l.date<mn?l.date:mn,'');
+    const partial=(state.logTotal>(state.logs||[]).length||state.empLogTotal>(state.empLogs||[]).length)&&oldest>from;
+    $('sNote').textContent='사용 = 본사에서 현장으로 바로 출고한 수량 + 직원이 현장에 사용한 수량. 직원에게 준 출고는 직원이 사용할 때 잡혀서 두 번 세지 않습니다. 현장이 비어 있는 지난 기록은 입출고 내역·직원 재고 내역의 "현장" 버튼으로 정할 수 있어요.'+(partial?' 앱에는 최근 기록만 불러와서 숫자가 덜 잡혔을 수 있습니다.':'');
+  }
+  $('siteBtn').onclick=()=>{ if(!$('sMonth').value) $('sMonth').value=monthNow(); buildSite(); $('siteDlg').showModal(); };
+  ['sMode','sMonth','sSite'].forEach(id=>$(id).onchange=buildSite);
+  $('sClose').onclick=()=>$('siteDlg').close();
+  $('sPrint').onclick=()=>window.print();
+  $('sCsv').onclick=()=>{
+    const esc=v=>{ const t=String(v==null?'':v); return /[",\n]/.test(t)?'"'+t.replace(/"/g,'""')+'"':t; };
+    const csv='\ufeff'+[[$('sBase').textContent],SITE_HEAD].concat(siteRows).map(r=>r.map(esc).join(',')).join('\r\n');
+    const a=document.createElement('a'); a.href=URL.createObjectURL(new Blob([csv],{type:'text/csv;charset=utf-8'}));
+    a.download='현장별사용_'+($('sMode').value==='month'?($('sMonth').value||monthNow()):today())+'.csv'; document.body.appendChild(a); a.click(); a.remove();
+    setTimeout(()=>URL.revokeObjectURL(a.href),2000);
   };
 
   $('backupBtn').onclick=async()=>{ $('backupBtn').disabled=true; if(await act('backupNow',{})) sync('✓ 드라이브에 백업했습니다'); $('backupBtn').disabled=false; };

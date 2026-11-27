@@ -10,6 +10,7 @@
  *  - 사람별 로그인과 권한: 직원마다 이름 + 개인 비밀번호로 들어오고, 권한(관리자/직원)에 따라 할 수 있는 일이 다릅니다.
  *    예전 공용 비밀번호(본사·직원용)도 관리자가 끌 때까지 그대로 됩니다.
  *  - 재고 미달 알림: 본사 재고가 최소재고 이하로 떨어지면 정해 둔 이메일로 바로 알리고, 매일 아침 부족 목록을 보냅니다.
+ *  - 현장별 사용 집계: 출고·직원 사용 때 현장을 적으면 현장별로 어떤 자재를 얼마나 썼는지 모아 봅니다.
  *  - 변경 기록: 누가 언제 어느 기기에서 무엇을 바꿨는지 "변경기록" 시트에 한 줄씩 남습니다.
  *
  * 설치 방법은 같은 폴더의 설치안내.md 를 보세요.
@@ -18,10 +19,10 @@
 const APP_NAME = '월드네트웍스 재고관리';
 const TZ = 'Asia/Seoul';
 const ITEM_HEAD = ['ID', '구분', '품목명', '규격', '색상', '단위', '최소재고', '현재재고', '등록일시', '수정일시', '적정재고'];
-const LOG_HEAD = ['ID', '날짜', '입출고', '품목ID', '품목명', '수량', '메모', '기록일시', '기록기기'];
+const LOG_HEAD = ['ID', '날짜', '입출고', '품목ID', '품목명', '수량', '메모', '기록일시', '기록기기', '현장'];
 const EMP_HEAD = ['ID', '이름', '연락처', '메모', '등록일시', '수정일시', '권한'];
 const AUDIT_HEAD = ['일시', '이름', '권한', '기기', '작업', '내용'];
-const ELOG_HEAD = ['ID', '날짜', '구분', '직원ID', '직원이름', '품목ID', '품목명', '수량', '메모', '본사기록ID', '기록일시', '기록기기'];
+const ELOG_HEAD = ['ID', '날짜', '구분', '직원ID', '직원이름', '품목ID', '품목명', '수량', '메모', '본사기록ID', '기록일시', '기록기기', '현장'];
 const HEADS = { '품목': ITEM_HEAD, '입출고': LOG_HEAD, '직원': EMP_HEAD, '직원재고': ELOG_HEAD, '변경기록': AUDIT_HEAD };
 const MAX_AUDIT_SENT = 1000;
 const KEEP_BACKUPS = 60;
@@ -103,6 +104,7 @@ function handle(req) {
     case 'setEmpPassword': return setEmpPassword(req);
     case 'setUserLogin': m = setUserLogin(req); audit('로그인 설정', m); return listAll(m);
     case 'myPassword': return myPassword(req);
+    case 'setSite': m = setSite(req); audit('현장 지정', m); return listAll(m);
     case 'setAlert': m = setAlert(req); audit('알림 설정', m); return listAll(m);
     case 'testAlert': m = sendLowMail('테스트'); audit('알림 테스트', m); return listAll(m);
     case 'assignOut': m = assignOut(req.id, req.empId, d); audit('직원 지정', m); return listAll(m);
@@ -344,15 +346,21 @@ function readItems() {
   return out;
 }
 
+/** 예전 시트에 새 칸 머리글이 없으면 붙임 */
+function ensureHead(sh, col, name) {
+  if (sh.getRange(1, col).getValue() !== name) sh.getRange(1, col).setValue(name).setFontWeight('bold').setBackground('#e2edf5');
+}
+
 function readLogs() {
   const sh = sheet('입출고');
+  ensureHead(sh, 10, '현장');
   const v = sh.getDataRange().getValues();
   const out = [];
   for (let r = 1; r < v.length; r++) {
     const x = v[r];
     if (!x[0]) continue;
     out.push({ id: String(x[0]), date: fmtDay(x[1]), type: x[2] === '출고' ? 'out' : 'in', itemId: String(x[3]), itemName: String(x[4] || ''),
-      qty: num(x[5]), memo: String(x[6] || ''), at: x[7] instanceof Date ? fmtTime(x[7]) : String(x[7] || ''), row: r + 1 });
+      qty: num(x[5]), memo: String(x[6] || ''), at: x[7] instanceof Date ? fmtTime(x[7]) : String(x[7] || ''), site: String(x[9] || ''), row: r + 1 });
   }
   return out;
 }
@@ -373,14 +381,16 @@ function readEmps() {
 const ETYPE = { '입고': 'in', '사용': 'use', '반납': 'return' };
 const ETYPE_KO = { in: '입고', use: '사용', 'return': '반납' };
 function readEmpLogs() {
-  const v = sheet('직원재고').getDataRange().getValues();
+  const sh = sheet('직원재고');
+  ensureHead(sh, 13, '현장');
+  const v = sh.getDataRange().getValues();
   const out = [];
   for (let r = 1; r < v.length; r++) {
     const x = v[r];
     if (!x[0]) continue;
     out.push({ id: String(x[0]), date: fmtDay(x[1]), type: ETYPE[x[2]] || 'use', empId: String(x[3]), empName: String(x[4] || ''),
       itemId: String(x[5]), itemName: String(x[6] || ''), qty: num(x[7]), memo: String(x[8] || ''), link: String(x[9] || ''),
-      at: x[10] instanceof Date ? fmtTime(x[10]) : String(x[10] || ''), row: r + 1 });
+      at: x[10] instanceof Date ? fmtTime(x[10]) : String(x[10] || ''), site: String(x[12] || ''), row: r + 1 });
   }
   return out;
 }
@@ -500,7 +510,8 @@ function addLog(l, device) {
   const now = fmtTime();
   const lid = newId('L');
   const memo = clean(l.memo, 80);
-  sheet('입출고').appendRow([lid, day, type === 'in' ? '입고' : '출고', it.id, itemLabel(it), qty, emp ? clean('[직원 출고] ' + emp.name + (memo ? ' · ' + memo : ''), 80) : memo, now, who(device)]);
+  const site = type === 'out' && !emp ? clean(l.site, 40) : '';
+  sheet('입출고').appendRow([lid, day, type === 'in' ? '입고' : '출고', it.id, itemLabel(it), qty, emp ? clean('[직원 출고] ' + emp.name + (memo ? ' · ' + memo : ''), 80) : memo, now, who(device), site]);
   const sh = sheet('품목');
   sh.getRange(it.row, 8).setValue(next);
   sh.getRange(it.row, 10).setValue(now);
@@ -509,7 +520,7 @@ function addLog(l, device) {
     sheet('직원재고').appendRow([newId('E'), day, '입고', emp.id, emp.name, it.id, itemLabel(it), qty, memo || '본사 출고', lid, now, who(device)]);
     return itemLabel(it) + ' ' + qty + it.unit + ' ' + emp.name + '님에게 출고했습니다. 본사 재고 ' + next + it.unit + ', ' + emp.name + '님 재고 ' + empBal(emp.id, it.id) + it.unit;
   }
-  return itemLabel(it) + ' ' + qty + it.unit + ' ' + (type === 'in' ? '입고' : '출고') + ' 기록했습니다. 현재 ' + next + it.unit;
+  return itemLabel(it) + ' ' + qty + it.unit + ' ' + (site ? site + ' 현장으로 ' : '') + (type === 'in' ? '입고' : '출고') + ' 기록했습니다. 현재 ' + next + it.unit;
 }
 
 function dayOf(d) { return /^\d{4}-\d{2}-\d{2}$/.test(String(d || '')) ? d : Utilities.formatDate(new Date(), TZ, 'yyyy-MM-dd'); }
@@ -604,9 +615,10 @@ function addEmpLog(l, device) {
     sh.getRange(it.row, 10).setValue(now);
   }
   const ko = type === 'own' ? '입고' : ETYPE_KO[type];
-  sheet('직원재고').appendRow([newId('E'), day, ko, emp.id, emp.name, it.id, itemLabel(it), qty, memo || (type === 'own' ? '직접 입고' : ''), link, now, who(device)]);
+  const site = type === 'use' ? clean(l.site, 40) : '';
+  sheet('직원재고').appendRow([newId('E'), day, ko, emp.id, emp.name, it.id, itemLabel(it), qty, memo || (type === 'own' ? '직접 입고' : ''), link, now, who(device), site]);
   const left = empBal(emp.id, it.id);
-  const what = type === 'use' ? '사용' : type === 'return' ? '본사로 반납' : '입고';
+  const what = type === 'use' ? (site ? site + ' 현장에 ' : '') + '사용' : type === 'return' ? '본사로 반납' : '입고';
   return emp.name + '님 ' + itemLabel(it) + ' ' + qty + it.unit + ' ' + what + ' 기록했습니다. 남은 재고 ' + left + it.unit;
 }
 
@@ -621,6 +633,23 @@ function cancelEmpLog(id) {
   }
   sheet('직원재고').deleteRow(el.row);
   return desc;
+}
+
+/* ---------- 현장 ---------- */
+/** 지난 기록에 현장을 붙이거나 고침. kind: 'log'(본사 출고) / 'emp'(직원 사용) */
+function setSite(req) {
+  const site = clean(req.site, 40);
+  if (req.kind === 'emp') {
+    const el = readEmpLogs().find(x => x.id === req.id);
+    if (!el || el.type !== 'use') throw new Error('직원 사용 기록을 찾지 못했습니다.');
+    sheet('직원재고').getRange(el.row, 13).setValue(site);
+    return el.date + ' ' + el.empName + ' 사용 ' + el.itemName + ' ' + el.qty + ': 현장 ' + (el.site || '(없음)') + ' → ' + (site || '(없음)');
+  }
+  const lg = readLogs().find(x => x.id === req.id);
+  if (!lg || lg.type !== 'out') throw new Error('본사 출고 기록을 찾지 못했습니다.');
+  if (readEmpLogs().some(x => x.link === lg.id)) throw new Error('직원에게 준 출고는 직원이 사용할 때 현장을 적습니다.');
+  sheet('입출고').getRange(lg.row, 10).setValue(site);
+  return lg.date + ' 출고 ' + lg.itemName + ' ' + lg.qty + ': 현장 ' + (lg.site || '(없음)') + ' → ' + (site || '(없음)');
 }
 
 /* ---------- 재고 미달 알림 ---------- */
