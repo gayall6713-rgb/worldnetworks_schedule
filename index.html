@@ -447,11 +447,12 @@ button,input,select,textarea{font-family:inherit}
 /* 머리띠 */
 .container>h2{margin:-20px -20px 14px;padding:16px 20px 14px;background:var(--navy);color:#fff;text-align:left;font-size:1.25rem;font-weight:700;border-radius:8px 8px 0 0;letter-spacing:-.02em}
 .container>h2 small{display:block;font-size:.72rem;font-weight:500;opacity:.75;margin-bottom:2px;letter-spacing:0}
-/* 위쪽 탭: 밑줄형 */
-.tab-menu{background:#fff!important;box-shadow:none!important;border-bottom:1px solid var(--line);border-radius:0;padding:0!important;gap:0!important;margin-bottom:18px;overflow-x:auto}
-.tab-btn{background:transparent!important;box-shadow:none!important;border-radius:0!important;border-bottom:3px solid transparent!important;color:var(--text-sub)!important;padding:12px 8px 10px!important;top:0!important;white-space:nowrap;font-weight:600}
-.tab-btn:hover{color:var(--navy)!important;filter:none}
-.tab-btn.active{color:var(--navy)!important;border-bottom-color:var(--navy)!important;font-weight:700}
+/* 위쪽 탭: 눈에 잘 띄는 버튼형 (선택된 탭은 남색) */
+.tab-menu{background:#EAE5E0!important;box-shadow:inset 0 1px 2px rgba(0,0,0,.06)!important;border:1px solid var(--line);border-radius:10px;padding:6px!important;gap:6px!important;margin-bottom:18px}
+.tab-btn{background:#fff!important;border:1px solid var(--line-2)!important;border-radius:7px!important;box-shadow:0 2px 0 var(--line-2)!important;color:#1C1B1A!important;font-size:1.02rem!important;font-weight:700;padding:13px 8px 11px!important;top:0!important;white-space:nowrap;position:relative}
+.tab-btn:hover{border-color:#AFC3DA!important;color:var(--navy)!important;filter:none}
+.tab-btn:active{top:2px!important;box-shadow:0 0 0 var(--line-2)!important}
+.tab-btn.active{background:var(--navy)!important;border-color:var(--navy)!important;color:#fff!important;box-shadow:0 3px 0 var(--navy-edge),0 4px 10px rgba(0,44,95,.25)!important}
 /* 버튼 공통: 단색 + 얇은 입체 받침 */
 .btn::after{display:none!important}
 .btn{word-break:keep-all;background:#fff;color:#3A3734;border-color:var(--line-2);--edge:var(--line-2)}
@@ -542,8 +543,8 @@ input[type=file]::file-selector-button{border:1px solid var(--line-2);background
 #saveState{border-radius:4px}
 @media (max-width:600px){
   .container>h2{margin:-12px -12px 12px;padding:14px 14px 12px;font-size:1.1rem}
-  .tab-menu{overflow-x:visible}
-  .tab-btn{font-size:.8rem!important;padding:10px 3px 8px!important;white-space:normal;line-height:1.25;word-break:keep-all}
+  .tab-menu{padding:4px!important;gap:4px!important}
+  .tab-btn{font-size:.82rem!important;padding:10px 2px 8px!important;white-space:normal;line-height:1.25;word-break:keep-all}
   .cal-cell{border-radius:3px}
   .calendar-grid{gap:2px}
   .upload-box .btn{padding:10px 8px;font-size:.9rem}
@@ -563,7 +564,7 @@ input[type=file]::file-selector-button{border:1px solid var(--line-2);background
     <button type="submit" class="btn btn-submit" id="loginBtn">로그인</button>
     <button type="button" class="btn btn-reset" id="loginOther" style="width:100%;margin-top:12px;font-size:.9rem;padding:10px;">👥 다른 사람으로 로그인</button>
     <div id="loginMsg"></div>
-    <div style="text-align:center;font-size:.7rem;color:#adb5bd;margin-top:10px;">앱 버전 1127-새디자인</div>
+    <div style="text-align:center;font-size:.7rem;color:#adb5bd;margin-top:10px;">앱 버전 1127-메뉴강조</div>
   </form>
 </div>
 <div id="expModal" class="modal" style="z-index:70;">
@@ -696,7 +697,7 @@ input[type=file]::file-selector-button{border:1px solid var(--line-2);background
     <div class="btn-row"><button type="submit" class="btn btn-submit">변경</button><button type="button" class="btn btn-reset" onclick="$('pwModal').classList.remove('show')">닫기</button></div>
   </form>
 </div>
-<div id="appVer" style="position:fixed;left:6px;bottom:4px;font-size:.65rem;color:#adb5bd;z-index:1;pointer-events:none;">앱 버전 1127-새디자인</div>
+<div id="appVer" style="position:fixed;left:6px;bottom:4px;font-size:.65rem;color:#adb5bd;z-index:1;pointer-events:none;">앱 버전 1127-메뉴강조</div>
 <div id="syncStatus">🔄 연동 중...</div>
 <div class="container">
   <h2><small>㈜월드네트웍스</small>현장 방문 및 스케줄 관리</h2>
