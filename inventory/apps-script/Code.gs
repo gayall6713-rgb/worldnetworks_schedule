@@ -79,6 +79,7 @@ function handle(req) {
     case 'backupNow': dailyBackup(); return listAll('지금 상태를 드라이브에 백업했습니다.');
     case 'changePassword': return changePassword(req);
     case 'setEmpPassword': return setEmpPassword(req);
+    case 'assignOut': { const m = assignOut(req.id, req.empId, req.device); return listAll(m); }
   }
   return { ok: false, error: '알 수 없는 요청입니다: ' + a };
 }
@@ -392,6 +393,19 @@ function cancelLog(id) {
   }
   sheet('입출고').deleteRow(lg.row);
   if (el) sheet('직원재고').deleteRow(el.row);
+}
+
+/** 예전에 직원 지정 없이 기록한 본사 출고를 직원에게 준 것으로 바꿈 → 그 직원 재고에 입고로 잡힘 (본사 재고는 그대로) */
+function assignOut(id, empId, device) {
+  const lg = readLogs().find(x => x.id === id);
+  if (!lg || lg.type !== 'out') throw new Error('본사 출고 기록을 찾지 못했습니다.');
+  if (readEmpLogs().some(x => x.link === id)) throw new Error('이미 직원에게 연결된 출고입니다.');
+  const emp = readEmps().find(x => x.id === empId);
+  if (!emp) throw new Error('직원을 찾지 못했습니다.');
+  const now = fmtTime();
+  sheet('직원재고').appendRow([newId('E'), lg.date, '입고', emp.id, emp.name, lg.itemId, lg.itemName, lg.qty, clean(lg.memo, 80) || '본사 출고', id, now, clean(device, 40)]);
+  if (!/^\[직원 출고\]/.test(lg.memo)) sheet('입출고').getRange(lg.row, 7).setValue(clean('[직원 출고] ' + emp.name + (lg.memo ? ' · ' + lg.memo : ''), 80));
+  return lg.itemName + ' ' + lg.qty + ' 출고를 ' + emp.name + '님 재고로 옮겼습니다. 남은 재고 ' + empBal(emp.id, lg.itemId);
 }
 
 /* ---------- 직원 ---------- */

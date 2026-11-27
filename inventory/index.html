@@ -467,6 +467,19 @@ dialog::backdrop{background:rgb(0 0 0 / .35)}
   </div>
 </dialog>
 
+<dialog id="assignDlg">
+  <div class="dlg">
+    <h2>직원 지정</h2>
+    <p id="aText" style="margin:0"></p>
+    <label>직원<select id="aEmp"></select></label>
+    <p class="msg" id="aMsg" role="status"></p>
+    <div class="acts">
+      <button class="btn ghost" type="button" id="aNo">닫기</button>
+      <button class="btn" type="button" id="aOk">이 직원으로 지정</button>
+    </div>
+  </div>
+</dialog>
+
 <dialog id="confirmDlg">
   <div class="dlg">
     <h2 id="cTitle">확인</h2>
@@ -877,13 +890,17 @@ const SCRIPT_URL_DEFAULT = 'https://script.google.com/macros/s/AKfycbzdZ6yB6BdtF
     list.forEach(l=>{
       const it=state.items.find(i=>i.id===l.itemId);
       const undo=el('button',{cls:'mini',type:'button',text:'취소'}); undo.onclick=()=>cancelLog(l);
+      let asg=null;
+      if(l.type==='out' && state.empSupported && (state.employees||[]).length && !(state.empLogs||[]).some(x=>x.link===l.id)){
+        asg=el('button',{cls:'mini',type:'button',text:'직원 지정',title:'이 출고를 직원에게 준 것으로 바꿔 직원 재고에 넣습니다'}); asg.onclick=()=>assignOut(l);
+      }
       body.appendChild(el('tr',null,[
         el('td',{cls:'num',text:(l.date||'').slice(5).replace('-','/')}),
         el('td',null,[el('span',{cls:'type '+l.type,text:l.type==='in'?'입고':'출고'})]),
         el('td',{text:it?label(it):(l.itemName||'(삭제된 품목)')}),
         el('td',{cls:'r num qty '+l.type,text:(l.type==='in'?'+':'−')+fmt(l.qty)}),
         el('td',{cls:'hide-sm meta',text:l.memo||''}),
-        el('td',{cls:'r'},[undo])
+        el('td',{cls:'r'},[el('div',{cls:'rowbtns'},[asg,undo])])
       ]));
     });
     $('logNote').textContent = state.logTotal>state.logs.length ? '최근 '+fmt(state.logs.length)+'건만 보입니다. 전체 '+fmt(state.logTotal)+'건은 구글 시트에서 볼 수 있습니다.' : '';
@@ -909,6 +926,16 @@ const SCRIPT_URL_DEFAULT = 'https://script.google.com/macros/s/AKfycbzdZ6yB6BdtF
   function ask(title,text){ return new Promise(res=>{ $('cTitle').textContent=title; $('cText').textContent=text; const d=$('confirmDlg');
     const done=v=>{ $('cYes').onclick=$('cNo').onclick=null; d.onclose=null; d.close(); res(v); };
     $('cYes').onclick=()=>done(true); $('cNo').onclick=()=>done(false); d.onclose=()=>res(false); d.showModal(); }); }
+
+  function assignOut(l){
+    const s=$('aEmp'); s.textContent='';
+    (state.employees||[]).forEach(p=>s.appendChild(el('option',{value:p.id,text:p.name})));
+    const it=state.items.find(i=>i.id===l.itemId);
+    $('aText').textContent=(l.date||'')+' 출고 '+(it?label(it):l.itemName)+' '+fmt(l.qty)+(l.memo?' ('+l.memo+')':'')+' 를 어느 직원에게 줬나요? 그 직원 재고에 입고로 잡힙니다. 본사 재고는 그대로입니다.';
+    $('aMsg').textContent=''; $('assignDlg').showModal();
+    $('aOk').onclick=async()=>{ $('aOk').disabled=true; if(await act('assignOut',{id:l.id,empId:s.value},'aMsg')) $('assignDlg').close(); $('aOk').disabled=false; };
+  }
+  $('aNo').onclick=()=>$('assignDlg').close();
 
   async function cancelLog(l){
     const linked=(state.empLogs||[]).find(x=>x.link===l.id);
