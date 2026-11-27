@@ -5643,5 +5643,42 @@ if ('serviceWorker' in navigator) {
   window.addEventListener('appinstalled', () => { btn.style.display = 'none'; });
 })();
 </script>
+<script>
+// ===== 연락처 자동 하이픈: 01012341234 → 010-1234-1234 (입력하는 동안 바로 바뀜) =====
+(function(){
+  const IDS = ['phone', 'engPhone', 'empPhone', 'ptnPhone', 'qPhone', 'loginPhone'];
+  const isPhoneInput = el => el && el.tagName === 'INPUT' && (IDS.includes(el.id) || el.type === 'tel' || /^(예:\s*)?0\d{1,2}-/.test(el.placeholder || ''));
+  function hyphen(d) {
+    if (d.startsWith('02')) { // 서울 지역번호
+      if (d.length <= 2) return d;
+      if (d.length <= 5) return d.slice(0,2) + '-' + d.slice(2);
+      if (d.length <= 9) return d.slice(0,2) + '-' + d.slice(2,5) + '-' + d.slice(5);
+      return d.slice(0,2) + '-' + d.slice(2,6) + '-' + d.slice(6,10);
+    }
+    if (/^1[5-9]\d{2}/.test(d)) return d.length <= 4 ? d : d.slice(0,4) + '-' + d.slice(4,8); // 1588-0000 같은 대표번호
+    if (d.length <= 3) return d;
+    if (d.length <= 6) return d.slice(0,3) + '-' + d.slice(3);
+    if (d.length <= 10) return d.slice(0,3) + '-' + d.slice(3,6) + '-' + d.slice(6);
+    return d.slice(0,3) + '-' + d.slice(3,7) + '-' + d.slice(7,11);
+  }
+  function format(el) {
+    const v = el.value;
+    if (!v || !/^[\d\s-]+$/.test(v)) return; // 숫자 외 글자(메모 등)가 섞이면 건드리지 않음
+    const d = v.replace(/\D/g, '');
+    if (!/^(0|1[5-9])/.test(d)) return;
+    const out = hyphen(d);
+    if (out === v) return;
+    const pos = el.selectionStart == null ? v.length : el.selectionStart;
+    const digitsBefore = v.slice(0, pos).replace(/\D/g, '').length;
+    el.value = out;
+    let p = 0, n = 0;
+    while (p < out.length && n < digitsBefore) { if (/\d/.test(out[p])) n++; p++; }
+    try { el.setSelectionRange(p, p); } catch (e) {}
+  }
+  document.addEventListener('focusin', e => { if (isPhoneInput(e.target) && !e.target.inputMode) e.target.inputMode = 'tel'; });
+  document.addEventListener('input', e => { if (isPhoneInput(e.target) && !e.isComposing && e.inputType !== 'deleteContentBackward') format(e.target); }, true);
+  document.addEventListener('blur', e => { if (isPhoneInput(e.target)) format(e.target); }, true);
+})();
+</script>
 </body>
 </html>
