@@ -98,6 +98,19 @@ input:focus-visible,select:focus-visible,button:focus-visible{outline:2px solid 
 .elist{display:grid;gap:6px}
 .erow{display:grid;grid-template-columns:minmax(0,1fr) auto;gap:8px;align-items:center;border:1px solid var(--line);border-radius:8px;padding:8px 10px}
 #empDlg{width:min(520px,calc(100vw - 24px))}
+#auditDlg{width:min(1100px,calc(100vw - 16px));max-height:calc(100vh - 24px);overflow-y:auto}
+#auTable{font-size:.84rem}
+#auTable th{position:sticky;top:0;background:var(--panel);z-index:1}
+#auTable td{padding:6px 8px;vertical-align:top}
+#auTable td.nw{white-space:nowrap}
+#auTable tr.fail td{color:var(--out)}
+.who{font-size:.82rem;color:var(--muted)}
+.who b{color:var(--ink)}
+.role{display:inline-block;font-size:.7rem;padding:0 6px;border-radius:4px;margin-left:4px;vertical-align:1px}
+.role.admin{background:var(--accent-soft);color:var(--accent)}
+.role.emp{background:var(--in-soft);color:var(--in)}
+.role.none{background:var(--warn-soft);color:var(--warn)}
+.loginbox{border:1px solid var(--line);border-radius:8px;padding:10px;display:grid;gap:8px}
 #eReportDlg{width:min(1100px,calc(100vw - 16px));max-height:calc(100vh - 24px);overflow-y:auto}
 #erTable{font-size:.86rem}
 #erTable th{position:sticky;top:0;background:var(--panel);z-index:1}
@@ -185,6 +198,7 @@ dialog::backdrop{background:rgb(0 0 0 / .35)}
     </div>
     <form id="loginForm" hidden>
       <p class="hint" id="gHint">비밀번호를 입력해 주세요.</p>
+      <label id="gNameWrap">이름<input id="gName" type="text" maxlength="20" autocomplete="username" placeholder="예: 이대진"></label>
       <label>비밀번호<input id="gPw" type="password" autocomplete="current-password" required></label>
       <label id="gPw2Wrap" hidden>비밀번호 한 번 더<input id="gPw2" type="password" autocomplete="new-password"></label>
       <button class="btn" type="submit" id="gBtn">로그인</button>
@@ -199,6 +213,7 @@ dialog::backdrop{background:rgb(0 0 0 / .35)}
       <h1>자재 재고<span class="emponly"> · 직원</span></h1>
       <p class="sub adminonly">호차 · 락킹기어 · 핸들 입고/출고와 현재 재고</p>
       <p class="sub emponly" id="meLine"></p>
+      <p class="who" id="whoLine"></p>
     </div>
     <div class="hbtns">
       <span class="sync" id="sync"></span>
@@ -206,9 +221,11 @@ dialog::backdrop{background:rgb(0 0 0 / .35)}
       <button class="btn ghost" id="refreshBtn" type="button">새로고침</button>
       <button class="btn ghost adminonly" id="reportBtn" type="button">재고 현황표</button>
       <button class="btn ghost" id="eReportBtn2" type="button">직원별 현황표</button>
+      <button class="btn ghost adminonly" id="auditBtn" type="button">변경 기록</button>
       <button class="btn adminonly" id="addItemBtn" type="button">+ 품목 추가</button>
       <button class="btn ghost emponly" id="meChange" type="button">다른 직원으로</button>
-      <button class="btn ghost emponly" id="empLogout" type="button">로그아웃</button>
+      <button class="btn ghost" id="myPwBtn" type="button" hidden>내 비밀번호</button>
+      <button class="btn ghost" id="empLogout" type="button">로그아웃</button>
     </div>
   </header>
 
@@ -426,6 +443,19 @@ dialog::backdrop{background:rgb(0 0 0 / .35)}
         <label>연락처 (선택)<input id="pPhone" maxlength="20" inputmode="tel" placeholder="010-0000-0000"></label>
       </div>
       <label>메모 (선택)<input id="pMemo" maxlength="60" placeholder="예: 시공팀 A"></label>
+      <div class="loginbox" id="pLoginBox" hidden>
+        <b style="font-size:.9rem">로그인 · 권한</b>
+        <p class="hint" id="pLoginState"></p>
+        <div class="two">
+          <label>권한<select id="pRole"><option value="직원">직원 (내 자재만)</option><option value="관리자">관리자 (모든 기능)</option></select></label>
+          <label>개인 비밀번호<input id="pPw" type="text" maxlength="30" autocomplete="off" placeholder="새로 정할 때만 입력"></label>
+        </div>
+        <div class="acts">
+          <button class="btn ghost" type="button" id="pLoginOff" hidden>개인 로그인 끄기</button>
+          <button class="btn" type="button" id="pLoginSave">권한·비밀번호 저장</button>
+        </div>
+        <p class="msg" id="pLoginMsg" role="status"></p>
+      </div>
       <p class="msg" id="pMsg" role="status"></p>
       <div class="acts">
         <button class="btn danger" type="button" id="pDelete" hidden>이 직원 삭제</button>
@@ -465,6 +495,46 @@ dialog::backdrop{background:rgb(0 0 0 / .35)}
       <button class="btn" type="button" id="erClose">닫기</button>
     </div>
   </div>
+</dialog>
+
+<dialog id="auditDlg">
+  <div class="dlg">
+    <div class="rhead">
+      <div>
+        <h2>변경 기록</h2>
+        <p class="meta" id="auBase">누가 언제 어느 기기에서 무엇을 바꿨는지 남는 기록입니다.</p>
+      </div>
+      <div class="hbtns noprint">
+        <label class="rmonth">사람<select id="auWho"></select></label>
+        <label class="rmonth">작업<select id="auAct"></select></label>
+      </div>
+    </div>
+    <div class="tbl rtbl">
+      <table id="auTable">
+        <thead><tr><th>일시</th><th>이름</th><th>작업</th><th>내용</th><th class="hide-sm">기기</th></tr></thead>
+        <tbody id="auBody"></tbody>
+      </table>
+    </div>
+    <p class="hint" id="auNote"></p>
+    <div class="acts noprint">
+      <button class="btn ghost" type="button" id="auCsv">엑셀 파일로 저장</button>
+      <button class="btn" type="button" id="auClose">닫기</button>
+    </div>
+  </div>
+</dialog>
+
+<dialog id="myPwDlg">
+  <form class="dlg" id="myPwForm" autocomplete="off">
+    <h2>내 비밀번호 바꾸기</h2>
+    <label>지금 비밀번호<input id="mpOld" type="password" autocomplete="current-password" required></label>
+    <label>새 비밀번호 (4자 이상)<input id="mpNew" type="password" autocomplete="new-password" required></label>
+    <label>새 비밀번호 한 번 더<input id="mpNew2" type="password" autocomplete="new-password" required></label>
+    <p class="msg" id="mpMsg" role="status"></p>
+    <div class="acts">
+      <button class="btn ghost" type="button" id="mpClose">닫기</button>
+      <button class="btn" type="submit" id="mpSave">바꾸기</button>
+    </div>
+  </form>
 </dialog>
 
 <dialog id="assignDlg">
@@ -533,7 +603,7 @@ const SCRIPT_URL_DEFAULT = 'https://script.google.com/macros/s/AKfycbzdZ6yB6BdtF
     return j;
   }
   function apply(j){
-    state = { role:j.role==='emp'?'emp':'admin', empPwSet:!!j.empPwSet, items:j.items||[], logs:j.logs||[], logTotal:j.logTotal||0,
+    state = { role:j.role==='emp'?'emp':'admin', me:j.me||null, empPwSet:!!j.empPwSet, items:j.items||[], logs:j.logs||[], logTotal:j.logTotal||0,
       empSupported: Array.isArray(j.employees), employees:j.employees||[], empLogs:j.empLogs||[], empLogTotal:j.empLogTotal||0, empStock:j.empStock||[],
       sheetUrl:j.sheetUrl, folderUrl:j.folderUrl, lastBackup:j.lastBackup, at:new Date().toISOString() };
     put(K.cache, JSON.stringify(state));
@@ -558,6 +628,7 @@ const SCRIPT_URL_DEFAULT = 'https://script.google.com/macros/s/AKfycbzdZ6yB6BdtF
 
   function render(){
     document.body.classList.toggle('empmode', state.role==='emp');
+    renderWho();
     const items = state.items.slice().sort((a,b)=>CATS.indexOf(a.category)-CATS.indexOf(b.category)||String(a.name).localeCompare(String(b.name),'ko'));
     const body=$('stockBody'); body.textContent='';
     const list=items.filter(it=>cat==='전체'||it.category===cat);
@@ -613,6 +684,18 @@ const SCRIPT_URL_DEFAULT = 'https://script.google.com/macros/s/AKfycbzdZ6yB6BdtF
   const itemOf = id => state.items.find(i=>i.id===id);
   const ETXT = { in:'입고', use:'사용', return:'반납' };
   const isEmp = () => state.role==='emp';
+  const personal = () => !!(state.me && state.me.personal);
+  function renderWho(){
+    const w=$('whoLine'); w.textContent='';
+    const m=state.me;
+    if(m&&m.name){
+      w.appendChild(document.createTextNode('로그인: '));
+      w.appendChild(el('b',{text:m.name}));
+      w.appendChild(el('span',{cls:'role '+(isEmp()?'emp':'admin'),text:isEmp()?'직원':'관리자'}));
+      if(!m.personal) w.appendChild(document.createTextNode(' · 공용 비밀번호'));
+    }
+    $('myPwBtn').hidden=!personal();
+  }
   let me = get('inv_me');
   function sortedStock(){
     const order={}; (state.employees||[]).forEach((p,i)=>order[p.id]=i);
@@ -625,8 +708,9 @@ const SCRIPT_URL_DEFAULT = 'https://script.google.com/macros/s/AKfycbzdZ6yB6BdtF
     if(!ok) return;
     const emps=state.employees||[];
     if(isEmp()){
+      if(personal()) me=state.me.uid;
       const mine=emps.find(p=>p.id===me);
-      $('mePanel').hidden=!!mine; $('empMain').hidden=!mine; $('eLogPanel').hidden=!mine; $('eReportBtn2').hidden=!mine; $('meChange').hidden=!mine;
+      $('mePanel').hidden=!!mine; $('empMain').hidden=!mine; $('eLogPanel').hidden=!mine; $('eReportBtn2').hidden=!mine; $('meChange').hidden=!mine||personal();
       $('meLine').textContent=mine?mine.name+'님 자재 · 본사에서 출고하면 자동으로 입고됩니다':'';
       $('eStockH').textContent='내 자재';
       if(!mine){ renderMePick(); return; }
@@ -740,7 +824,8 @@ const SCRIPT_URL_DEFAULT = 'https://script.google.com/macros/s/AKfycbzdZ6yB6BdtF
     emps.forEach(p=>{
       const tot=(state.empStock||[]).filter(b=>b.empId===p.id).reduce((s,b)=>s+(+b.bal||0),0);
       const ed=el('button',{cls:'mini',type:'button',text:'수정'}); ed.onclick=()=>editEmp(p);
-      box.appendChild(el('div',{cls:'erow'},[el('div',null,[el('div',{cls:'iname',text:p.name}),el('div',{cls:'meta',text:[p.phone,p.memo,'보유 '+fmt(tot)].filter(Boolean).join(' · ')})]),ed]));
+      const nm=el('div',{cls:'iname'},[document.createTextNode(p.name),el('span',{cls:'role '+(!p.hasPw?'none':p.role==='관리자'?'admin':'emp'),text:!p.hasPw?'로그인 없음':p.role})]);
+      box.appendChild(el('div',{cls:'erow'},[el('div',null,[nm,el('div',{cls:'meta',text:[p.phone,p.memo,'보유 '+fmt(tot)].filter(Boolean).join(' · ')})]),ed]));
     });
   }
   function editEmp(p){
@@ -748,8 +833,31 @@ const SCRIPT_URL_DEFAULT = 'https://script.google.com/macros/s/AKfycbzdZ6yB6BdtF
     $('empFormH').textContent=p?p.name+' 수정':'새 직원 추가';
     $('pName').value=p?p.name:''; $('pPhone').value=p?(p.phone||''):''; $('pMemo').value=p?(p.memo||''):'';
     $('pSave').textContent=p?'저장':'추가'; $('pDelete').hidden=!p; $('pNew').hidden=!p;
+    $('pLoginBox').hidden=!p; $('pLoginMsg').textContent=''; $('pPw').value='';
+    if(p){
+      $('pRole').value=p.role==='관리자'?'관리자':'직원';
+      $('pLoginOff').hidden=!p.hasPw;
+      $('pLoginState').textContent=p.hasPw?(p.name+'님은 이름 "'+p.name+'" + 개인 비밀번호로 로그인합니다. 비밀번호를 잊었으면 새로 정해 알려 주세요 (그 사람 기기는 다시 로그인).'):(p.name+'님은 아직 개인 비밀번호가 없습니다. 비밀번호를 정해서 알려 주면 이름과 그 비밀번호로 로그인합니다.');
+    }
     $('pName').focus();
   }
+  $('pLoginSave').onclick=async()=>{
+    if(!editingEmp) return;
+    const pw=$('pPw').value.trim();
+    if(pw&&pw.length<4) return msg('pLoginMsg','비밀번호는 4자 이상으로 정해 주세요.');
+    $('pLoginSave').disabled=true; msg('pLoginMsg','저장 중…',true);
+    if(await act('setUserLogin',{empId:editingEmp,role:$('pRole').value,password:pw},'pLoginMsg')){
+      const p=(state.employees||[]).find(x=>x.id===editingEmp); renderEmpList();
+      if(p){ const keep=$('pLoginMsg').textContent; editEmp(p); msg('pLoginMsg',keep+(pw?' · 이름 "'+p.name+'", 비밀번호 "'+pw+'" 를 알려 주세요.':''),true); }
+    }
+    $('pLoginSave').disabled=false;
+  };
+  $('pLoginOff').onclick=async()=>{
+    const p=(state.employees||[]).find(x=>x.id===editingEmp); if(!p) return;
+    $('pLoginOff').disabled=true;
+    if(await act('setUserLogin',{empId:p.id,role:$('pRole').value,off:true},'pLoginMsg')){ renderEmpList(); const q=(state.employees||[]).find(x=>x.id===p.id); if(q){ const keep=$('pLoginMsg').textContent; editEmp(q); msg('pLoginMsg',keep,true);} }
+    $('pLoginOff').disabled=false;
+  };
   function renderEpw(){ $('epwState').textContent=state.empPwSet?'지금 직원용 비밀번호가 정해져 있습니다. 직원은 이 비밀번호로 들어오면 자기 자재 화면만 봅니다. 바꾸면 직원 기기는 다시 로그인해야 합니다.':'아직 정하지 않았습니다. 정해서 직원들에게 알려 주면, 직원은 그 비밀번호로 들어와 자기 자재만 입고·사용·반납합니다. (본사 비밀번호는 알려 주지 마세요)'; $('epwOff').hidden=!state.empPwSet; $('epwSave').textContent=state.empPwSet?'바꾸기':'정하기'; }
   $('empMgrBtn').onclick=()=>{ renderEmpList(); renderEpw(); editEmp(null); $('pMsg').textContent=''; $('epwMsg').textContent=''; $('empDlg').showModal(); $('pName').focus(); };
   $('epwForm').addEventListener('submit', async e=>{
@@ -774,6 +882,58 @@ const SCRIPT_URL_DEFAULT = 'https://script.google.com/macros/s/AKfycbzdZ6yB6BdtF
   }
   $('meChange').onclick=()=>{ me=''; put('inv_me',''); render(); };
   $('empLogout').onclick=()=>$('logoutBtn').onclick();
+
+  /* 내 비밀번호 */
+  $('myPwBtn').onclick=()=>{ ['mpOld','mpNew','mpNew2'].forEach(id=>$(id).value=''); $('mpMsg').textContent=''; $('myPwDlg').showModal(); $('mpOld').focus(); };
+  $('mpClose').onclick=()=>$('myPwDlg').close();
+  $('myPwForm').addEventListener('submit', async e=>{
+    e.preventDefault();
+    if($('mpNew').value.length<4) return msg('mpMsg','새 비밀번호는 4자 이상으로 정해 주세요.');
+    if($('mpNew').value!==$('mpNew2').value) return msg('mpMsg','새 비밀번호 두 칸이 서로 다릅니다.');
+    $('mpSave').disabled=true; msg('mpMsg','바꾸는 중…',true);
+    try{ const r=await call('myPassword',{oldPassword:$('mpOld').value,newPassword:$('mpNew').value}); token=r.token; put(K.token,token); msg('mpMsg','비밀번호를 바꿨습니다. 다른 기기에서는 새 비밀번호로 다시 로그인해 주세요.',true); setTimeout(()=>$('myPwDlg').close(),1500); }
+    catch(err){ if(err.message!=='AUTH') msg('mpMsg',err.message==='Failed to fetch'?'인터넷 연결을 확인해 주세요.':err.message); }
+    $('mpSave').disabled=false;
+  });
+
+  /* 변경 기록 */
+  let auditRows=[], auditShown=[];
+  function buildAudit(){
+    const w=$('auWho').value, a=$('auAct').value;
+    auditShown=auditRows.filter(r=>(!w||r.name===w)&&(!a||r.action===a));
+    const body=$('auBody'); body.textContent='';
+    if(!auditShown.length) body.appendChild(el('tr',null,[el('td',{colspan:'5',cls:'empty',text:auditRows.length?'조건에 맞는 기록이 없습니다.':'아직 변경 기록이 없습니다. 이제부터 입출고·수정·삭제·로그인이 여기에 남습니다.'})]));
+    auditShown.forEach(r=>{
+      body.appendChild(el('tr',r.action==='로그인 실패'?{cls:'fail'}:null,[
+        el('td',{cls:'num nw',text:r.at.slice(2,16)}),
+        el('td',{cls:'nw'},[document.createTextNode(r.name||''),r.role?el('span',{cls:'role '+(r.role==='직원'?'emp':'admin'),text:r.role}):null]),
+        el('td',{cls:'nw',text:r.action}),
+        el('td',{text:r.detail}),
+        el('td',{cls:'hide-sm meta nw',text:r.device})
+      ]));
+    });
+  }
+  function fillSel(id,vals,all){ const s=$(id), k=s.value; s.textContent=''; s.appendChild(el('option',{value:'',text:all})); vals.forEach(v=>s.appendChild(el('option',{value:v,text:v}))); s.value=vals.includes(k)?k:''; }
+  $('auditBtn').onclick=async()=>{
+    $('auBody').textContent=''; $('auBody').appendChild(el('tr',null,[el('td',{colspan:'5',cls:'empty',text:'불러오는 중…'})]));
+    $('auNote').textContent=''; $('auditDlg').showModal();
+    try{
+      const j=await call('audit');
+      auditRows=j.audit||[];
+      fillSel('auWho',[...new Set(auditRows.map(r=>r.name).filter(Boolean))],'모든 사람');
+      fillSel('auAct',[...new Set(auditRows.map(r=>r.action).filter(Boolean))],'모든 작업');
+      buildAudit();
+      $('auNote').textContent=(j.auditTotal>auditRows.length?'최근 '+fmt(auditRows.length)+'건만 보입니다. 전체 '+fmt(j.auditTotal)+'건은 구글 시트 "변경기록" 탭에 있습니다. ':'')+'기록은 지울 수 없게 시트에만 쌓입니다.';
+    }catch(err){ if(err.message!=='AUTH'){ $('auBody').textContent=''; $('auBody').appendChild(el('tr',null,[el('td',{colspan:'5',cls:'empty',text:/알 수 없는 요청/.test(err.message)?'변경 기록을 쓰려면 구글 Apps Script 서버를 새 버전으로 다시 배포해야 합니다.':err.message})])); } }
+  };
+  ['auWho','auAct'].forEach(id=>$(id).onchange=buildAudit);
+  $('auClose').onclick=()=>$('auditDlg').close();
+  $('auCsv').onclick=()=>{
+    const esc=v=>{ const t=String(v==null?'':v); return /[",\n]/.test(t)?'"'+t.replace(/"/g,'""')+'"':t; };
+    const rows=[['일시','이름','권한','작업','내용','기기']].concat(auditShown.map(r=>[r.at,r.name,r.role,r.action,r.detail,r.device]));
+    const a=document.createElement('a'); a.href=URL.createObjectURL(new Blob(['\ufeff'+rows.map(r=>r.map(esc).join(',')).join('\r\n')],{type:'text/csv;charset=utf-8'}));
+    a.download='변경기록_'+today()+'.csv'; document.body.appendChild(a); a.click(); a.remove(); setTimeout(()=>URL.revokeObjectURL(a.href),2000);
+  };
   $('mePhone').addEventListener('input',()=>{ const d=$('mePhone').value.replace(/\D/g,''); if(/^01\d{9}$/.test(d)) $('mePhone').value=d.replace(/(\d{3})(\d{4})(\d{4})/,'$1-$2-$3'); });
   $('meForm').addEventListener('submit', async e=>{
     e.preventDefault();
@@ -1089,7 +1249,8 @@ const SCRIPT_URL_DEFAULT = 'https://script.google.com/macros/s/AKfycbzdZ6yB6BdtF
       setupMode = !!st.needsSetup;
     }catch(e){ $('gMsg').textContent='서버에 연결하지 못했습니다. 주소와 인터넷 연결을 확인해 주세요.'; if(!SCRIPT_URL_DEFAULT){ $('gUrlBox').hidden=false; $('gUrl').value=URL_; } }
     $('gPw2Wrap').hidden=!setupMode;
-    $('gHint').textContent = setupMode ? '처음 사용입니다. 이 앱에서 쓸 비밀번호를 정해 주세요 (4자 이상). 휴대폰과 PC에서 같은 비밀번호로 로그인합니다.' : '본사 비밀번호 또는 직원용 비밀번호를 입력해 주세요.';
+    $('gHint').textContent = setupMode ? '처음 사용입니다. 이 앱에서 쓸 비밀번호를 정해 주세요 (4자 이상). 휴대폰과 PC에서 같은 비밀번호로 로그인합니다.' : '이름과 내 비밀번호를 입력해 주세요. 예전 공용 비밀번호(본사·직원용)는 이름을 비워 두고 넣으면 됩니다.';
+    $('gNameWrap').hidden=setupMode; if(!setupMode&&!$('gName').value) $('gName').value=get('inv_login_name');
     $('gBtn').textContent = setupMode ? '비밀번호 정하고 시작' : '로그인';
     $('gPw').autocomplete = setupMode ? 'new-password' : 'current-password';
   }
@@ -1105,9 +1266,9 @@ const SCRIPT_URL_DEFAULT = 'https://script.google.com/macros/s/AKfycbzdZ6yB6BdtF
     if(setupMode){ if(pw.length<4) return void($('gMsg').textContent='비밀번호는 4자 이상으로 정해 주세요.'); if(pw!==$('gPw2').value) return void($('gMsg').textContent='비밀번호 두 칸이 서로 다릅니다.'); }
     $('gBtn').disabled=true; $('gMsg').textContent='확인 중… (처음에는 구글 시트를 만드느라 10초쯤 걸릴 수 있어요)';
     try{
-      const r = await (await fetch(URL_,{method:'POST',body:JSON.stringify({action:setupMode?'setup':'login',password:pw,device:device()})})).json();
+      const r = await (await fetch(URL_,{method:'POST',body:JSON.stringify({action:setupMode?'setup':'login',name:setupMode?'':$('gName').value.trim(),password:pw,device:device()})})).json();
       if(!r.ok){ $('gMsg').textContent=r.error||'로그인하지 못했습니다.'; return; }
-      token=r.token; put(K.token,token); $('gPw').value=''; $('gPw2').value='';
+      token=r.token; put(K.token,token); put('inv_login_name',setupMode?'':$('gName').value.trim()); $('gPw').value=''; $('gPw2').value='';
       startApp();
     }catch(err){ $('gMsg').textContent='서버에 연결하지 못했습니다. 인터넷 연결을 확인해 주세요.'; }
     finally{ $('gBtn').disabled=false; }
