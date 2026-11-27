@@ -5,6 +5,8 @@
  *  - 재고 화면(inventory/index.html)이 보내는 요청을 받아 구글 시트에 저장합니다.
  *  - 처음 설정할 때 내 구글 드라이브에 "월드네트웍스 재고관리" 폴더와 시트를 자동으로 만듭니다.
  *  - 매일 새벽 3~4시에 시트 사본을 "백업" 폴더에 자동 저장합니다 (최근 60개 보관).
+ *  - 직원별 재고: 본사가 직원에게 출고하면 그 직원 재고에 입고로 잡히고, 직원이 사용·반납하면 차감됩니다.
+ *    ("직원", "직원재고" 시트는 처음 쓸 때 자동으로 만들어지며 기존 "품목", "입출고" 시트는 그대로입니다.)
  *
  * 설치 방법은 같은 폴더의 설치안내.md 를 보세요.
  */
@@ -13,6 +15,9 @@ const APP_NAME = '월드네트웍스 재고관리';
 const TZ = 'Asia/Seoul';
 const ITEM_HEAD = ['ID', '구분', '품목명', '규격', '색상', '단위', '최소재고', '현재재고', '등록일시', '수정일시'];
 const LOG_HEAD = ['ID', '날짜', '입출고', '품목ID', '품목명', '수량', '메모', '기록일시', '기록기기'];
+const EMP_HEAD = ['ID', '이름', '연락처', '메모', '등록일시', '수정일시'];
+const ELOG_HEAD = ['ID', '날짜', '구분', '직원ID', '직원이름', '품목ID', '품목명', '수량', '메모', '본사기록ID', '기록일시', '기록기기'];
+const HEADS = { '품목': ITEM_HEAD, '입출고': LOG_HEAD, '직원': EMP_HEAD, '직원재고': ELOG_HEAD };
 const KEEP_BACKUPS = 60;
 const MAX_LOGS_SENT = 500;
 const TOKEN_DAYS = 365;
@@ -54,6 +59,10 @@ function handle(req) {
     case 'deleteItem': deleteItem(req.id); return listAll('품목을 삭제했습니다.');
     case 'addLog': { const m = addLog(req.log || {}, req.device); return listAll(m); }
     case 'cancelLog': cancelLog(req.id); return listAll('기록을 취소하고 재고를 되돌렸습니다.');
+    case 'saveEmp': saveEmp(req.emp || {}); return listAll('직원을 저장했습니다.');
+    case 'deleteEmp': deleteEmp(req.id); return listAll('직원을 삭제했습니다.');
+    case 'addEmpLog': { const m = addEmpLog(req.log || {}, req.device); return listAll(m); }
+    case 'cancelEmpLog': cancelEmpLog(req.id); return listAll('직원 기록을 취소하고 재고를 되돌렸습니다.');
     case 'backupNow': dailyBackup(); return listAll('지금 상태를 드라이브에 백업했습니다.');
     case 'changePassword': return changePassword(req);
   }
@@ -158,7 +167,11 @@ function initSheet(sh, head) {
 function sheet(name) {
   const ss = ensureStore();
   let sh = ss.getSheetByName(name);
-  if (!sh) { sh = ss.insertSheet(name); initSheet(sh, name === '품목' ? ITEM_HEAD : LOG_HEAD); }
+  if (!sh) {
+    sh = ss.insertSheet(name);
+    initSheet(sh, HEADS[name] || LOG_HEAD);
+    if (name === '입출고' || name === '직원재고') sh.getRange('B:B').setNumberFormat('@');
+  }
   return sh;
 }
 
@@ -196,6 +209,48 @@ function readLogs() {
   return out;
 }
 
+function readEmps() {
+  const v = sheet('직원').getDataRange().getValues();
+  const out = [];
+  for (let r = 1; r < v.length; r++) {
+    const x = v[r];
+    if (!x[0]) continue;
+    out.push({ id: String(x[0]), name: String(x[1] || ''), phone: String(x[2] || ''), memo: String(x[3] || ''), row: r + 1 });
+  }
+  return out;
+}
+
+const ETYPE = { '입고': 'in', '사용': 'use', '반납': 'return' };
+const ETYPE_KO = { in: '입고', use: '사용', 'return': '반납' };
+function readEmpLogs() {
+  const v = sheet('직원재고').getDataRange().getValues();
+  const out = [];
+  for (let r = 1; r < v.length; r++) {
+    const x = v[r];
+    if (!x[0]) continue;
+    out.push({ id: String(x[0]), date: fmtDay(x[1]), type: ETYPE[x[2]] || 'use', empId: String(x[3]), empName: String(x[4] || ''),
+      itemId: String(x[5]), itemName: String(x[6] || ''), qty: num(x[7]), memo: String(x[8] || ''), link: String(x[9] || ''),
+      at: x[10] instanceof Date ? fmtTime(x[10]) : String(x[10] || ''), row: r + 1 });
+  }
+  return out;
+}
+
+/** 직원·품목별 받은 수량/사용/반납/잔량 (전체 기록으로 계산) */
+function empBalances(elogs) {
+  const m = {};
+  elogs.forEach(l => {
+    const k = l.empId + '|' + l.itemId;
+    const b = m[k] || (m[k] = { empId: l.empId, itemId: l.itemId, itemName: l.itemName, inQty: 0, used: 0, returned: 0, bal: 0 });
+    if (l.type === 'in') b.inQty += l.qty; else if (l.type === 'return') b.returned += l.qty; else b.used += l.qty;
+    b.bal = b.inQty - b.used - b.returned;
+  });
+  return Object.keys(m).map(k => m[k]);
+}
+function empBal(empId, itemId) {
+  const b = empBalances(readEmpLogs().filter(l => l.empId === empId && l.itemId === itemId))[0];
+  return b ? b.bal : 0;
+}
+
 function itemLabel(it) { return [it.name, it.spec, it.color].filter(String).join(' · '); }
 
 /* ---------- 읽기 ---------- */
@@ -204,8 +259,14 @@ function listAll(message) {
   const logs = readLogs();
   logs.sort((a, b) => b.row - a.row);   // 시트 아래쪽(나중에 쓴 것)이 먼저
   const sent = logs.slice(0, MAX_LOGS_SENT).map(l => { delete l.row; return l; });
+  const emps = readEmps().map(e => { delete e.row; return e; });
+  const elogs = readEmpLogs();
+  const empStock = empBalances(elogs);
+  elogs.sort((a, b) => b.row - a.row);
+  const esent = elogs.slice(0, MAX_LOGS_SENT * 2).map(l => { delete l.row; return l; });
   return {
     ok: true, message: message || '', items, logs: sent, logTotal: logs.length,
+    employees: emps, empLogs: esent, empLogTotal: elogs.length, empStock,
     sheetUrl: 'https://docs.google.com/spreadsheets/d/' + P.getProperty('SHEET_ID'),
     folderUrl: 'https://drive.google.com/drive/folders/' + P.getProperty('FOLDER_ID'),
     lastBackup: P.getProperty('LAST_BACKUP') || '', serverTime: fmtTime()
@@ -249,20 +310,42 @@ function addLog(l, device) {
   if (!(qty > 0)) throw new Error('수량을 1 이상으로 입력해 주세요.');
   const type = l.type === 'out' ? 'out' : 'in';
   if (type === 'out' && qty > it.stock) throw new Error('현재 재고가 ' + it.stock + it.unit + '라서 ' + qty + ' 출고할 수 없습니다.');
+  let emp = null;
+  if (type === 'out' && l.empId) {
+    emp = readEmps().find(x => x.id === l.empId);
+    if (!emp) throw new Error('직원을 찾지 못했습니다. 화면을 새로고침해 주세요.');
+  }
   const next = type === 'in' ? it.stock + qty : it.stock - qty;
-  const day = /^\d{4}-\d{2}-\d{2}$/.test(String(l.date || '')) ? l.date : Utilities.formatDate(new Date(), TZ, 'yyyy-MM-dd');
+  const day = dayOf(l.date);
   const now = fmtTime();
-  sheet('입출고').appendRow([newId('L'), day, type === 'in' ? '입고' : '출고', it.id, itemLabel(it), qty, clean(l.memo, 80), now, clean(device, 40)]);
+  const lid = newId('L');
+  const memo = clean(l.memo, 80);
+  sheet('입출고').appendRow([lid, day, type === 'in' ? '입고' : '출고', it.id, itemLabel(it), qty, emp ? clean('[직원 출고] ' + emp.name + (memo ? ' · ' + memo : ''), 80) : memo, now, clean(device, 40)]);
   const sh = sheet('품목');
   sh.getRange(it.row, 8).setValue(next);
   sh.getRange(it.row, 10).setValue(now);
+  if (emp) {
+    sheet('직원재고').appendRow([newId('E'), day, '입고', emp.id, emp.name, it.id, itemLabel(it), qty, memo || '본사 출고', lid, now, clean(device, 40)]);
+    return itemLabel(it) + ' ' + qty + it.unit + ' ' + emp.name + '님에게 출고했습니다. 본사 재고 ' + next + it.unit + ', ' + emp.name + '님 재고 ' + empBal(emp.id, it.id) + it.unit;
+  }
   return itemLabel(it) + ' ' + qty + it.unit + ' ' + (type === 'in' ? '입고' : '출고') + ' 기록했습니다. 현재 ' + next + it.unit;
 }
+
+function dayOf(d) { return /^\d{4}-\d{2}-\d{2}$/.test(String(d || '')) ? d : Utilities.formatDate(new Date(), TZ, 'yyyy-MM-dd'); }
 
 function cancelLog(id) {
   const lg = readLogs().find(x => x.id === id);
   if (!lg) return;
   const it = readItems().find(x => x.id === lg.itemId);
+  // 직원과 이어진 기록(직원 출고·직원 반납)은 직원 쪽 기록도 함께 지움
+  const el = readEmpLogs().find(x => x.link === id);
+  if (el) {
+    const unit = it ? it.unit : '개';
+    if (el.type === 'in' && empBal(el.empId, el.itemId) < el.qty)
+      throw new Error(el.empName + '님이 이미 일부를 사용·반납해서 이 출고를 취소할 수 없습니다. 직원 재고에서 사용 기록부터 취소해 주세요. (남은 ' + empBal(el.empId, el.itemId) + unit + ')');
+    if (el.type === 'return' && it && it.stock < lg.qty)
+      throw new Error('본사 재고가 ' + it.stock + unit + '라서 이 반납을 취소할 수 없습니다.');
+  }
   if (it) {
     const back = lg.type === 'in' ? it.stock - lg.qty : it.stock + lg.qty;
     const sh = sheet('품목');
@@ -270,6 +353,71 @@ function cancelLog(id) {
     sh.getRange(it.row, 10).setValue(fmtTime());
   }
   sheet('입출고').deleteRow(lg.row);
+  if (el) sheet('직원재고').deleteRow(el.row);
+}
+
+/* ---------- 직원 ---------- */
+function saveEmp(e) {
+  const sh = sheet('직원');
+  const name = clean(e.name, 20), phone = clean(e.phone, 20), memo = clean(e.memo, 60);
+  if (!name) throw new Error('직원 이름을 입력해 주세요.');
+  const all = readEmps();
+  if (all.some(x => x.name === name && x.id !== e.id)) throw new Error('같은 이름의 직원이 이미 있습니다.');
+  const now = fmtTime();
+  if (e.id) {
+    const cur = all.find(x => x.id === e.id);
+    if (!cur) throw new Error('직원을 찾지 못했습니다. 다른 기기에서 삭제했을 수 있습니다.');
+    sh.getRange(cur.row, 2, 1, 3).setValues([[name, phone, memo]]);
+    sh.getRange(cur.row, 6).setValue(now);
+    return;
+  }
+  sh.appendRow([newId('P'), name, phone, memo, now, now]);
+}
+
+function deleteEmp(id) {
+  const cur = readEmps().find(x => x.id === id);
+  if (!cur) return;
+  const left = empBalances(readEmpLogs().filter(l => l.empId === id)).filter(b => b.bal > 0);
+  if (left.length) throw new Error(cur.name + '님이 아직 자재를 갖고 있습니다 (' + left.map(b => b.itemName + ' ' + b.bal).join(', ') + '). 사용 또는 반납 처리 후 삭제해 주세요.');
+  sheet('직원').deleteRow(cur.row);
+}
+
+/** 직원 기록: use(사용) / return(반납 → 본사 재고로 입고) / own(본사 출고 없이 이미 갖고 있던 수량 등록) */
+function addEmpLog(l, device) {
+  const emp = readEmps().find(x => x.id === l.empId);
+  if (!emp) throw new Error('직원을 찾지 못했습니다. 화면을 새로고침해 주세요.');
+  const it = readItems().find(x => x.id === l.itemId);
+  if (!it) throw new Error('품목을 찾지 못했습니다. 화면을 새로고침해 주세요.');
+  const qty = Math.floor(num(l.qty));
+  if (!(qty > 0)) throw new Error('수량을 1 이상으로 입력해 주세요.');
+  const type = l.type === 'return' ? 'return' : l.type === 'own' ? 'own' : 'use';
+  const bal = empBal(emp.id, it.id);
+  if (type !== 'own' && qty > bal) throw new Error(emp.name + '님의 ' + itemLabel(it) + ' 재고가 ' + bal + it.unit + '라서 ' + qty + ' ' + (type === 'use' ? '사용' : '반납') + '할 수 없습니다.');
+  const day = dayOf(l.date), now = fmtTime(), memo = clean(l.memo, 80);
+  let link = '';
+  if (type === 'return') {
+    link = newId('L');
+    sheet('입출고').appendRow([link, day, '입고', it.id, itemLabel(it), qty, clean('[직원 반납] ' + emp.name + (memo ? ' · ' + memo : ''), 80), now, clean(device, 40)]);
+    const sh = sheet('품목');
+    sh.getRange(it.row, 8).setValue(it.stock + qty);
+    sh.getRange(it.row, 10).setValue(now);
+  }
+  const ko = type === 'own' ? '입고' : ETYPE_KO[type];
+  sheet('직원재고').appendRow([newId('E'), day, ko, emp.id, emp.name, it.id, itemLabel(it), qty, memo || (type === 'own' ? '기존 보유분 등록' : ''), link, now, clean(device, 40)]);
+  const left = empBal(emp.id, it.id);
+  const what = type === 'use' ? '사용' : type === 'return' ? '본사로 반납' : '보유 등록';
+  return emp.name + '님 ' + itemLabel(it) + ' ' + qty + it.unit + ' ' + what + ' 기록했습니다. 남은 재고 ' + left + it.unit;
+}
+
+function cancelEmpLog(id) {
+  const el = readEmpLogs().find(x => x.id === id);
+  if (!el) return;
+  if (el.link) { cancelLog(el.link); if (readEmpLogs().some(x => x.id === id)) sheet('직원재고').deleteRow(readEmpLogs().find(x => x.id === id).row); return; }
+  if (el.type === 'in') {
+    const bal = empBal(el.empId, el.itemId);
+    if (bal < el.qty) throw new Error(el.empName + '님이 이미 일부를 사용·반납해서 취소할 수 없습니다. 사용 기록부터 취소해 주세요. (남은 ' + bal + ')');
+  }
+  sheet('직원재고').deleteRow(el.row);
 }
 
 /* ---------- 자동 백업 ---------- */
