@@ -564,7 +564,7 @@ input[type=file]::file-selector-button{border:1px solid var(--line-2);background
     <button type="submit" class="btn btn-submit" id="loginBtn">로그인</button>
     <button type="button" class="btn btn-reset" id="loginOther" style="width:100%;margin-top:12px;font-size:.9rem;padding:10px;">👥 다른 사람으로 로그인</button>
     <div id="loginMsg"></div>
-    <div style="text-align:center;font-size:.7rem;color:#adb5bd;margin-top:10px;">앱 버전 1127-메뉴강조</div>
+    <div style="text-align:center;font-size:.7rem;color:#adb5bd;margin-top:10px;">앱 버전 1127-달력수정</div>
   </form>
 </div>
 <div id="expModal" class="modal" style="z-index:70;">
@@ -697,7 +697,7 @@ input[type=file]::file-selector-button{border:1px solid var(--line-2);background
     <div class="btn-row"><button type="submit" class="btn btn-submit">변경</button><button type="button" class="btn btn-reset" onclick="$('pwModal').classList.remove('show')">닫기</button></div>
   </form>
 </div>
-<div id="appVer" style="position:fixed;left:6px;bottom:4px;font-size:.65rem;color:#adb5bd;z-index:1;pointer-events:none;">앱 버전 1127-메뉴강조</div>
+<div id="appVer" style="position:fixed;left:6px;bottom:4px;font-size:.65rem;color:#adb5bd;z-index:1;pointer-events:none;">앱 버전 1127-달력수정</div>
 <div id="syncStatus">🔄 연동 중...</div>
 <div class="container">
   <h2><small>㈜월드네트웍스</small>현장 방문 및 스케줄 관리</h2>
@@ -2285,15 +2285,22 @@ function switchTab(tabId) {
    같은 고객(이름+연락처)의 일정이 여러 개면 방문 일시가 가장 늦은 것(고객 이력의 '최종')만 달력에 보여 줍니다.
    이름과 연락처가 모두 비어 있는 일정은 각각 따로 보여 줍니다. 지난 일정은 고객 이력·날짜 팝업·검색에서 볼 수 있어요. */
 function calendarLatestIds() {
-  const best = {}, ids = new Set();
+  // 1127 수정: ① 시공 예정일로 자동 생성된 [시공] 일정은 원래 일정을 가리지 않음(따로 셈)
+  //            ② 같은 고객이라도 최종 일정과 같은 날짜의 일정은 모두 보여 줌
+  const best = {}, ids = new Set(), keyOf = {};
   schedules.forEach(s => {
     if (!s.visit) return;
     const name = (s.customer || '').trim(), phone = (s.phone || '').trim();
     if (!name && !phone) { ids.add(s.id); return; }
-    const k = name + '|' + phone;
+    const auto = /^\[시공\]/.test((s.request || '').trim()) ? '|시공' : '';
+    const k = name + '|' + phone + auto;
+    keyOf[s.id] = k;
     if (!best[k] || (s.visit || '') >= (best[k].visit || '')) best[k] = s;
   });
-  Object.values(best).forEach(s => ids.add(s.id));
+  schedules.forEach(s => {
+    const k = keyOf[s.id];
+    if (k && best[k] && (s.visit || '').slice(0, 10) === (best[k].visit || '').slice(0, 10)) ids.add(s.id);
+  });
   return ids;
 }
 
